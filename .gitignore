@@ -32,5 +32,7 @@ radmc3d
 *.py_*
 *.pro_*
 *.zip
+#*
+.#*
 test*
 .DS_Store

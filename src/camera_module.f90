@@ -270,11 +270,11 @@ module camera_module
   integer :: cim_nr,cim_np
   double precision, allocatable :: cim_rc(:),cim_ri(:),cim_pc(:),cim_pi(:)
   !
-  !    A new mode for scattering images: the single scattering mode. Default
+  !    A new mode for scattering images: the lambda single scattering mode. Default
   !    is 0 (i.e. normal Monte Carlo scattering). If set to 1, then use the
-  !    do_single_scattering() routine instead of do_monte_carlo_scattering().
+  !    do_lambda_starlight_single_scattering() routine instead of do_monte_carlo_scattering().
   !    
-  integer :: camera_single_scat_mode = 0
+  integer :: camera_lambda_starlight_single_scat_mode = 0
   !
 contains
 
@@ -3642,15 +3642,15 @@ subroutine camera_make_rect_image(img,tausurf)
         !
         ! Do Monte Carlo simulation
         !
-        if(camera_single_scat_mode.eq.0) then
+        if(camera_lambda_starlight_single_scat_mode.eq.0) then
            call do_monte_carlo_scattering(rt_mcparams,ierror,do_resetseed,&
                                           scatsrc=.true.)
            write(stdo,*) 'Average number of scattering events per photon package = ', &
                       ieventcounttot/(1.d0*rt_mcparams%nphot_scat)
-        elseif(camera_single_scat_mode.eq.1) then
-           call do_single_scattering(rt_mcparams,ierror,scatsrc=.true.)
+        elseif(camera_lambda_starlight_single_scat_mode.eq.1) then
+           call do_lambda_starlight_single_scattering(rt_mcparams,ierror,scatsrc=.true.)
         else
-           write(stdo,*) 'Single scattering mode cannot be other than 0 or 1 for now.'
+           write(stdo,*) 'Lambda single scattering mode cannot be other than 0 or 1 for now.'
            stop 8762
         endif
      endif
@@ -3746,15 +3746,15 @@ subroutine camera_make_rect_image(img,tausurf)
            !
            ! Call the single wavelength Monte Carlo module
            !
-           if(camera_single_scat_mode.eq.0) then
+           if(camera_lambda_starlight_single_scat_mode.eq.0) then
               call do_monte_carlo_scattering(rt_mcparams,ierror,do_resetseed,&
                                              scatsrc=.true.)
               write(stdo,*) 'Average number of scattering events per photon package = ', &
                       ieventcounttot/(1.d0*rt_mcparams%nphot_scat)
-           elseif(camera_single_scat_mode.eq.1) then
-              call do_single_scattering(rt_mcparams,ierror,scatsrc=.true.)
+           elseif(camera_lambda_starlight_single_scat_mode.eq.1) then
+              call do_lambda_starlight_single_scattering(rt_mcparams,ierror,scatsrc=.true.)
            else
-              write(stdo,*) 'Single scattering mode cannot be other than 0 or 1 for now.'
+              write(stdo,*) 'Lambda single scattering mode cannot be other than 0 or 1 for now.'
               stop 8762
            endif
         endif
@@ -6288,15 +6288,15 @@ subroutine camera_make_circ_image()
         !
         ! Do Monte Carlo simulation
         !
-        if(camera_single_scat_mode.eq.0) then
+        if(camera_lambda_starlight_single_scat_mode.eq.0) then
            call do_monte_carlo_scattering(rt_mcparams,ierror,do_resetseed,&
                                           scatsrc=.true.)
            write(stdo,*) 'Average number of scattering events per photon package = ', &
                       ieventcounttot/(1.d0*rt_mcparams%nphot_scat)
-        elseif(camera_single_scat_mode.eq.1) then
-           call do_single_scattering(rt_mcparams,ierror,scatsrc=.true.)
+        elseif(camera_lambda_starlight_single_scat_mode.eq.1) then
+           call do_lambda_starlight_single_scattering(rt_mcparams,ierror,scatsrc=.true.)
         else
-           write(stdo,*) 'Single scattering mode cannot be other than 0 or 1 for now.'
+           write(stdo,*) 'Lambda single scattering mode cannot be other than 0 or 1 for now.'
            stop 8762
         endif
      endif

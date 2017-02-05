@@ -3219,11 +3219,14 @@ end subroutine do_monte_carlo_scattering
 !         A SIMPLE APPROXIMATION OF SINGLE-LAMBDA SCATTERING
 !
 ! Often it is sufficient to use the single-scattering approximation, if
-! the source of radiation is/are only star(s). The advantage of this method
+! the source of radiation is/are only star(s). Here a method is implemented
+! that loops over all cells, and calculates the radiation field caused by
+! the light of all stars (with their extinction). This is then used to 
+! compute the scattering source function. The advantage of this method
 ! is that it is faster and cleaner (not dependent on stochastics). But this
 ! does not work for non-point-source sources.
 ! --------------------------------------------------------------------------
-subroutine do_single_scattering(params,ierror,scatsrc,meanint)
+subroutine do_lambda_starlight_single_scattering(params,ierror,scatsrc,meanint)
   implicit none
   type(mc_params) :: params
   integer :: ierror,inu
@@ -3388,7 +3391,7 @@ subroutine do_single_scattering(params,ierror,scatsrc,meanint)
            pos(3) = ray_cart_z
         else
            if((igrid_coord.ge.200).or.(igrid_coord.lt.0)) then
-              write(*,*) 'ERROR in do_single_scattering(): Coordinate system not supported'
+              write(*,*) 'ERROR in do_lambda_starlight_single_scattering(): Coordinate system not supported'
               stop 5239
            endif
         endif
@@ -3628,7 +3631,7 @@ subroutine do_single_scattering(params,ierror,scatsrc,meanint)
   !
   ! Done...
   !
-end subroutine do_single_scattering
+end subroutine do_lambda_starlight_single_scattering
 
 
 

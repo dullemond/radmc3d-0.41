@@ -120,7 +120,7 @@ program radmc3d
   camera_diagnostics_subpix  = .false.
   camera_stokesvector        = .false.
   lines_autosubset           = .true.
-  camera_single_scat_mode    = 0
+  camera_lambda_starlight_single_scat_mode    = 0
   !
   ! Line wavelength grid parameter settings
   ! 
@@ -3450,14 +3450,17 @@ subroutine interpet_command_line_options(gotit,fromstdi,quit)
         ! irrespective of what the radmc3d.inp says
         !
         camera_incl_stars=0
-     elseif(buffer(1:10).eq.'singlescat') then
+     elseif(buffer(1:16).eq.'lambdasinglescat') then
         !
-        ! Use do_single_scattering() routine instead of do_monte_carlo_scattering(),
+        ! Use do_lambda_starlight_single_scattering() routine instead of do_monte_carlo_scattering(),
         ! meaning that the scattering source function for the images is computed
         ! only for the direct (extincted) stellar light. No multiple scattering is
-        ! computed.
+        ! computed. Only point source starlight is allowed as source. No thermal emission
+        ! from dust or other diffuse sources can be used. 
         !
-        camera_single_scat_mode = 1
+        ! Note: This mode is not Monte-Carlo style: it is deterministic.
+        !
+        camera_lambda_starlight_single_scat_mode = 1
         write(stdo,*) 'Warning: using single scattering mode now!'
      elseif(buffer(1:8).eq.'tracetau') then
         !

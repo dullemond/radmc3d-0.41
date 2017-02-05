@@ -7928,3 +7928,19 @@ finetuning: I noticed during some testing with a supersimple annulus model
   &         The image writing routine used a format in which 4 pixels 
             were written onto a single line. That caused trouble for
             some other software. Now back to one pixel per line.
+
+==============================================================================
+                           VERSION 0.41
+==============================================================================
+
+05.02.2017  I notice that the do_single_scattering() name causes confusion.
+            This is actually a lambda operator thing. So change the name to
+            do_lambda_starlight_single_scattering(). I also change the flag
+            camera_single_scat_mode into camera_lambda_starlight_single_scat_mode.
+            This is a bit an unwiedly name, but at least it is clearer what
+            it means. The main reason I wanted to change this is that I 
+            want to implement a true single scattering mode, in which simply
+            the Monte Carlo of each photon package is stopped after each
+            discrete scattering event. 
+
+
