@@ -1,0 +1,139 @@
+---> As run_simple_1_userdef/, but now with grid refinement
+
+This is an example of how to make a model internally inside radmc3d and how
+to use grid refinement while setting up the model. It also demonstrates the
+useage of the userdef_module.f90 module and the special-purpose compilation
+of radmc3d.
+
+This directory should contain the following files: 
+
+  README                         (This file)
+  Makefile                       (The local Makefile for the local build)
+  dustkappa_silicate.inp         (some dust opacity file)
+  problem_setup.pro              (an IDL script for setting up some input files)
+  userdef_module.f90             (the place where the model and grid are set up)
+
+This is what the model does:
+
+  The model sets up a simple Gaussian blob of dust surrounding a star in a
+  3-D cartesian grid. The model is set up in the userdef_module.f90 module,
+  i.e. inside the radmc3d code. This obviates the need of creating the
+  dust_density.inp and amr_grid.inp files. But some other files are still
+  created by the problem_setup.pro IDL script. The model setup makes use of
+  the oct-tree grid refinement capabilities of radmc3d.  For allowing a
+  quick look at the model using viewimage.pro, the model setup also creates
+  a dummy dust temperature, if requested to do so.  This allows you to have
+  a look at the model with viewimage.pro without having to run the Monte
+  Carlo computation of the temperatures. On request a bit of artificial
+  noise can be added to the temperature, so that the grid structure comes
+  out clearer in the images. But you can of course also compute the dust
+  temperature self-consistently by calling ./radmc3d mctherm. 
+
+This is what you should do to run this model:
+
+  1) Edit the Makefile in this directory and make sure that the compiler
+     settings are alright. Also set the SRC variable to the correct 
+     path of the source directory of radmc3d.
+  2) Inside this model directory type 'make'. This will create a local
+     executable radmc3d.
+  3) Go into IDL and type '.r problem_setup.pro'
+  4) Inside IDL type '.r viewimage.pro' (if you have followed the advice on
+     how to install the IDL subroutines, this should work just like that).
+  5) Inside IDL type 'viewimage'. This should spawn the image viewer. 
+
+If you want to compute the temperatures self-consistently, then you must
+put in problem_setup.pro the temp0 and tnoise to 0.d0 (so that radmc3d
+will not general the internally defined temperature but will look for
+a dust_temperature.inp file), and then do step 1,2 and 3, followed by:
+
+  3a) Exit IDL
+  3b) In the shell type './radmc3d mctherm' and wait until this is finished
+  3c) Go back into IDL
+
+and continue with step 4 and 5 from here. 
+
+Tip: you can see the refinement of the grid in the images if you make the
+image at incl=phi=0 and if you set the tnoise in the problem_setup.pro to
+10.d0 or so. 
+
+A note about the AMR: Since this setup does on-the-fly refinement, we do
+not know in advance how many cells we will need. However, for data memory
+management reasons we MUST specify some reasonable maximum number of cells
+that we expect. This is, unfortunately, not easy to predict, because it
+depends entirely on the scheme of AMR refinement implemented in the
+userdef_module.f90 module. The factor userdef_nrefinefact is meant to
+allow the user to specify how much larger (i.e. by which factor) the
+number of grid cells he/she expects to be needed, compared to the unrefined
+grid. If you run radmc3d and get a message that you run out of free cells,
+then enlarging this parameter will fix that. Making it too large, on the
+other hand, may require too much memory space. 
+
+Apart from viewing images, you can also make a spectrum. To make an SED
+on the same wavelength grid as in wavelength_micron.inp, and at a viewing
+angle given by an inclination of say 25 degrees and a phi-angle of say 85
+degrees, do the following (after having gone through the above stuff):
+
+  1) Type in the shell: 
+     radmc3d sed incl 25. phi 85.
+  2) Go into IDL
+  3) .r readradmc
+  4) s=readspectrum()
+  5) plotspectrum,s,dpc=140.
+
+This will plot the spectrum in nu*F_nu as seen from a distance of 140
+parsec. NOTE: This spectrum will be different from the one you saw in model
+run_simple_1_userdef/, because here the temperature is set fixed to 20 K
+(see above for more details). You can also plot it in Jy:
+plotspectrum,s,dpc=140.,/jy, or as nu*F_nu in units of solar luminosity:
+plotspectrum,s,/lsun.
+
+You can also make a spectrum of a small part of the spectral range:
+
+  1) Type in the shell: 
+     radmc3d spectrum incl 25. phi 85. lambdarange 5. 20. nlam 100
+  2) Go into IDL
+  3) .r readradmc
+  4) s=readspectrum()
+  5) plotspectrum,s,dpc=140.
+
+The spectrum itself is written out in a file called spectrum.out. Just type
+less spectrum.out to see the file. The flux is in CGS units, and normalized
+to 1 parsec distance (although for all purposes the true flux will be at
+much larger distances, but you can simply scale the spectrum by the factor
+(parsec/distance)^2, because for the spectrum the far-field limit is used,
+in spite of the "1 parsec" normalization.
+
+Please have a close look at the problem_setup.pro and the userdef_module.f90
+files for getting an understanding of how this model is set up. 
+
+NOTE: Scattering is switched off in this example run.
+
+
+VIEWING THE AMR GRID WITH PARAVIEW:
+-----------------------------------
+You can produce vtk files that can be viewed by Paraview, a publicly available
+3-D viewing tool. This will allow you to get a better feeling for the complex
+AMR gridding. Example, type:
+
+  ./radmc3d vtk_grid
+
+will produce a file called model.vtk which you can read with Paraview.
+Choose, in Paraview, the wireframe view, and you can see the structure of
+the 3-D AMR grid. You can also view the data itself, e.g.
+
+  ./radmc3d vtk_dust_density 1
+
+See the new dedicated chapter about VTK files in the manual.
+
+29.07.09, 02.08.09, 22.09.09, 20.05.12
+
+NOTE: As of version 0.31 of RADMC-3D this model comes with a dust opacity
+      table that spans a larger wavelength range, allowing it to be used
+      down to lower temperatures. The new opacity table is made with the Mie
+      code from the opac/dust_continuum/jena/ directory, using the
+      olmg50.lnk optical constants file from the Jena database. This is
+      MgFeSiO4 with a specific weight of 3.71 gram/cm^3. The grain size is
+      0.1 micron radius.
+
+
+

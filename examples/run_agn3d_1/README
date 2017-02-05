@@ -1,0 +1,66 @@
+This is a toy model of a clumpy dusty torus around a supermassive black hole.
+This is the 3-D version of the 2-D model of Dullemond & van Bemmel (2005),
+A&A 436, 47.
+
+This model setup follows the general philosophy of creating all the input
+files for radmc3d via an IDL script called problem_setup.pro. The model
+calculation is then done by the globally (for the user) installed radmc3d,
+i.e. the radmc3d from the src/ directory.
+
+This directory should contain the following files: 
+
+  README                             (This file)
+  Makefile                           (Only for convenient cleanmodel and cleanall)
+  dustkappa_laordraine_0.1mic.inp    (dust opacity file)
+  problem_setup.pro                  (an IDL script for setting up some input files)
+  make_movie_rotation.pro            (an IDL script for making movie of rotation)
+  make_movie_journey.pro             (an IDL script for making movie of travel through)
+
+This is what the model does:
+
+  It sets up a spherical 3-D coordinate system and places spherical Gaussian
+  density blobs at random positions on the grid. The size of the blobs is
+  always scaling with radial distance from the center, so that they always
+  'fit' well to the local scales. NOTE: This model is somewhat large and
+  takes some memory. It also takes IDL some time to put all the blobs on
+  the grid. This could be done more efficiently. 
+
+This is what you should do to run this model:
+
+  1) Make sure you have compiled the main radmc3d code in src/ already.
+     See manual for how to compile.
+  2) Go into IDL and type '.r problem_setup.pro'
+  3) Exit IDL
+  4) In the shell type 'radmc3d mctherm' and wait until this is finished.
+     This may take some time.
+
+You can now make images:
+
+  1) Inside IDL type '.r viewimage.pro' (if you have followed the advice on
+     how to install the IDL subroutines, this should work just like that).
+  2) Inside IDL type 'viewimage'. This should spawn the image viewer. 
+     You will see the planet. Try viewing at 10 micron. 
+  3) You can start viewimage instead with viewimage,/local, which gives you
+     more options: it gives you the possibility to travel as a local 
+     observer through the model and view the model from inside.
+
+You can also make a spectrum. To make an SED on the same wavelength grid as
+in wavelength_micron.inp, and at a viewing angle given by an inclination of
+say 25 degrees and a phi-angle of say 85 degrees, do the following (after
+having gone through the above stuff):
+
+  1) Type in the shell: 
+     radmc3d sed incl 25. phi 85.
+  2) Go into IDL
+  3) .r readradmc
+  4) s=readspectrum()
+  5) plotspectrum,s,/lsun
+
+This will plot the spectrum in nu*L_nu in units of solar luminosity. 
+
+Please have a close look at the problem_setup.pro file and the other helper
+files for getting an understanding of how this model is set up.
+
+NOTE: Scattering is switched off in this example run.
+
+13.01.10

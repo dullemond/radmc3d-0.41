@@ -1,0 +1,52 @@
+Here I do a trivial test of the escape probability subroutine (which is
+also the LVG subroutine, by the way, but now with the escape probability
+merely calculated from the geometry, not the velocity gradient). 
+
+I test against the RADEX code of Floris van der Tak:
+
+   http://www.sron.rug.nl/~vdtak/radex/radex.php
+
+which is described in the following paper:
+
+   Van der Tak, F.F.S., Black, J.H., Schöier, F.L., Jansen, D.J., van
+   Dishoeck, E.F., 2007, A&A 468, 627-635.
+
+The setup here has a CO column density 1000x higher than the 
+default setup of RADEX. The setup here is:
+
+   T_bg  = 2.73 K
+   T_gas = 30.  K
+   n_H2  = 1d4  cm^(-3)
+   N_CO  = 1d17 cm^(-2)    (compared to the default 1d14)
+   dv    = 1    km/s
+
+The resulting excitation temperatures RADEX returns are:
+
+   T_ex [J1-0] = 29.0 K    tau0 = 2.6
+   T_ex [J2-1] = 27.5 K    tau0 = 8.1
+   T_ex [J3-2] = 26.3 K    tau0 = 11.4
+   T_ex [J4-3] = 23.3 K    tau0 = 10.6
+
+The excitation temperatures that RADMC-3D returns are:
+
+   T_ex [J1-0] = 28.9 K
+   T_ex [J2-1] = 27.2 K
+   T_ex [J3-2] = 25.8 K
+   T_ex [J4-3] = 22.6 K
+
+Given that perhaps the setups are not 100% the same, I think this 
+agreement is satisfactory. 
+
+The way to run the model:
+
+  idl
+  .r problem_setup
+  exit
+  radmc3d calcpop
+  idl
+  .r readradmc
+  a=read_levelpop('co',/ext)
+  print,a.ext[0:3]
+
+which gives the above numbers.
+

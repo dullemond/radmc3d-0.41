@@ -1,0 +1,37 @@
+This is the Herbig Ae disk model that used to be named run_example_ppdisk/
+in the DISK2D Release 3.1 distribution. I ported it to RADMC-3D. Note that
+this is a fixed pre-given density structure, so no self-consistent
+hydrostatic structure iteration is done. Note also that this involves two
+dust species, one crystalline and one amorphous. 
+
+IMPORTANT: This model is a relatively complex setup. Please use with care. 
+So far I did not have the time to make a sufficiently detailed "manual" for
+this model. 
+
+
+
+Important note about sub-pixeling:
+
+This model has a rather extreme refinement of the radial coordinate near the
+inner edge. As a result, when you make an image or an SED, RADMC-3D uses
+sub-pixeling to an extreme degree. This is because it does not want to run
+the risk of accidently overlooking cells that are with their short dimension
+perpentidular to the line of sight. For most cases this extreme degree of
+sub-pixeling is, in practice, not necessary. It is necessary only for really
+extremely optically thick disk models that are seen nearly face-on. So if
+you feel confortable that in your case it is not such a pathological case
+(the best way to find out is to test this) you can limit the sub-pixeling
+by adding a line
+
+camera_min_drr = 0.03
+
+in the radmc3d.inp file. This makes it faster by suppressing the
+sub-pixeling a bit (cells with Delta R/R < camera_min_drr will not induce
+further sub-pixeling). You can make it even faster with
+
+camera_min_drr = 0.3
+
+but this could, for the near-infrared flux (from the inner rim) be a bit
+dangerous.
+
+12.03.10 / 29.01.12

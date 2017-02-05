@@ -1,0 +1,25 @@
+This is a model of a protoplanetary disk. It has a graphical user interface
+for the setup:
+
+   radmc3d_gui.pro
+
+This is what you should do to run this model:
+
+  1) Make sure you have compiled the main radmc3d code in src/ already.
+     See manual for how to compile.
+  2) Go into IDL and type:
+      .r radmc3d_gui
+      radmc3d_gui
+      and you should get a large control panel. 
+  3) The rest should be self-explanatory.
+
+CREDITS: This GUI is created by Attila Juhasz, MPIA 2010.
+
+NOTE: As of version 0.31 of RADMC-3D this model comes with a dust opacity
+      table that spans a larger wavelength range, allowing it to be used
+      down to lower temperatures. The new opacity table is made with the Mie
+      code from the opac/dust_continuum/jena/ directory, using the
+      olmg50.lnk optical constants file from the Jena database. This is
+      MgFeSiO4 with a specific weight of 3.71 gram/cm^3. The grain size is
+      0.1 micron radius.
+

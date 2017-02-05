@@ -1,0 +1,89 @@
+This is a *very* simple model of a planetary atmosphere with lots of dust.
+This atmosphere does not contain molecular opacities or so, only simple dust
+opacity. The purpose of this setup is just to demonstrate how one could use
+RADMC-3D also fro this kind of purposes. BUT to do it right you need to
+include gas opacities and such. In fact, to treat the collossal number of
+gas lines you would be advised to use the "line list mode" of RADMC-3D,
+which is currently not yet available (as of 12.01.10), but will become
+available some time during 2010 presumably. 
+
+This model setup follows the general philosophy of creating all the input
+files for radmc3d via an IDL script called problem_setup.pro. The model
+calculation is then done by the globally (for the user) installed radmc3d,
+i.e. the radmc3d from the src/ directory.
+
+This directory should contain the following files: 
+
+  README                         (This file)
+  Makefile                       (Only for convenient cleanmodel and cleanall)
+  dustkappa_silicate.inp         (some dust opacity file)
+  problem_setup.pro              (an IDL script for setting up some input files)
+  plot_session.pro               (an IDL script for plotting the dust temperature result)
+
+This is what the model does:
+
+  The model contains two sphere-like "stars": one is the planet, located
+  at (0,0,0) and the other is the host star, located at (0,0,0.2*AU). 
+  Around the planet a spherical coordinate system is installed, with
+  axial symmetry. This is justified because the host star has been put
+  on the z-axis, so everything is axisymmetric. The coordinates are r
+  (the radius of spherical coordinates, now acting as height in the 
+  atmosphere) and theta (the 'lattitude', though with the 'pole' pointing
+  toward the host star). 
+
+This is what you should do to run this model:
+
+  1) Make sure you have compiled the main radmc3d code in src/ already.
+     See manual for how to compile.
+  2) Go into IDL and type '.r problem_setup.pro'
+  3) Exit IDL
+  4) In the shell type 'radmc3d mctherm' and wait until this is finished
+
+You can now see the temperature structure by:
+
+  1) Go back into IDL
+  2) Type '.r plot_session.pro'
+  3) Exit IDL
+  4) View the temperature.ps file.
+
+You can also, more for fun than for real, make an image:
+
+  1) Inside IDL type '.r viewimage.pro' (if you have followed the advice on
+     how to install the IDL subroutines, this should work just like that).
+  2) Inside IDL type 'viewimage'. This should spawn the image viewer. 
+     You will see the planet. Try viewing at 10 micron. You see the 
+     planet as it is irradiated from the top. You can rotate
+     the view by putting '90' in the PosAng box. 
+
+You can also make a spectrum. To make an SED on the same wavelength grid as
+in wavelength_micron.inp, and at a viewing angle given by an inclination of
+say 25 degrees and a phi-angle of say 85 degrees, do the following (after
+having gone through the above stuff):
+
+  1) Type in the shell: 
+     radmc3d sed incl 25. phi 85.
+  2) Go into IDL
+  3) .r readradmc
+  4) s=readspectrum()
+  5) plotspectrum,s,dpc=140.
+
+This will plot the spectrum in nu*F_nu as seen from a distance of 140
+parsec. Note that the star is not in the viewing window (= the standard
+viewing window when making an image), so the spectrum will be of the
+planet only. 
+
+Please have a close look at the problem_setup.pro file for getting an 
+understanding of how this model is set up. 
+
+NOTE: Scattering is switched off in this example run.
+
+12.01.10
+
+NOTE: As of version 0.31 of RADMC-3D this model comes with a dust opacity
+      table that spans a larger wavelength range, allowing it to be used
+      down to lower temperatures. The new opacity table is made with the Mie
+      code from the opac/dust_continuum/jena/ directory, using the
+      olmg50.lnk optical constants file from the Jena database. This is
+      MgFeSiO4 with a specific weight of 3.71 gram/cm^3. The grain size is
+      0.1 micron radius.
+

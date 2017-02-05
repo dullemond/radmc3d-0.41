@@ -1,0 +1,26 @@
+This is a simple 3-D rotating ring model of molecular gas.
+The lines we study are those of CO. We use the LTE assumption, using
+lines_mode=1. The populations are stored for all levels (no level
+subset is chosen). The molecular data file molecule_co.inp is a direct
+copy of the co.dat file of the LAMDA database from Leiden. 
+
+Check out the problem_setup.pro. The dust temperature is not calculated; it
+is simply set to 300 K, as is the gas temperature. 
+
+As usual, make the setup in IDL with:
+
+ .r problem_setup
+
+Now you can see the image with:
+
+ .r viewimage
+ viewimage,/lines
+
+By default the wavelength of the image you see is not exactly on the line.
+Therefore initially you only see the ring of the dust emission.
+But if you enter the v [km/s] value and press return, you should suddenly
+see two blobs on top of the ring, which are the line emission at that
+velocity channel. 
+
+07.03.2015
+

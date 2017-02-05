@@ -1,0 +1,80 @@
+DUST OPACITIES USING THE JENA OPTICAL CONSTANTS DATABASE
+--------------------------------------------------------
+
+The Jena optical constants database for dust opacities is located at:
+
+http://www.astro.uni-jena.de/Laboratory/Database/databases.html
+
+It contains tables with the "n" and "k" values as a function of wavelength,
+as measured in their laboratory. To create actual opacities (in units of
+cm^2/gram-of-dust) from these values requires a further procedure, which
+depends very much on the geometry and size of the dust grains. There is no
+"golden bullet" procedure for this. The simplest procedure is Mie Theory,
+which is valid for spherical solid particles. This is what is offered here.
+Please read the book by C.F. Bohren and D. Huffman, "Absorption and
+scattering of light by small particles" (John Wiley, New York 1983). Also
+have a look at the web site http://www.lightscattering.de/MieCalc/eindex.html.
+
+For more complex dust grain geometries there are various methods, including
+Discrete Dipole Approximation, T-Matrix method etc. We do not offer any of
+these here, because of their complexity. However, opacity tables produced
+using such more complex method can still be used by RADMC-3D.
+
+Here is what to do to get going with the simple example:
+
+ - Download the optical constants from the Jena database. For this 
+   particular example:
+     http://www.astro.uni-jena.de/Laboratory/OCDB/data/silicate/pyrmg70.lnk
+
+ - Compile the fortran code by typing
+     make
+   on the unix command line
+
+ - Go into IDL and type:
+     .r make_opacs
+
+ - This should make opacities for 5 different grain sizes, and plot them.
+
+ - Note that this is just an example. Please edit the make_opacs.pro file
+   and/or choose another optical constants file for making different 
+   opacities. Also note that in many cases a single grain size (instead
+   of a distribution) may be more than enough for your scientific purposes.
+
+This example shows not only how to make the dustkappa_*.inp files and 
+the dustopac.inp file for RADMC-3D (in this example: 5 individual grain
+sizes), 
+
+But also shows the limitations of the Mie code. One sees here that the
+absorption opacity becomes very low around 7 micron (in fact, in the code it
+becomes negative, which is unphysical, but it is limited to 1d-20). This is
+an artifact of the code. Also one sees that, since the optical constants
+only go out to 500 micron, the opacity is simply extrapolated with a
+powerlaw beyond that wavelength. This is a rather ad-hoc assumption. In
+fact, it is plain wrong for the largest of the grains, since the
+"knee" where the opacity goes from flat into powerlaw should lie around
+2*pi*a_grain, which should be further to the right in the plot. Another
+limitation one can see is the wiggles in some of the opacities. They are
+"real" if the grain is indeed exactly spherical, but don't over-interpret
+them, since in reality grains are not exactly spherical, and they are
+never exactly of the same size. With a properly sample size mixture
+(not 5, like in this example, but 10000 sizes, for instance) these wiggles
+would wash out.
+
+Please keep all these limitations in mind!
+
+IMPORTANT NOTE: Apparently not all files in the Jena database have 
+                the wavelength in units of micron; some are in cm^-1. 
+                Please beware!
+
+23.03.11
+
+NOTE: Since version 0.31 the makedust.F program has a small modification
+      in the way the interpolation of the optical constants is done.
+      This gets rid of a strange wiggle in the submillimeter opacity
+      for the jena opacities, which are sampled only very coursely in
+      that range. BUT PLEASE BEWARE: this does not mean that the opacity
+      produced with makedust.F will now be reliable in that range of
+      wavelengths. Only if you have a finely spaced table of optical
+      constants in that range can you be sure about the reliability of
+      the opacity there.
+

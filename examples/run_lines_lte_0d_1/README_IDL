@@ -1,0 +1,42 @@
+This is a very simple 0-D (one-zone) model of a box of molecular gas.
+The lines we study are those of CO. We use the LTE assumption, using
+lines_mode=1. The populations are stored for all levels (no level
+subset is chosen). The molecular data file molecule_co.inp is a direct
+copy of the co.dat file of the LAMDA database from Leiden. 
+
+Check out the problem_setup.pro. The setup can be trivially extended to
+3-D. The dust temperature is not calculated; it is simply set to 30 K.
+
+As usual, make the setup in IDL with:
+
+ .r problem_setup
+
+Then, in the shell, by typing:
+
+  radmc3d calcpop
+
+a file levelpop_co.dat is produced, containing the absolute populations
+(i.e. in units of 1/cm^3) of all levels of the molecule_co.inp file. By
+typing
+
+  radmc3d spectrum iline 1 widthkms 1
+
+a spectrum is produced (spectrum.out). The width of the window around the
+line center is taken to be 1 km/s. You can inspect the spectrum (which is
+located in the file spectrum.out) using the IDL routines readradmc.pro. So
+go into IDL and type:
+
+  .r readradmc
+  s=readspectrum()
+  plotspectrum,s,/xlin,/ylin,dpc=140.
+
+which plots the spectrum as seen from a distance of 140 parsec. The
+/xlin and /ylin are to force the plotspectrum routine to use linear
+x and y axes. The reason is that plotspectrum was originally written
+for SEDs. Also note that the x-axis is in actual wavelengths in microns.
+To convert to velocities you will have to do some hand-work, plotting
+the data in your own way. The structure s contains the spectrum as seen
+at 1 parsec distance in units of erg/cm^2/s/Hz (which is also the unit
+of the spectrum values in the spectrum.out file).
+
+28.03.11

@@ -1,0 +1,75 @@
+This is perhaps the most primitive example of a model setup for radmc3d.
+It follows the general philosophy of creating all the input files for
+radmc3d via a python script called problem_setup.py. The model calculation
+is then done by the globally (for the user) installed radmc3d, i.e. the
+radmc3d from the src/ directory.
+
+This directory should contain the following files: 
+
+  README_PY                      (This file)
+  Makefile                       (Only for convenient cleanmodel and cleanall)
+  dustkappa_silicate.inp         (some dust opacity file)
+  problem_setup.py               (a python script for setting up some input files)
+
+This is what the model does:
+
+  The model sets up a simple Gaussian blob of dust surrounding a star in a
+  3-D cartesian grid. It is the same model as the one in run_simple_userdef_1/
+  but this time it is set up in the classical way: using an external
+  script to create all input files.
+
+This is what you should do to run this model:
+
+  1) Make sure you have compiled the main radmc3d code in src/ already.
+     See manual for how to compile.
+  2) Type python problem_setup.py
+  3) In the shell type 'radmc3d mctherm' and wait until this is finished
+     NOTE: Do not, as in run_simple_userdef_1/, type './radmc3d mctherm' (i.e.
+     do not use the ./).
+  4) Make sure that the radmc3dPy subroutines are found by python, e.g.
+     by setting the shell environment variable PYTHONPATH to the 
+     python/radmc3dPy/ directory
+  5) Go into python with matplotlib interactive mode:
+        ipython --matplotlib
+  6) Now you can use the problem_plotexamples.py to make an image and
+     create some plots. Please read the problem_plotexamples.py script
+     to learn how to do these things interactively. You can run this
+     script from the python prompt with:
+        from problem_plotexamples import *
+
+One of the examples in the problem_plotexamples.py is how to make a
+spectral energy distribution. You can do this straight from the shell by:
+
+   radmc3d sed incl 60 phi 30
+
+where incl and phi are the viewing angles. The SED is is written out in a
+file called spectrum.out. Just type less spectrum.out to see the file. The
+flux is in CGS units, and normalized to 1 parsec distance (although for all
+purposes the true flux will be at much larger distances, but you can simply
+scale the spectrum by the factor (parsec/distance)^2, because for the
+spectrum the far-field limit is used, in spite of the "1 parsec"
+normalization.
+
+Please have a close look at the problem_setup.py file for getting an 
+understanding of how this model is set up. 
+
+NOTE: Scattering is switched off in this example run.
+
+RADMC-3D can also be used to compute the mean intensity J_nu of the
+radiation field at every point in the model. It produces a list of
+wavelengths in the file
+
+  mcmono_wavelength_micron.inp
+
+and then calls RADMC-3D in the following way:
+
+  radmc3d mcmono nphot_mono 1000000
+
+This then produces the file 
+
+  mean_intensity.out
+
+which contains the mean intensities. The mean intensities are in units
+of erg/s/cm^2/Hz/ster. 
+
+29.07.09, 22.09.09, 13.03.12, 20.05.12, 29.06.16

@@ -1,0 +1,7 @@
+2               Format number of this file
+1               Nr of dust species
+============================================================================
+1               Way in which this dust species is read
+0               0=Thermal grain
+silicate        Extension of name of dustkappa_***.inp file
+----------------------------------------------------------------------------

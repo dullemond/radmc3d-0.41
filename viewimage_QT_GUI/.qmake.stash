@@ -1,0 +1,30 @@
+QMAKE_XCODE_DEVELOPER_PATH = /Developer
+QMAKE_XCODE_VERSION = 4.2.1
+QMAKE_MAC_SDK.macosx.path = /Developer/SDKs/MacOSX10.7.sdk
+QMAKE_MAC_SDK.macx-g++.macosx.QMAKE_CC = /Developer/usr/bin/gcc
+QMAKE_MAC_SDK.macx-g++.macosx.QMAKE_CXX = /Developer/usr/bin/g++
+QMAKE_MAC_SDK.macx-g++.macosx.QMAKE_FIX_RPATH = \
+    /Developer/usr/bin/install_name_tool \
+    -id
+QMAKE_MAC_SDK.macx-g++.macosx.QMAKE_AR = \
+    /Developer/usr/bin/ar \
+    cq
+QMAKE_MAC_SDK.macx-g++.macosx.QMAKE_RANLIB = \
+    /Developer/usr/bin/ranlib \
+    -s
+QMAKE_MAC_SDK.macx-g++.macosx.QMAKE_LINK = /Developer/usr/bin/g++
+QMAKE_MAC_SDK.macx-g++.macosx.QMAKE_LINK_SHLIB = /Developer/usr/bin/g++
+QMAKE_MAC_SDK.macosx.platform_name = macosx
+QMAKE_MAC_SDK.macx-clang.macosx.QMAKE_CC = /Developer/usr/bin/clang
+QMAKE_MAC_SDK.macx-clang.macosx.QMAKE_CXX = /Developer/usr/bin/clang++
+QMAKE_MAC_SDK.macx-clang.macosx.QMAKE_FIX_RPATH = \
+    /Developer/usr/bin/install_name_tool \
+    -id
+QMAKE_MAC_SDK.macx-clang.macosx.QMAKE_AR = \
+    /Developer/usr/bin/ar \
+    cq
+QMAKE_MAC_SDK.macx-clang.macosx.QMAKE_RANLIB = \
+    /Developer/usr/bin/ranlib \
+    -s
+QMAKE_MAC_SDK.macx-clang.macosx.QMAKE_LINK = /Developer/usr/bin/clang++
+QMAKE_MAC_SDK.macx-clang.macosx.QMAKE_LINK_SHLIB = /Developer/usr/bin/clang++

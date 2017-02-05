@@ -1,0 +1,42 @@
+This is like run_simple_1, but now with less density and including 
+isotropic scattering.
+
+This directory should contain the following files: 
+
+  README                         (This file)
+  Makefile                       (Only for convenient cleanmodel and cleanall)
+  dustkappa_silicate.inp         (some dust opacity file, this time WITH scattering!)
+  problem_setup.pro              (an IDL script for setting up some input files)
+
+This is what the model does:
+
+  The model sets up a simple Gaussian blob of dust surrounding a star in a
+  3-D cartesian grid. It is the same model as the one in run_simple_1/
+  but this time it is with 100x lower density and with a different 
+  opacity table: an opacity table with scattering opacity (isotropic
+  scattering only, in this example). Also, in contrast to run_simple_1/,
+  we do NOT set the scattering_mode_max to 0, so in other words: we allow
+  RADMC-3D to include scattering. 
+
+This is what you should do to run this model:
+
+  1) Make sure you have compiled the main radmc3d code in src/ already.
+     See manual for how to compile.
+  2) Go into IDL and type '.r problem_setup.pro'
+  3) Exit IDL
+  4) In the shell type 'radmc3d mctherm' and wait until this is finished
+  6) Go back into IDL
+  7) Inside IDL type '.r viewimage.pro' (if you have followed the advice on
+     how to install the IDL subroutines, this should work just like that).
+  8) Inside IDL type 'viewimage'. This should spawn the image viewer. 
+     Now, by going to short wavelength, you should still see a glow around
+     the star which, in run_simple_1/, was not present. This glow is the
+     scattering. Also note that at short wavelengths RADMC-3D is a bit slower
+     than usual. This is because for the scattering it does a special-purpose
+     small Monte Carlo simulation at the wavelength of interest, to calculate
+     the scattering source function on-the-fly. 
+
+Please have a close look at the problem_setup.pro file for getting an 
+understanding of how this model is set up. 
+
+14.08.09

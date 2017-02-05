@@ -1,0 +1,51 @@
+Here I do a trivial test of the escape probability subroutine (which is
+also the LVG subroutine, by the way, but now with the escape probability
+merely calculated from the geometry, not the velocity gradient). 
+
+I test against the RADEX code of Floris van der Tak:
+
+   http://www.sron.rug.nl/~vdtak/radex/radex.php
+
+which is described in the following paper:
+
+   Van der Tak, F.F.S., Black, J.H., Schöier, F.L., Jansen, D.J., van
+   Dishoeck, E.F., 2007, A&A 468, 627-635.
+
+The setup the above RADEX code gives as a defaul is:
+
+   T_bg  = 2.73 K
+   T_gas = 30.  K
+   n_H2  = 1d4  cm^(-3)
+   N_CO  = 1d14 cm^(-2) 
+   dv    = 1    km/s
+
+The resulting excitation temperatures RADEX returns are:
+
+   T_ex [J1-0] = 54.9 K    tau0 = 1.8d-3
+   T_ex [J2-1] = 18.2 K    tau0 = 1.6d-2
+   T_ex [J3-2] = 13.6 K    tau0 = 2.0d-2
+   T_ex [J4-3] = 13.1 K    tau0 = 8.9d-3
+
+The excitation temperatures that RADMC-3D returns are:
+
+   T_ex [J1-0] = 56.1 K
+   T_ex [J2-1] = 18.1 K
+   T_ex [J3-2] = 13.5 K
+   T_ex [J4-3] = 13.1 K
+
+Given that perhaps the setups are not 100% the same, I think this 
+agreement is satisfactory. 
+
+The way to run the model:
+
+  idl
+  .r problem_setup
+  exit
+  radmc3d calcpop
+  idl
+  .r readradmc
+  a=read_levelpop('co',/ext)
+  print,a.ext[0:3]
+
+which gives the above numbers.
+

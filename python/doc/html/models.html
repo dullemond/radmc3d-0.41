@@ -1,0 +1,315 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Model source files &mdash; radmc3dPy 0.27.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/sphinxdoc.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.27.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="radmc3dPy 0.27.1 documentation" href="index.html" />
+    <link rel="next" title="Parameters" href="parfile.html" />
+    <link rel="prev" title="Tutorial" href="tutorial.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="np-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="parfile.html" title="Parameters"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="tutorial.html" title="Tutorial"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">radmc3dPy 0.27.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Model source files</a><ul>
+<li><a class="reference internal" href="#file-names-and-location">File names and location</a></li>
+<li><a class="reference internal" href="#add-a-model-to-the-library">Add a model to the library</a></li>
+<li><a class="reference internal" href="#model-functions">Model functions</a><ul>
+<li><a class="reference internal" href="#model-init-functions">Model init functions</a></li>
+<li><a class="reference internal" href="#dust-structure-functions">Dust structure functions</a></li>
+<li><a class="reference internal" href="#gas-structure-functions">Gas structure functions</a></li>
+<li><a class="reference internal" href="#radiation-source-functions">Radiation source functions</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="tutorial.html"
+                        title="previous chapter">Tutorial</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="parfile.html"
+                        title="next chapter">Parameters</a></p>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="model-source-files">
+<span id="models"></span><h1>Model source files<a class="headerlink" href="#model-source-files" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="file-names-and-location">
+<span id="models-file-names-and-locations"></span><h2>File names and location<a class="headerlink" href="#file-names-and-location" title="Permalink to this headline">¶</a></h2>
+<p>Each model in radmc3dPy should be named as <cite>modelname.py</cite>. The file should be located either in the
+<cite>radmc3dPy/models</cite> directory or in the current workging directory. When a model is set up the
+<a class="reference internal" href="radmc3dPy.html#radmc3dPy.setup.problemSetupDust" title="radmc3dPy.setup.problemSetupDust"><tt class="xref py py-meth docutils literal"><span class="pre">problemSetupDust()</span></tt></a> and <a class="reference internal" href="radmc3dPy.html#radmc3dPy.setup.problemSetupGas" title="radmc3dPy.setup.problemSetupGas"><tt class="xref py py-meth docutils literal"><span class="pre">problemSetupGas()</span></tt></a> methods
+first try to import the model from the current working directory. If the model can&#8217;t be imported
+from the current directory, then the radmc3dPy model library will be checked for the model.</p>
+</div>
+<div class="section" id="add-a-model-to-the-library">
+<span id="models-add-model"></span><h2>Add a model to the library<a class="headerlink" href="#add-a-model-to-the-library" title="Permalink to this headline">¶</a></h2>
+<p>To add a model to the radmc3dPy model library, we need write permissions to the directory where
+radmc3dPy was installed. First we need to copy the model file to the <cite>radmc3dPy/models</cite> directory.
+Then the <a class="reference internal" href="radmc3dPy.models.html#radmc3dPy.models.updateModelList" title="radmc3dPy.models.updateModelList"><tt class="xref py py-meth docutils literal"><span class="pre">updateModelList()</span></tt></a> function in the <a class="reference internal" href="radmc3dPy.models.html#module-radmc3dPy.models" title="radmc3dPy.models"><tt class="xref py py-class docutils literal"><span class="pre">models</span></tt></a> class
+needs to be called. It will update the list of available models in the package. Note, that for the
+update to take effect we need to reaload the imported modules / package or we need to quit the
+current python session and restart it again.</p>
+<p>However, it is not necessary to add the model to the library to be able to use it. The setup functions
+look for the model source file in the current working directory first and if such file is present it
+will use it otherwise they will look for the model in the library.
+<strong>Note</strong>, if the current working directory contains a file with the same name as one of
+the models in the model library the file in the current working directory will be used for the setup!</p>
+</div>
+<div class="section" id="model-functions">
+<span id="models-model-functions"></span><h2>Model functions<a class="headerlink" href="#model-functions" title="Permalink to this headline">¶</a></h2>
+<p>Each model source file should contain functions to provide information on the current model and provide
+the parameters of the model with default values. Furthermore each model should contain functions
+to describe the dust and/or gas structure in the model and optionally to describe the distribution
+and spectra of continuous star-like radiation sources. The names of these functions are listed below.
+Apart from these functions any number and type of user-defined auxiliary functions can be implemented
+in the model source files.</p>
+<div class="section" id="model-init-functions">
+<span id="models-model-functions-init"></span><h3>Model init functions<a class="headerlink" href="#model-init-functions" title="Permalink to this headline">¶</a></h3>
+<p>Every model source file should contain the following functions:</p>
+<blockquote>
+<div><ul class="simple">
+<li><strong>getModelDesc()</strong> - Returns the brief description of the model.</li>
+<li><strong>getDefaultParams()</strong> - Returns the default parameters of the model. This function should return a list with default parameter values. Each element
+of the list should contain another at least three element list: 1) name of the parameter, 2) parameter value, 3) Explanatory comment, 4) Block name (to which this parameter should be placed in the master parameter file). All parameter values should be given as strings as they should be written to the master parameter file.</li>
+</ul>
+</div></blockquote>
+</div>
+<div class="section" id="dust-structure-functions">
+<span id="models-model-functions-dust"></span><h3>Dust structure functions<a class="headerlink" href="#dust-structure-functions" title="Permalink to this headline">¶</a></h3>
+<p>This function must be implemented for all dust continuum models to describe the dust density structure:</p>
+<blockquote>
+<div><ul>
+<li><dl class="first docutils">
+<dt><strong>getDustDensity(ppar=None, grid=None)</strong> - Calculates the dust density. It takes two parameters :</dt>
+<dd><ul class="first">
+<li><p class="first"><strong>ppar</strong> - Dictionary containing all parameters of the models with the parameter names as keys</p>
+</li>
+<li><dl class="first docutils">
+<dt><strong>grid</strong> - An instance of the <a class="reference internal" href="radmc3dPy.html#radmc3dPy.analyze.radmc3dGrid" title="radmc3dPy.analyze.radmc3dGrid"><tt class="xref py py-class docutils literal"><span class="pre">radmc3dGrid</span></tt></a> class containing the spatial</dt>
+<dd><p class="first last">and wavelength/frequency grid of the model</p>
+</dd>
+</dl>
+</li>
+</ul>
+<p class="last"><strong>Returns</strong> an ndarray with [nx,ny,nz,ndust] dimensions</p>
+</dd>
+</dl>
+</li>
+</ul>
+</div></blockquote>
+</div>
+<div class="section" id="gas-structure-functions">
+<span id="models-model-functions-lines"></span><h3>Gas structure functions<a class="headerlink" href="#gas-structure-functions" title="Permalink to this headline">¶</a></h3>
+<p>The following functions must be implemented for a gas line model:</p>
+<blockquote>
+<div><ul>
+<li><dl class="first docutils">
+<dt><strong>getGasDensity(ppar=None, grid=None)</strong> - Calculates the gas density. It takes two parameters :</dt>
+<dd><ul class="first">
+<li><p class="first"><strong>ppar</strong> - Dictionary containing all parameters of the models with the parameter names as keys</p>
+</li>
+<li><dl class="first docutils">
+<dt><strong>grid</strong> - An instance of the <a class="reference internal" href="radmc3dPy.html#radmc3dPy.analyze.radmc3dGrid" title="radmc3dPy.analyze.radmc3dGrid"><tt class="xref py py-class docutils literal"><span class="pre">radmc3dGrid</span></tt></a> class containing the spatial</dt>
+<dd><p class="first last">and wavelength/frequency grid of the model</p>
+</dd>
+</dl>
+</li>
+</ul>
+<p class="last"><strong>Returns</strong> an ndarray with [nx,ny,nz] dimensions</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt><strong>getGasAbundance(ppar=None, grid=None)</strong> - Calculates the gas abundance. It takes two parameters :</dt>
+<dd><ul class="first">
+<li><p class="first"><strong>ppar</strong> - Dictionary containing all parameters of the models with the parameter names as keys</p>
+</li>
+<li><dl class="first docutils">
+<dt><strong>grid</strong> - An instance of the <a class="reference internal" href="radmc3dPy.html#radmc3dPy.analyze.radmc3dGrid" title="radmc3dPy.analyze.radmc3dGrid"><tt class="xref py py-class docutils literal"><span class="pre">radmc3dGrid</span></tt></a> class containing the spatial</dt>
+<dd><p class="first last">and wavelength/frequency grid of the model</p>
+</dd>
+</dl>
+</li>
+</ul>
+<p class="last"><strong>Returns</strong> an ndarray with [nx,ny,nz] dimensions</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt><strong>getVTurb(ppar=None, grid=None)</strong> - Calculates the microturbulent velocity field. It takes two parameters :</dt>
+<dd><ul class="first">
+<li><p class="first"><strong>ppar</strong> - Dictionary containing all parameters of the models with the parameter names as keys</p>
+</li>
+<li><dl class="first docutils">
+<dt><strong>grid</strong> - An instance of the <a class="reference internal" href="radmc3dPy.html#radmc3dPy.analyze.radmc3dGrid" title="radmc3dPy.analyze.radmc3dGrid"><tt class="xref py py-class docutils literal"><span class="pre">radmc3dGrid</span></tt></a> class containing the spatial</dt>
+<dd><p class="first last">and wavelength/frequency grid of the model</p>
+</dd>
+</dl>
+</li>
+</ul>
+<p class="last"><strong>Returns</strong> an ndarray with [nx,ny,nz] dimensions</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt><strong>getVelocity(ppar=None, grid=None)</strong> - Calculates the gas velocity. It takes two parameters :</dt>
+<dd><ul class="first">
+<li><p class="first"><strong>ppar</strong> - Dictionary containing all parameters of the models with the parameter names as keys</p>
+</li>
+<li><dl class="first docutils">
+<dt><strong>grid</strong> - An instance of the <a class="reference internal" href="radmc3dPy.html#radmc3dPy.analyze.radmc3dGrid" title="radmc3dPy.analyze.radmc3dGrid"><tt class="xref py py-class docutils literal"><span class="pre">radmc3dGrid</span></tt></a> class containing the spatial</dt>
+<dd><p class="first last">and wavelength/frequency grid of the model</p>
+</dd>
+</dl>
+</li>
+</ul>
+<p class="last"><strong>Returns</strong> an ndarray with [nx,ny,nz,3] dimensions, with [i,j,k,:] containing the three velocity component (vx,vy,vz) for cartesian and (vr,vtheta,vphi) for spherical coordinate system.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</div></blockquote>
+</div>
+<div class="section" id="radiation-source-functions">
+<span id="models-model-functions-stellarsrc"></span><h3>Radiation source functions<a class="headerlink" href="#radiation-source-functions" title="Permalink to this headline">¶</a></h3>
+<p>These functions should be implemented if a continuous star-like radiation source is added to the model.
+These functions describe the &#8220;density&#8221; distribution of the continuous starlike sources as well as their
+spectra.</p>
+<blockquote>
+<div><ul>
+<li><dl class="first docutils">
+<dt><strong>getStellarsrcDensity(ppar=None, grid=None)</strong> - Calculates the stellar density for continuous star-like radiation sources</dt>
+<dd><ul class="first">
+<li><p class="first"><strong>ppar</strong> - Dictionary containing all parameters of the models with the parameter names as keys</p>
+</li>
+<li><dl class="first docutils">
+<dt><strong>grid</strong> - An instance of the <a class="reference internal" href="radmc3dPy.html#radmc3dPy.analyze.radmc3dGrid" title="radmc3dPy.analyze.radmc3dGrid"><tt class="xref py py-class docutils literal"><span class="pre">radmc3dGrid</span></tt></a> class containing the spatial</dt>
+<dd><p class="first last">and wavelength/frequency grid of the model</p>
+</dd>
+</dl>
+</li>
+</ul>
+<p class="last"><strong>Returns</strong> an ndarray with [nx,ny,nz] dimensions</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt><strong>getStellarsrcTemplates()</strong> - Calculates the stellar templates for continuous star-like radiation sources</dt>
+<dd><ul class="first">
+<li><p class="first"><strong>ppar</strong> - Dictionary containing all parameters of the models with the parameter names as keys</p>
+</li>
+<li><dl class="first docutils">
+<dt><strong>grid</strong> - An instance of the <a class="reference internal" href="radmc3dPy.html#radmc3dPy.analyze.radmc3dGrid" title="radmc3dPy.analyze.radmc3dGrid"><tt class="xref py py-class docutils literal"><span class="pre">radmc3dGrid</span></tt></a> class containing the spatial</dt>
+<dd><p class="first last">and wavelength/frequency grid of the model</p>
+</dd>
+</dl>
+</li>
+</ul>
+<p class="last"><strong>Returns</strong> an ndarray with [ntemplate,3] or [ntemplate,nwavelength] dimensions. If the returned array has [ntemplate,3] dimension, the [:,0], [:,1], [:,2] elements of the array should contain the stellar effective temperature (as negative numbers!), stellar radius and mass, respectively. If the returned dimension is [ntemplate, nwavelenght] the array should contain the frequency dependent spectrum of each stellar template. The setup functions will check the [0,0] element of the array. If it is negative, it assumes the template is defined as stellar temperature, radius and mass, if the [0,0] element is positive it assumes the array contains the full frequency dependent spectrum of each template.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</div></blockquote>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="np-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="parfile.html" title="Parameters"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="tutorial.html" title="Tutorial"
+             >previous</a> |</li>
+        <li><a href="index.html">radmc3dPy 0.27.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, Attila Juhasz.
+      Last updated on Jun 26, 2014.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,13 @@
+For dust continuum radiative transfer RADMC-3D requires dust opacities,
+which are typically given in tabulated form as a function of wavelength (one
+line per wavelength point). For each wavelength point the absorption opacity
+(kappa_abs in units of cm^2/gram-of-dust) and the scattering opacity
+(kappa_scat in units of cm^2/gram-of-dust) is given, and perhaps also some
+information about the scattering phase function.
+
+Some of these opacity tables can be downloaded directly from the web, but
+usually the web databases give merely the "optical constants" of the
+material. To convert these into opacity tables requires some more software.
+Things are explained more deeply in the sub-directories.
+
+23.03.11

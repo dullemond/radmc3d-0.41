@@ -1,0 +1,86 @@
+---> As run_simple_1, but set up using userdef_module.f90
+
+This is an example of how to make a model internally inside radmc3d. It also
+demonstrates the useage of the userdef_module.f90 module and the
+special-purpose compilation of radmc3d.
+
+This directory should contain the following files: 
+
+  README                         (This file)
+  Makefile                       (The local Makefile for the local build)
+  dustkappa_silicate.inp         (some dust opacity file)
+  problem_setup.pro              (an IDL script for setting up some input files)
+  userdef_module.f90             (the place where the model and grid are set up)
+
+This is what the model does:
+
+  The model sets up a simple Gaussian blob of dust surrounding a star in a
+  3-D cartesian grid. The model is set up in the userdef_module.f90 module,
+  i.e. inside the radmc3d code. This obviates the need of creating the
+  dust_density.inp and amr_grid.inp files. But some other files are still
+  created by the problem_setup.pro IDL script. 
+
+This is what you should do to run this model:
+
+  1) Edit the Makefile in this directory and make sure that the compiler
+     settings are alright. Also set the SRC variable to the correct 
+     path of the source directory of radmc3d.
+  2) Inside this model directory type 'make'. This will create a local
+     executable radmc3d.
+  3) Go into IDL and type '.r problem_setup.pro'
+  4) Exit IDL
+  5) In the shell type './radmc3d mctherm' and wait until this is finished
+  6) Go back into IDL
+  7) Inside IDL type '.r viewimage.pro' (if you have followed the advice on
+     how to install the IDL subroutines, this should work just like that).
+  8) Inside IDL type 'viewimage'. This should spawn the image viewer. 
+
+Apart from viewing images, you can also make a spectrum. To make an SED
+on the same wavelength grid as in wavelength_micron.inp, and at a viewing
+angle given by an inclination of say 25 degrees and a phi-angle of say 85
+degrees, do the following (after having gone through the above stuff):
+
+  1) Type in the shell: 
+     radmc3d sed incl 25. phi 85.
+  2) Go into IDL
+  3) .r readradmc
+  4) s=readspectrum()
+  5) plotspectrum,s,dpc=140.
+
+This will plot the spectrum in nu*F_nu as seen from a distance of 140
+parsec.  You can also plot it in Jy: plotspectrum,s,dpc=140.,/jy, or as
+nu*F_nu in units of solar luminosity: plotspectrum,s,/lsun. 
+
+You can also make a spectrum of a small part of the spectral range:
+
+  1) Type in the shell: 
+     radmc3d spectrum incl 25. phi 85. lambdarange 5. 20. nlam 100
+  2) Go into IDL
+  3) .r readradmc
+  4) s=readspectrum()
+  5) plotspectrum,s,dpc=140.
+
+The spectrum itself is written out in a file called spectrum.out. Just type
+less spectrum.out to see the file. The flux is in CGS units, and normalized
+to 1 parsec distance (although for all purposes the true flux will be at
+much larger distances, but you can simply scale the spectrum by the factor
+(parsec/distance)^2, because for the spectrum the far-field limit is used,
+in spite of the "1 parsec" normalization.
+
+Please have a close look at the problem_setup.pro and the userdef_module.f90
+files for getting an understanding of how this model is set up. 
+
+NOTE: Scattering is switched off in this example run.
+
+29.07.09, 22.09.09, 20.05.12
+
+NOTE: As of version 0.31 of RADMC-3D this model comes with a dust opacity
+      table that spans a larger wavelength range, allowing it to be used
+      down to lower temperatures. The new opacity table is made with the Mie
+      code from the opac/dust_continuum/jena/ directory, using the
+      olmg50.lnk optical constants file from the Jena database. This is
+      MgFeSiO4 with a specific weight of 3.71 gram/cm^3. The grain size is
+      0.1 micron radius.
+
+
+

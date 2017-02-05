@@ -1,0 +1,27 @@
+Now let us test what happens if the local line width is too small compared
+to the velocity gradient over each cell. We take a problem with a linear
+gradient in y-direction of v_y and a very narrow intrinsic line width
+compared to the overall velocity gradient. You will find that you get
+good images if you use the doppler catching mode, but it will go entirely
+wrong without it (sometimes the line emission does not even appear at
+all without doppler catching).
+
+So, first compile RADMC-3D of course. Then go into this directory and
+in IDL type
+
+  .r problem_setup
+
+and for interactive images:
+
+  .r viewimage
+  viewimage,/lines
+
+Now go e.g. in the iline field and type "return". You would now expect
+to see something of line emission. However, you will see nothing apart
+from the normal dust emission. This is exactly because of this doppler
+jumping problem. 
+
+However, if you now click the "dcatch" button, you will suddenly see
+a 2-D emission plane appearing. 
+
+11.01.11 / 04.04.11

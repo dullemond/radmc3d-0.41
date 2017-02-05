@@ -1,0 +1,18 @@
+This directory contains the new viewimage GUI version that is no longer
+dependent on IDL. Viewimage (originally viewimage.pro) is meant to help
+you make and view images with RADMC-3D in an interactive manner. It is not
+required for modeling with RADMC-3D, but it does make life easier when 
+you wish to investigate your model.
+
+It requires the installation of Qt (pronounced as "cute") which is (in
+contrast to IDL) open source! See the website of the Qt project:
+
+http://qt-project.org
+
+Many thanks to Farzin Sereshti (sereshti@uni-heidelberg.de) for developing
+this cute widget!
+
+NOTE: If you have any problems with this widget, please directly contact
+Farzin Sereshti <sereshti@uni-heidelberg.de>.
+
+Heidelberg, June 13, 2014

@@ -1,0 +1,8 @@
+If you are new to RADMC-3D, it is advisable to start with the simplest
+example model:
+
+  run_simple_1/
+
+Read the README_PY oder README_IDL file (depending on whether you like
+to use Python or IDL as a front-end).
+

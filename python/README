@@ -1,0 +1,45 @@
+
+RADMC-3D Python module v0.28.2
+
+Attila Juhasz 
+Institute of Astronomy, University of Cambridge
+juhasz@ast.cam.ac.uk
+
+INSTALLATION
+------------
+
+radmc3dPy can be installed in two ways:
+
+1) Standard python install with distutils (sudo/root privileges are needed)
+
+    $>python setup.py install
+
+This will install radmc3dPy to the standard python directory (/usr/..../site-packages or
+    /opt/..../site-packages for a standard python installation in most unix/linux systems)
+
+2) Manual install
+
+    Add the directory where this file is located to the PYTHONPATH environment variable, and
+    that is it. The best way to do so is in the .bashrc or .csrc files so it will automatically
+    be loaded at every shell startup. I.e. for bash add the following line to the 
+    .bashrc file
+
+    export PYTHONPATH=${PYTHONPATH}:ABSOLUTE-PATH-TO-THIS-DIRECTORY
+
+    or for c-shell add the following line to the .csrc file:
+
+    setenv PYTHONPATH ${PYTHONPATH}:ABSOLUTE-PATH-TO-THIS-DIRECTORY
+
+   
+REQUIREMENTS:
+-------------
+
+radmc3dPy relies on several auxiliary but widely used python packages:
+
+    matplotlib      - used for visualization/plotting
+    numpy           - used for array operations
+    astropy.io.fits - previously known as PyFits, ython library for fits file handling
+    
+    
+                
+

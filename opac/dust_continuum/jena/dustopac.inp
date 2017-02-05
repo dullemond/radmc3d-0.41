@@ -1,0 +1,20 @@
+   1             Format number of this file
+   5             Nr of dust species
+===================================================
+   1             Input style for species (1=dust kappa file)
+   1             Extension of file dustkappa_*.inp
+---------------------------------------------------
+   1             Input style for species (1=dust kappa file)
+   2             Extension of file dustkappa_*.inp
+---------------------------------------------------
+   1             Input style for species (1=dust kappa file)
+   3             Extension of file dustkappa_*.inp
+---------------------------------------------------
+   1             Input style for species (1=dust kappa file)
+   4             Extension of file dustkappa_*.inp
+---------------------------------------------------
+   1             Input style for species (1=dust kappa file)
+   5             Extension of file dustkappa_*.inp
+---------------------------------------------------
+  
+  
