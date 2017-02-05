@@ -157,6 +157,21 @@ double precision, allocatable :: alpha_a_pm(:),mrw_dcumen(:)
 double precision :: mc_scat_maxtauabs
 double precision :: mc_scat_energy_rellimit
 !
+! The maximum number of discrete scattering events treated.
+! The default is 0 = infinite number of scatterings allowed.
+! If set to 1, then we are in single-scattering mode, meaning
+! that photon packages are followed from their source up to
+! (but not beyond) the first discrete scattering event. This
+! means that the scattering source function (used by the 
+! camera module to produce images) only includes single-
+! scattering events. This can be useful to check how big
+! the effect of multiple scattering is on the image: Just
+! make a normal image (mc_max_nr_scat_events=-1) and then
+! make an image with single scattering (mc_max_nr_scat_events=1)
+! and check the difference between the two.
+!
+integer :: mc_max_nr_scat_events = -1
+!
 ! For some Monte Carlo calculation types we need a special local
 ! set of frequencies. This is, by the way, not true for the Bjorkman
 ! & Wood (thermal Monte Carlo) transfer. That will be always done on the 
@@ -2780,6 +2795,23 @@ subroutine do_monte_carlo_scattering(params,ierror,resetseed,scatsrc,meanint)
      stop 6658
   endif
   !
+  ! If mc_max_nr_scat_events=0, then no scattering should be
+  ! included. But then we must warn the user! Also warn the
+  ! user for single scattering or limited-number-scattering.
+  ! For no scattering: we can return directly.
+  !
+  if(mc_max_nr_scat_events.eq.0) then
+     write(stdo,*) 'WARNING: Scattering is switched off (mc_max_nr_scat_events=0).'
+     return
+  endif
+  if(mc_max_nr_scat_events.eq.1) then
+     write(stdo,*) 'Warning: Only single scattering (mc_max_nr_scat_events=1).'
+  endif
+  if(mc_max_nr_scat_events.gt.1) then
+     write(stdo,*) 'Warning: Only a limited number of scattering events will be included ', &
+          '(mc_max_nr_scat_events=',mc_max_nr_scat_events,').'
+  endif
+  !
   ! Message
   !
   if(scattering_mode.ne.0) then
@@ -4930,7 +4962,7 @@ subroutine walk_full_path_scat(params,inu,ierror)
   double precision :: dir(1:3),enold,albedo,dum,g,rn
   double precision :: pdirx,pdiry,pdirz,dirnewx,dirnewy,dirnewz
   double precision :: dir_perp,dir_planex,dir_planey,dummy
-  integer :: ispec,iqactive,istar,icell,itemplate
+  integer :: ispec,iqactive,istar,icell,itemplate,iscatevent
   integer :: ibnd,bc_idir,bc_ilr,ix,iy,iz,illum,ierr
   logical :: ok,arrived,usesphere
   type(amr_branch), pointer :: acell
@@ -5547,6 +5579,7 @@ subroutine walk_full_path_scat(params,inu,ierror)
   ! Now start the random walk
   !
   ok = .true.
+  iscatevent = 0
 !!  ieventcount = 0         ! For debugging
   do while(ok)
      !
@@ -5579,6 +5612,20 @@ subroutine walk_full_path_scat(params,inu,ierror)
      !       given by mc_scat_maxtauabs
      !
      if(mc_photon_destroyed) then
+        return
+     endif
+     !
+     ! Increase the scattering event counter. This is only important
+     ! for the case when we wish to limit the number of scattering
+     ! events treated.
+     !
+     iscatevent = iscatevent + 1
+     !
+     ! Now check if we have reached the max nr of scattering events
+     ! we allow (normally this is set to mc_max_nr_scat_events=-1,
+     ! which means infinite number of scatterings allowed).
+     !
+     if(iscatevent.eq.mc_max_nr_scat_events) then
         return
      endif
      !

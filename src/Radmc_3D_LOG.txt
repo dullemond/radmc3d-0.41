@@ -7944,3 +7944,14 @@ finetuning: I noticed during some testing with a supersimple annulus model
             discrete scattering event. 
 
 
+05.02.2017  
+   +++      Added the possibility of using single scattering or double 
+            scattering or n-scattering in the scattering Monte Carlo for
+            images and spectra. This is useful for figuring out what is
+            the role of multiple scattering in an image you have. This is
+            set by the command line option:
+
+              maxnrscat 1
+
+            added to your radmc3d command.
+

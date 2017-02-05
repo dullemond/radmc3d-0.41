@@ -233,6 +233,7 @@ program radmc3d
   rt_mcparams%mrw_tempthres    = 3.d0    ! Below T=3K we do not recalculate the mean opacities for MRW
   mcscat_nrdirs = 0 
   mc_scat_maxtauabs            = 30.d0   ! Default value
+  mc_max_nr_scat_events        = -1      ! Default value. If >=0 then limit nr of scattering events treated in images.
   mc_weighted_photons          = .true.
   scat_munr                    = 0       ! The dust opacity files will set the nr of scattering angles mu
   !scat_phinr                   = 180     ! The default nr of scattering angles in phi
@@ -3461,7 +3462,16 @@ subroutine interpet_command_line_options(gotit,fromstdi,quit)
         ! Note: This mode is not Monte-Carlo style: it is deterministic.
         !
         camera_lambda_starlight_single_scat_mode = 1
-        write(stdo,*) 'Warning: using single scattering mode now!'
+        write(stdo,*) 'Warning: using lambda starlight single scattering mode now!'
+     elseif(buffer(1:9).eq.'maxnrscat') then
+        !
+        ! Set the max number of scattering events included in the 
+        ! scattering monte carlo for images/spectra
+        !
+        call ggetarg(iarg,buffer,fromstdi)
+        iarg = iarg+1
+        read(buffer,*) idum
+        mc_max_nr_scat_events = idum
      elseif(buffer(1:8).eq.'tracetau') then
         !
         ! Image the optical depth at the respective wavelength, instead of the intensity
