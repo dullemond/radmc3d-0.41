@@ -7953,5 +7953,28 @@ finetuning: I noticed during some testing with a supersimple annulus model
 
               maxnrscat 1
 
-            added to your radmc3d command.
+            added to your radmc3d command. Example: run_simple_1, but
+            now with scattering_mode_max = 1 in the radmc3d.inp file.
+            If you do (after setting up the model and setting the
+            scattering_mode_max = 1):
+
+              radmc3d mctherm
+              radmc3d image lambdamic 1.0 maxnrscat 1
+
+            then you get the image with only single scattering. You can
+            also go back to no scattering:
+
+              radmc3d image lambdamic 1.0 maxnrscat 0
+
+            (even though scattering_mode_max = 1). Or you can check out
+            what happens with double scattering:
+
+              radmc3d image lambdamic 1.0 maxnrscat 1
+
+            In this example one can see that the full scattering mode
+            produces a very much different image than the case for
+            maxnrscat 0 or 1 or 2 etc. Truly multiple scattering is
+            apparently important here.
+
+            I now added the corresponding text to the manual.
 

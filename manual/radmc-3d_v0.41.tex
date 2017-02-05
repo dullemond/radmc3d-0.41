@@ -707,12 +707,12 @@ administrators if they can help. If not, then please contact the author.
 \label{sec-install-pythonscripts}
 In the package there is a directory containing a whole series of analysis
 tools written in Python for analyzing the results of RADMC-3D. They are
-highly recommended, but not essential for using RADMC-3D. These tools are
-described in detail in Chapter \ref{chap-python-analysis-tools}. These
+highly recommended, but not essential for using RADMC-3D. These
 Python routines were developed and programmed by A.~Juhasz. 
 
 The tools are written in Python 2.7 and you can find them in the {\small\tt
-  python/} directory. To use them in a convenient way one must let Python
+  python/} directory. The documentation can be found in that directory.
+To use them in a convenient way one must let Python
 know where to find these routines. Since the install.perl script described
 above copies all these files to the $\sim${\small\tt /bin/python/}
 directory, it is advisable to put that directory as the {\small\tt
@@ -2335,7 +2335,8 @@ may wish to play with:
   the {\small\tt viewimage.pro} GUI interface, in which (as of version 0.35
   of RADMC-3D) you can set the value of {\small\tt nphot\_scat}. See Section
   \ref{sec-polarized-scattering} about the scattering matrices for polarized
-  scattering.}
+  scattering. See Section \ref{sec-single-multiple-scattering} for a
+  discussion about the ``scratches'' seen in the top two panels.}
 \end{figure}
 
 {\em WARNING:} At wavelengths where the dominant source of photons is
@@ -2366,6 +2367,64 @@ iseed = -5415
 \end{verbatim}}
 (where -5415 is to be replaced by the value you want) to the {\small\tt
   radmc3d.inp} file.
+
+\subsection{Single-scattering vs.~multiple-scattering}
+\label{sec-single-multiple-scattering}
+%
+If scattering is included in the images and spectra, the Monte Carlo run
+computes the full multiple-scattering problem. Photon packages are followed
+as they scatter and change their direction (possibly many times) until they
+escape to infinity or until they are extincted by many orders of magnitude
+(the exact extinction limit can be set by {\small\tt mc\_scat\_maxtauabs},
+which by default is set to 30, meaning a photon package is considered
+extincted when it has travelled an absorption optical depth of 30).
+
+It can be useful, however, to figure out how important the effect of
+multiple scattering in an image is compared to single scattering. For
+instance: a protoplanetary disk with a ``self-shadowed'' geometry will
+show some scattering even in the shadowed region because some photon
+packages scatter {\em into} the shadowed region and then scatter into
+the line of sight. To figure out if this is indeed what happens, you
+can make two images: one normal image with
+{\small\begin{verbatim}
+radmc3d image lambda 1.0
+cp image.out image_fullscat.out
+\end{verbatim}}
+and then another image which only treats single scattering:
+{\small\begin{verbatim}
+radmc3d image lambda 1.0 maxnrscat 1
+cp image.out image_singlescat.out
+\end{verbatim}}
+The command-line option {\small\tt maxnrscat 1} tells RADMC-3D to
+stop following photon packages once they hit their first discrete
+scattering event. You can also check out the effect of single- and
+double-scattering (but excluding triple and higher order scattering)
+with: {\small\tt maxnrscat 2}, etc.
+
+Note that multiple scattering may require a very high number of photon
+packages (i.e.~setting {\small\tt nphot\_scat} to a very high number). For
+single scattering with too low {\small\tt nphot\_scat} you typically see
+radial ``rays'' in the image emanating from each stellar source of
+photons. For multiple scattering, when taking too low {\small\tt
+  nphot\_scat} small you would see strange non-radial ``scratches'' in the
+image (see Fig.~\ref{fig-polscat}, top two images). It looks as if someone
+has used a pen and randomly added some streaks. These streaks are the
+double-scattering events which, in that case, apparently are rare enough
+that they show up as individual streaks. To test whether these streaks are
+indeed such double scattering events, you can use {\small\tt maxnrscat 1},
+and they should disappear. If the streaks are indeed very few, it may turn
+out that the single-scattering image ({\small\tt maxnrscat 1}) is almost
+already the correct image. The double scattering is then only a minor
+addition to the image, but due to the finite Monte Carlo noise it would
+yield annoying streaks which ruin a nice image. If you are {\em very sure}
+that the second scattering and higher-order scattering are only a very minor
+effect, then you might use the {\small\tt maxnrscat 1} image as the final
+image. By comparing the flux in the images with full scattering and single
+scattering you can estimate how important the multiple-scattering
+contribution is compared to single scattering. But of course, it is always
+safer to simply increase {\small\tt nphot\_scat} and patiently wait until
+the Monte Carlo run is finished.
+
 
 \subsection{Warning when using an-isotropic scattering}
 An important issue with anisotropic scattering is that if the phase function
@@ -9142,7 +9201,9 @@ encounter a problem. Here is a list of common issues and tips how to fix them.
       increasing {\small\tt nphot\_scat} (in the {\small\tt radmc3d.inp} file,
       see Section \ref{sec-scat-monte-carlo}), not by setting {\small\tt
         nphot} (which is the number of photon packages for the thermal Monte
-      Carlo computation).
+      Carlo computation). Please also read Section \ref{sec-single-multiple-scattering}
+      for a detailed discussion about the effects of multiple scattering
+      and the possibility of it leading to streaks in the images.
   \end{enumerate}
   However, it might also mean that something is wrong with the setup. A few
   common setup-errors that could cause these issues are:
@@ -11494,7 +11555,7 @@ forget to list new options here):
 
 \section{Switching on/off of radiation processes}
 You can switch certain radiative processes on or off with the following
-commands (though often the {\small\tt radmc3d.inp} file also allows this):
+command-line options (though often the {\small\tt radmc3d.inp} file also allows this):
 \begin{options}
 \item[{\small\tt\bf inclstar}:\hfill] [for images and spectra] Include stars in
   spectrum or images.
@@ -11510,6 +11571,11 @@ commands (though often the {\small\tt radmc3d.inp} file also allows this):
   spectra).
 \item[{\small\tt\bf nodust}:\hfill] Do not include dust emission, extinction and
   scattering in ray tracing (for images and spectra).
+\item[{\small\tt\bf maxnrscat 0}:\hfill] (if dust is included) Do not include
+  scattering in the images/spectra created by the camera. With {\small\tt maxnrscat 1}
+  you limit the scattering in the images/spectra to single-scattering.
+  With {\small\tt maxnrscat 2} to double scattering, etc. Can be useful to
+  figure out the relative importance of single vs multiple scattering.
 \item[{\small\tt\bf inclfreefree}:\hfill] Include the gas continuum free-free
   emission (Bremsstrahlung). See chapter \ref{chap-gas-continuum}.
 \item[{\small\tt\bf nofreefree}:\hfill] Do not include the gas continuum
