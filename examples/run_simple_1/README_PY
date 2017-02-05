@@ -77,7 +77,13 @@ To learn all the options of plotSpectrum() just type
 Please have a close look at the problem_setup.py file for getting an 
 understanding of how this model is set up. 
 
-NOTE: Scattering is switched off in this example run.
+NOTE: Scattering is switched off in this example run. The 
+      opacity file dustkappa_silicate.inp does include the
+      scattering opacity (third column). This would allow
+      a treatment of isotropic scattering. To switch on the
+      isotropic scattering, put scattering_mode_max = 1 in
+      radmc3d.inp (or better: see problem_setup.py where 
+      this file is created).
 
 RADMC-3D can also be used to compute the mean intensity J_nu of the
 radiation field at every point in the model. It produces a list of

@@ -67,7 +67,13 @@ in spite of the "1 parsec" normalization.
 Please have a close look at the problem_setup.pro file for getting an 
 understanding of how this model is set up. 
 
-NOTE: Scattering is switched off in this example run.
+NOTE: Scattering is switched off in this example run. The 
+      opacity file dustkappa_silicate.inp does include the
+      scattering opacity (third column). This would allow
+      a treatment of isotropic scattering. To switch on the
+      isotropic scattering, put scattering_mode_max = 1 in
+      radmc3d.inp (or better: see problem_setup.pro where 
+      this file is created).
 
 In the compute_radfield.pro file you can see an example of how to use
 RADMC-3D to compute the mean intensity J_nu of the radiation field at
