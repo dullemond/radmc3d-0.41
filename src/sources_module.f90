@@ -915,7 +915,20 @@ subroutine sources_get_src_alp(inu0,inu1,nf,src,alp,inclstokes)
      !
      ! ...Add the dust emission and extinction
      !
-     if(rt_incl_dust) then
+     ! IMPORTANT NOTE: If we include grain alignment, then the dust
+     !    opacities must be dealt with in a more complex manner:
+     !    the opacity then becomes a matrix which, if the coordinate
+     !    basis in the image plane is appropriately rotated, 
+     !    becomes diagonal. Nevertheless the diagonal components
+     !    of this Mueller matrix, i.e. the opacities for the
+     !    different Stokes components are different for the Stokes
+     !    components. This cannot be done here, because in this
+     !    subroutine we assume that the opacity is isotropic. 
+     !    So if grain alignment is included, we skip the dust
+     !    opacity and emissivity here; assuming they are dealt
+     !    with properly in the other parts of the code. 
+     !
+     if(rt_incl_dust.and.(alignment_mode.eq.0)) then
         do inu=inu0,inu1
            !
            ! Find the the dust continuum extinction coefficients

@@ -171,6 +171,7 @@ program radmc3d
   scattering_mode           = 0        ! Just an initial setting for the scattering mode
   scattering_mode_def       = 0        ! Just an initial setting for the scattering mode
   scattering_mode_max       = 9999     ! Per default no limit to scattering mode
+  alignment_mode            = 0        ! Per default no alignment of grains
   star_sphere               = .false.  ! Per default, stars are treated as point-sources
   radmc_as_child            = .false.
   !
@@ -1059,6 +1060,17 @@ program radmc3d
               write(stdo,*) 'I do not know scattering_mode=',scattering_mode
               stop
            endif
+           if(alignment_mode.eq.0) then
+           elseif(alignment_mode.eq.-1) then
+              write(stdo,*) 'Used alignment_mode=-1, meaning: polarized thermal emission from ', &
+                   'aligned grains (only for images/spectra).'
+           elseif(alignment_mode.eq.1) then
+              write(stdo,*) 'Used alignment_mode=1, meaning: polarized thermal emission from ', &
+                   'aligned grains (for images/spectra and scattering monte carlo).'
+           else
+              write(stdo,*) 'I do not know alignment_mode=',alignment_mode
+              stop
+           endif
         endif
      endif
      !
@@ -1121,6 +1133,17 @@ program radmc3d
               write(stdo,*) 'Used scattering_mode=5, meaning: fully polarized scattering.'
            else
               write(stdo,*) 'I do not know scattering_mode=',scattering_mode
+              stop
+           endif
+           if(alignment_mode.eq.0) then
+           elseif(alignment_mode.eq.-1) then
+              write(stdo,*) 'Used alignment_mode=-1, meaning: polarized thermal emission from ', &
+                   'aligned grains (only for images/spectra).'
+           elseif(alignment_mode.eq.1) then
+              write(stdo,*) 'Used alignment_mode=1, meaning: polarized thermal emission from ', &
+                   'aligned grains (for images/spectra and scattering monte carlo).'
+           else
+              write(stdo,*) 'I do not know alignment_mode=',alignment_mode
               stop
            endif
         endif
@@ -2190,6 +2213,7 @@ subroutine read_radmcinp_file()
      endif
      call parse_input_integer('scattering_mode@              ',scattering_mode_max)
      call parse_input_integer('scattering_mode_max@          ',scattering_mode_max)
+     call parse_input_integer('alignment_mode@               ',alignment_mode)
      call parse_input_double ('mc_scat_maxtauabs@            ',mc_scat_maxtauabs)
      call parse_input_integer('scat_munr@                    ',scat_munr)
      !call parse_input_integer('scat_phinr@                   ',scat_phinr)

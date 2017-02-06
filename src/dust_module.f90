@@ -33,6 +33,19 @@ module dust_module
   integer :: scattering_mode_def=0       ! The default to be used 
   integer :: scattering_mode_max=9999    ! User-specified limit to mode
   !
+  ! The dust grain alignment mode. Default 0 = no alignment. 
+  ! =-1 means alignment only for the thermal emission seen in the images/spectra.
+  !     This mode is merely for testing purposes, because it is not really 
+  !     useful to include polarized thermal emission in the images but not
+  !     as a source for the scattering. 
+  ! =1  means alignment only for the thermal emission, both for images/spectra 
+  !     and for the source of photons in the scattering monte carlo. This is
+  !     the mode to use if you want to treat thermal polarization but do not
+  !     want to include the full aligned scattering stuff (which is much
+  !     slower (but as of now not yet even built in)).
+  !
+  integer :: alignment_mode=0
+  !
   ! For those opacities that are read from a file dustkappa_*.inp,
   ! i.e. which are on their own independent frequency grid, we 
   ! may want to store these opacities in their original form. This

@@ -300,6 +300,18 @@ subroutine camera_init()
      stop
   endif
   !
+  ! Currently the aligned grains mode is not compatible with mirror
+  ! symmetry mode in spherical coordinates. 
+  !
+  if((alignment_mode.ne.0).and.amrray_mirror_equator) then
+     write(stdo,*) 'ERROR: Currently polarization is not compatible with'
+     write(stdo,*) '       equatorial mirror symmetry mode. This means that'
+     write(stdo,*) '       your theta-grid must not only cover the upper'
+     write(stdo,*) '       quadrant (0<theta<=pi/2) but both the upper'
+     write(stdo,*) '       and the lower quadrant (0<theta<pi).'
+     stop
+  endif
+  !
   ! Currently the small angle scattering mode (including polarization) is
   ! not compatible with 2-D spherical coordinates.
   !
@@ -330,7 +342,13 @@ subroutine camera_init()
      write(stdo,*) '       more cells in phi-direction).'
      stop
   endif
-
+  !
+  ! Aligned grains are incompatible with second order integration 
+  !
+  if((alignment_mode.ne.0).and.(camera_secondorder)) then
+     write(stdo,*) 'ERROR: Grain alignment is incompatible with second order integration.'
+     stop
+  endif
   !
   ! Check that the camera frequency array or choice of frequencies from the
   ! global frequency array is made.
@@ -2340,167 +2358,198 @@ subroutine camera_serial_raytrace(nrfreq,inu0,inu1,x,y,z,dx,dy,dz,distance,   &
            !
            ! First order integration. Cell-based scheme.
            !
-           ! Get the src and alp values
-           !
-           call sources_get_src_alp(inu0,inu1,nrfreq,src,alp,camera_stokesvector)
-           !
-           ! Now do the integration of the formal transfer equation
-           !
-           if(camera_tracemode.eq.1) then
+           if(alignment_mode.eq.0) then
               !
-              ! Do formal radiative transfer
+              ! Get the src and alp values
               !
-              do inu=inu0,inu1
+              call sources_get_src_alp(inu0,inu1,nrfreq,src,alp,camera_stokesvector)
+              !
+              ! Now do the integration of the formal transfer equation
+              !
+              if(camera_tracemode.eq.1) then
                  !
-                 ! Compute the exp(-tau)
-                 !
-                 xp = alp(inu) * ray_ds
-                 if(xp.lt.0.d0) stop 7329
-                 if(xp.gt.1d-4) then
-                    xp  = exp(-xp)
-                    xp1 = 1.d0 - xp
-                 else
-                    xp1 = xp
-                    xp  = exp(-xp)
-                 endif
-                 !
-                 ! Now do the RT, including everything
-                 !
-                 if(camera_stokesvector) then
-                    intensity(inu,1:4) = xp * intensity(inu,1:4) + xp1 * src(inu,1:4)
-                 else
-                    intensity(inu,1)   = xp * intensity(inu,1)   + xp1 * src(inu,1)
-                 endif
-              enddo
-              !
-           elseif(camera_tracemode.eq.-1) then
-              !
-              ! Simply integrate the dust density
-              !
-              ! Make 'intensity' the integrated density (column density)
-              !
-              do ispec=1,dust_nr_species
-                 intensity(inu0,1) = intensity(inu0,1) + sources_dustdens(ispec) * ray_ds
-              enddo
-              !
-           elseif(camera_tracemode.le.-2) then
-              !
-              ! Integration of the optacity and/or finding of the
-              ! tau=1 surface
-              !
-              if(camera_tracemode.eq.-2) then
-                 !
-                 ! Integration of the optacity to obtain the total optical depth
-                 ! along the ray
-                 !
-                 do inu=inu0,inu1
-                    intensity(inu,1) = intensity(inu,1) + alp(inu) * ray_ds
-                 enddo
-              else
-                 !
-                 ! Find the tau=camera_taustop point in order to create 
-                 ! a "tau=1" surface (or better: "tau=camera_tausurface").
+                 ! Do formal radiative transfer
                  !
                  do inu=inu0,inu1
                     !
-                    ! Compute the delta tau at this frequency
+                    ! Compute the exp(-tau)
                     !
-                    dtau1 = alp(inu) * ray_ds
-                    !
-                    ! Now check if we reached the stopping point yet
-                    !
-                    dummy2 = intensity(inu,1) + dtau1
-                    if(dummy2.ge.camera_taustop(inu)) then
-                       !
-                       ! We arrived at the taustop point
-                       !
-                       ! Self-consistency check
-                       !
-                       if(camera_nrrefine.gt.0) stop 9245
-                       !
-                       ! If we arrived here because camera_taustop(inu).le.0
-                       ! then do a special treatment, otherwise continue as
-                       ! normal
-                       !
-                       if(camera_taustop(inu).le.0.d0) then
-                          camera_xstop(inu) = -1d91
-                          camera_ystop(inu) = -1d91
-                          camera_zstop(inu) = -1d91
-                          camera_dstop(inu) = -1d91
-                       else
-                          !
-                          ! Do a linear interpolation between tau and tau+dtau1
-                          !
-                          epstau = (camera_taustop(inu)-intensity(inu,1))/dtau1
-                          if((epstau.gt.1.d0).or.(epstau.lt.0.d0)) then
-                             write(stdo,*) epstau,dtau1,camera_taustop(inu)
-                             stop 9223
-                          endif
-                          !
-                          ! Find the 3-D position of the point where the linear
-                          ! interpolation put the tau=1 point
-                          !
-                          camera_xstop(inu) = ray_prev_x + epstau * (ray_cart_x - ray_prev_x)
-                          camera_ystop(inu) = ray_prev_y + epstau * (ray_cart_y - ray_prev_y)
-                          camera_zstop(inu) = ray_prev_z + epstau * (ray_cart_z - ray_prev_z)
-                          !
-                          ! Now perform the usual rotation into the image plane, so that
-                          ! the "image" is now this distace to the tau=1 plane.
-                          !
-                          if(.not.camera_localobserver) then
-                             !
-                             ! Observer at infinity: the "distance" is measured toward the 
-                             ! plane going through (0,0,0) perpendicular to the line of sight, 
-                             ! with positive value being toward the observer (more positive = 
-                             ! closer to the observer).
-                             !
-                             ! A rotation in the x,y plane, rotating horizontally around
-                             ! the pointing position.
-                             !
-                             xbk = camera_xstop(inu) - camera_pointing_position(1)
-                             ybk = camera_ystop(inu) - camera_pointing_position(2)
-                             !spx = camera_observer_cos_phi * xbk - camera_observer_sin_phi * ybk
-                             spy = camera_observer_sin_phi * xbk + camera_observer_cos_phi * ybk
-                             !
-                             ! Then a rotation in the y,z plane
-                             !
-                             ybk = spy
-                             zbk = camera_zstop(inu) - camera_pointing_position(3)
-                             !spy = camera_observer_cos_theta * ybk + camera_observer_sin_theta * zbk
-                             spz =-camera_observer_sin_theta * ybk + camera_observer_cos_theta * zbk
-                             !
-                             ! Take the z-value and put this into camera_dstop(inu)
-                             !
-                             camera_dstop(inu) = spz
-                          else 
-                             !
-                             ! Local observer: the "distance" is the true distance to the 
-                             ! observer (more positive = farther away from the observer).
-                             ! It can be useful for analysis purposes to find the tau=1 surface 
-                             ! to some specific point in the model
-                             !
-                             camera_dstop(inu) =                                            &
-                                  sqrt((camera_observer_position(1)-camera_xstop(inu))**2 + &
-                                  (camera_observer_position(2)-camera_ystop(inu))**2 +      &
-                                  (camera_observer_position(3)-camera_zstop(inu))**2)
-                          endif
-                          !
-                          ! Reset the taustop to infinity
-                          !
-                          camera_taustop(inu) = 1d91
-                          !
-                       endif
+                    xp = alp(inu) * ray_ds
+                    if(xp.lt.0.d0) stop 7329
+                    if(xp.gt.1d-4) then
+                       xp  = exp(-xp)
+                       xp1 = 1.d0 - xp
+                    else
+                       xp1 = xp
+                       xp  = exp(-xp)
                     endif
                     !
-                    ! Continue integrating the optical depth
+                    ! Now do the RT, including everything
                     !
-                    intensity(inu,1) = dummy2
+                    if(camera_stokesvector) then
+                       intensity(inu,1:4) = xp * intensity(inu,1:4) + xp1 * src(inu,1:4)
+                    else
+                       intensity(inu,1)   = xp * intensity(inu,1)   + xp1 * src(inu,1)
+                    endif
                  enddo
+                 !
+              elseif(camera_tracemode.eq.-1) then
+                 !
+                 ! Simply integrate the dust density
+                 !
+                 ! Make 'intensity' the integrated density (column density)
+                 !
+                 do ispec=1,dust_nr_species
+                    intensity(inu0,1) = intensity(inu0,1) + sources_dustdens(ispec) * ray_ds
+                 enddo
+                 !
+              elseif(camera_tracemode.le.-2) then
+                 !
+                 ! Integration of the optacity and/or finding of the
+                 ! tau=1 surface
+                 !
+                 if(camera_tracemode.eq.-2) then
+                    !
+                    ! Integration of the optacity to obtain the total optical depth
+                    ! along the ray
+                    !
+                    do inu=inu0,inu1
+                       intensity(inu,1) = intensity(inu,1) + alp(inu) * ray_ds
+                    enddo
+                 else
+                    !
+                    ! Find the tau=camera_taustop point in order to create 
+                    ! a "tau=1" surface (or better: "tau=camera_tausurface").
+                    !
+                    do inu=inu0,inu1
+                       !
+                       ! Compute the delta tau at this frequency
+                       !
+                       dtau1 = alp(inu) * ray_ds
+                       !
+                       ! Now check if we reached the stopping point yet
+                       !
+                       dummy2 = intensity(inu,1) + dtau1
+                       if(dummy2.ge.camera_taustop(inu)) then
+                          !
+                          ! We arrived at the taustop point
+                          !
+                          ! Self-consistency check
+                          !
+                          if(camera_nrrefine.gt.0) stop 9245
+                          !
+                          ! If we arrived here because camera_taustop(inu).le.0
+                          ! then do a special treatment, otherwise continue as
+                          ! normal
+                          !
+                          if(camera_taustop(inu).le.0.d0) then
+                             camera_xstop(inu) = -1d91
+                             camera_ystop(inu) = -1d91
+                             camera_zstop(inu) = -1d91
+                             camera_dstop(inu) = -1d91
+                          else
+                             !
+                             ! Do a linear interpolation between tau and tau+dtau1
+                             !
+                             epstau = (camera_taustop(inu)-intensity(inu,1))/dtau1
+                             if((epstau.gt.1.d0).or.(epstau.lt.0.d0)) then
+                                write(stdo,*) epstau,dtau1,camera_taustop(inu)
+                                stop 9223
+                             endif
+                             !
+                             ! Find the 3-D position of the point where the linear
+                             ! interpolation put the tau=1 point
+                             !
+                             camera_xstop(inu) = ray_prev_x + epstau * (ray_cart_x - ray_prev_x)
+                             camera_ystop(inu) = ray_prev_y + epstau * (ray_cart_y - ray_prev_y)
+                             camera_zstop(inu) = ray_prev_z + epstau * (ray_cart_z - ray_prev_z)
+                             !
+                             ! Now perform the usual rotation into the image plane, so that
+                             ! the "image" is now this distace to the tau=1 plane.
+                             !
+                             if(.not.camera_localobserver) then
+                                !
+                                ! Observer at infinity: the "distance" is measured toward the 
+                                ! plane going through (0,0,0) perpendicular to the line of sight, 
+                                ! with positive value being toward the observer (more positive = 
+                                ! closer to the observer).
+                                !
+                                ! A rotation in the x,y plane, rotating horizontally around
+                                ! the pointing position.
+                                !
+                                xbk = camera_xstop(inu) - camera_pointing_position(1)
+                                ybk = camera_ystop(inu) - camera_pointing_position(2)
+                                !spx = camera_observer_cos_phi * xbk - camera_observer_sin_phi * ybk
+                                spy = camera_observer_sin_phi * xbk + camera_observer_cos_phi * ybk
+                                !
+                                ! Then a rotation in the y,z plane
+                                !
+                                ybk = spy
+                                zbk = camera_zstop(inu) - camera_pointing_position(3)
+                                !spy = camera_observer_cos_theta * ybk + camera_observer_sin_theta * zbk
+                                spz =-camera_observer_sin_theta * ybk + camera_observer_cos_theta * zbk
+                                !
+                                ! Take the z-value and put this into camera_dstop(inu)
+                                !
+                                camera_dstop(inu) = spz
+                             else 
+                                !
+                                ! Local observer: the "distance" is the true distance to the 
+                                ! observer (more positive = farther away from the observer).
+                                ! It can be useful for analysis purposes to find the tau=1 surface 
+                                ! to some specific point in the model
+                                !
+                                camera_dstop(inu) =                                            &
+                                     sqrt((camera_observer_position(1)-camera_xstop(inu))**2 + &
+                                     (camera_observer_position(2)-camera_ystop(inu))**2 +      &
+                                     (camera_observer_position(3)-camera_zstop(inu))**2)
+                             endif
+                             !
+                             ! Reset the taustop to infinity
+                             !
+                             camera_taustop(inu) = 1d91
+                             !
+                          endif
+                       endif
+                       !
+                       ! Continue integrating the optical depth
+                       !
+                       intensity(inu,1) = dummy2
+                    enddo
+                 endif
+              else
+                 write(stdo,*) 'ERROR in camera module:'
+                 write(stdo,*) 'Do not know tracemode = ',camera_tracemode
+                 stop
               endif
            else
-              write(stdo,*) 'ERROR in camera module:'
-              write(stdo,*) 'Do not know tracemode = ',camera_tracemode
+              !
+              ! Aligned grains: thermal polarized emission. First order integration
+              ! using a special-purpose routine from the polarization_module.f90
+              !
+              if(camera_tracemode.ne.1) then
+                 write(stdo,*) 'ERROR: When using aligned grains you cannot use ', &
+                      'any other camera_tracemode than 1. Sorry...'
+                 stop
+              endif
+              
+
+
+
+
+
+
+
+
+              write(stdo,*) 'Aligned grains mode still under development... Does not yet work.'
               stop
+
+
+
+
+
+
+
            endif
         endif
      elseif(camera_incl_stars.ne.0) then
