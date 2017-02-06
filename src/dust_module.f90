@@ -2323,6 +2323,138 @@ end subroutine find_dust_zmatrix_interpol
 
 
 !-------------------------------------------------------------------
+!          FIND DUST ALIGNMENT FACTORS BETWEEN FREQ POINTS
+!-------------------------------------------------------------------
+subroutine find_dust_alignfact_interpol(freq,mu,ispec,iabs,iscat,  &
+                                        extrapol,orth,para)
+  implicit none
+  double precision :: temp,find_dust_kappa_interpol,freq,orth,para,mu
+  double precision :: epsfreq,epsmu
+  integer :: inu,ispec,iabs,iscat,nfr,nmu,imin,imax,imu
+  double precision :: fmin,fmax
+  logical :: extrapol
+  !
+  if(iscat.ne.0) then
+     write(stdo,*) 'ERROR: Aligned scattering not yet implemented.'
+     stop
+  endif
+  if(iabs.ne.1) then
+     write(stdo,*) 'ERROR: Nothing to do.'
+     stop
+  endif
+  !
+  ! First find out if we have the original high-resolution opacities
+  ! in memory
+  !
+  if(.not.allocated(dust_kappa_arrays)) then
+     write(stdo,*) 'ERROR: No original dust arrays in memory...'
+     stop
+  endif
+  !
+  ! Check if mu in range
+  !
+  if((mu.lt.0.d0).or.(mu.gt.1.d0)) stop 3029
+  !
+  ! Check if this information is available for this dust species
+  ! 
+  if((dust_kappa_arrays(ispec)%nrfreq.gt.0).and. &
+     (dust_kappa_arrays(ispec)%namu.gt.0)) then
+     if(.not.associated(dust_kappa_arrays(ispec)%freq)) stop 8800
+     if(.not.associated(dust_kappa_arrays(ispec)%alignmu)) stop 8800
+     if(.not.associated(dust_kappa_arrays(ispec)%alignorth)) stop 8800
+     if(.not.associated(dust_kappa_arrays(ispec)%alignpara)) stop 8800
+     nfr  = dust_kappa_arrays(ispec)%nrfreq
+     nmu  = dust_kappa_arrays(ispec)%namu
+     !
+     ! Find where we are in the mu grid
+     ! 
+     call hunt(dust_kappa_arrays(ispec)%alignmu,nmu,mu,imu)
+     if((imu.lt.1).or.(imu.ge.nmu)) stop 8202
+     epsmu = (mu-dust_kappa_arrays(ispec)%alignmu(imu)) /            &
+              (dust_kappa_arrays(ispec)%alignmu(imu+1)-              &
+               dust_kappa_arrays(ispec)%alignmu(imu))
+     if((epsmu.lt.0.d0).or.(epsmu.gt.1.d0)) stop 8203
+     !
+     ! Check if we are in the frequency array domain
+     !
+     if((freq-dust_kappa_arrays(ispec)%freq(nfr))*                   &
+        (freq-dust_kappa_arrays(ispec)%freq(1)).lt.0.d0) then
+        !
+        ! Yes, the freq lies within the boundaries.
+        !
+        call hunt(dust_kappa_arrays(ispec)%freq,nfr,freq,inu)
+        if((inu.lt.1).or.(inu.ge.dust_kappa_arrays(ispec)%nrfreq)) stop 8204
+        epsfreq = (freq-dust_kappa_arrays(ispec)%freq(inu)) /        &
+              (dust_kappa_arrays(ispec)%freq(inu+1)-                 &
+               dust_kappa_arrays(ispec)%freq(inu))
+        if((epsfreq.lt.0.d0).or.(epsfreq.gt.1.d0)) stop 8205
+        if(iabs.ne.0) then
+           orth = (1.d0-epsmu) * (                                               &
+              (1.d0-epsfreq) * dust_kappa_arrays(ispec)%alignorth(imu,inu) +     &
+                     epsfreq * dust_kappa_arrays(ispec)%alignorth(imu,inu+1) ) + &
+                     epsmu * (                                                   &
+              (1.d0-epsfreq) * dust_kappa_arrays(ispec)%alignorth(imu+1,inu) +   &
+                     epsfreq * dust_kappa_arrays(ispec)%alignorth(imu+1,inu+1) )
+           para = (1.d0-epsmu) * (                                               &
+              (1.d0-epsfreq) * dust_kappa_arrays(ispec)%alignpara(imu,inu) +     &
+                     epsfreq * dust_kappa_arrays(ispec)%alignpara(imu,inu+1) ) + &
+                     epsmu * (                                                   &
+              (1.d0-epsfreq) * dust_kappa_arrays(ispec)%alignpara(imu+1,inu) +   &
+                     epsfreq * dust_kappa_arrays(ispec)%alignpara(imu+1,inu+1) )
+        endif
+     else
+        !
+        ! Freq lies outside the domain, but it can lie very
+        ! narrowly outside the domain, so we may want to extrapolate.
+        !
+        if(extrapol) then
+           !
+           ! We have to do extrapolations
+           !
+           fmin = dust_kappa_arrays(ispec)%freq(1)
+           fmax = dust_kappa_arrays(ispec)%freq(dust_kappa_arrays(ispec)%nrfreq)
+           imin = 1
+           imax = dust_kappa_arrays(ispec)%nrfreq
+           if(fmax.lt.fmin) then
+              fmin = dust_kappa_arrays(ispec)%freq(dust_kappa_arrays(ispec)%nrfreq)
+              fmax = dust_kappa_arrays(ispec)%freq(1)
+              imin = dust_kappa_arrays(ispec)%nrfreq
+              imax = 1
+           endif
+           if(freq.le.fmin) then
+              !
+              ! Long wavelength end: Constant extrapolation
+              !
+              inu = imin
+           elseif(freq.ge.fmax) then
+              !
+              ! Short wavelength end: Constant extrapolation
+              !
+              inu = imax
+           else
+              write(stdo,*) 'INTERNAL ERROR: Inside freq domain yet outside... Warn author.'
+              stop
+           endif
+           !
+           ! Interpolate in mu
+           !
+           orth = (1.d0-epsmu) * dust_kappa_arrays(ispec)%alignorth(imu,inu) + &
+                        epsmu  * dust_kappa_arrays(ispec)%alignorth(imu+1,inu)
+           para = (1.d0-epsmu) * dust_kappa_arrays(ispec)%alignpara(imu,inu) + &
+                        epsmu  * dust_kappa_arrays(ispec)%alignpara(imu+1,inu)
+        endif
+     endif
+  else
+     !
+     ! No data available, so assume orth=1 and para=1 
+     !
+     orth = 1.d0
+     para = 1.d0
+  endif
+end subroutine find_dust_alignfact_interpol
+
+
+!-------------------------------------------------------------------
 !                    THE MIE ROUTINE (FROM F77)
 !-------------------------------------------------------------------
 SUBROUTINE Q_MIE(E1,E2,LAM,RAD,T,QEX,QSC,QAB,G)
