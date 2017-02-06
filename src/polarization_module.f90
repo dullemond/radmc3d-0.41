@@ -1672,14 +1672,14 @@ end subroutine read_grainaligndir_field
 !-----------------------------------------------------------------------
 !      FIRST ORDER INTEGRATION OF RT EQUATION WITH ALIGNED GRAINS
 !-----------------------------------------------------------------------
-subroutine pol_integrate_rt_aligned(int_iquv,dir,svec,aligndir,freq,
-                                    src0,alp0,srcscat_iquv,alpa,alps,temp,
-                                    orthpara_cosang,orth_fact,para_fact,
+subroutine pol_integrate_rt_aligned(int_iquv,dir,svec,aligndir,freq,       &
+                                    src0,alp0,srcscat_iquv,alpa,alps,temp, &
+                                    orthpara_cosang,orth_fact,para_fact,   &
                                     orthpara_nang,ds)
   implicit none
   integer :: orthpara_nang,iop
   double precision :: int_iquv(1:4),src0,alp0,srcscat_iquv(1:4),alpa,alps,temp
-  double precision :: dir(1:3),svec(1:3),aligndir(1:3),ds
+  double precision :: dir(1:3),svec(1:3),aligndir(1:3),ds,freq
   double precision :: orthpara_cosang(1:orthpara_nang)
   double precision :: para_fact(1:orthpara_nang)
   double precision :: orth_fact(1:orthpara_nang)
@@ -1691,15 +1691,22 @@ subroutine pol_integrate_rt_aligned(int_iquv,dir,svec,aligndir,freq,
   double precision :: aligned_alpha_opuv(1:4),aligned_jnu_opuv(1:4)
   double precision :: aligned_snu_opuv(1:4),exptau_opuv(1:4),exptau1_opuv(1:4)
   !
+  !################################
   ! Trivial tests (can perhaps be removed later, if these 
   ! tests are done elsewhere)
   !
   if(orthpara_cosang(1).ne.0.d0) then
-     write(stdo,*) 'ERROR in aligned grains: orthpara_cosang(1) not 0.0'
+     if((orthpara_cosang(1).ne.1.d0).or.(orthpara_cosang(orthpara_nang).ne.0.d0)) then
+        write(stdo,*) 'ERROR in aligned grains: orthpara_cosang grid must span [0,1] or [1,0]'
+        stop
+     endif
+  else
+     if(orthpara_cosang(orthpara_nang).ne.1.d0) then
+        write(stdo,*) 'ERROR in aligned grains: orthpara_cosang grid must span [0,1] or [1,0]'
+        stop
+     endif
   endif
-  if(orthpara_cosang(orthpara_nang).ne.1.d0) then
-     write(stdo,*) 'ERROR in aligned grains: orthpara_cosang(orthpara_nang) not 1.0'
-  endif
+  !################################
   !
   !################################
   ! Test normalization; can be removed after testing

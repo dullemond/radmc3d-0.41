@@ -65,7 +65,7 @@ module dust_module
   !                   be stored here; instead the optical constants are used.
   !
   type dust_kappaarray_link
-     integer :: nrfreq,nmu,type
+     integer :: nrfreq,nmu,type,namu
      double precision                        :: sweight     ! Material density [g/cm^3]
      double precision, dimension(:), pointer :: freq        ! Frequency grid [Hz]
      double precision, dimension(:), pointer :: kappa_a     ! kappa_abs [cm^2/gram-of-dust]
@@ -74,6 +74,9 @@ module dust_module
      double precision, dimension(:), pointer :: n,k         ! Optical constants: n and k values
      double precision, dimension(:), pointer :: mu          ! mu=cos(theta) grid for the zscat array
      double precision, dimension(:,:,:), pointer :: zscat   ! The Z Mueller matrix elements (see polarization module)
+     double precision, dimension(:), pointer :: alignmu     ! The mu=cos(theta) grid for the alignment ratio
+     double precision, dimension(:,:), pointer :: alignorth ! The alignment factor for orthogonal (see polarization module)
+     double precision, dimension(:,:), pointer :: alignpara ! The alignment factor for parallel (see polarization module)
   end type dust_kappaarray_link
   !
   ! For each dust species a link to the above array, if associated
@@ -409,7 +412,7 @@ subroutine read_dustdata(action)
                     ' in addition to ',trim(filename),' (is ok, but just so you are aware).'
             endif
             !
-         elseif(idum.eq.10) then
+         elseif((idum.ge.10).and.(idum.lt.30)) then
             !
             ! Dust opacities with the fully mu-dependence and polarization
             ! for scattering, assuming spherical particles and/or randomly
@@ -442,6 +445,23 @@ subroutine read_dustdata(action)
             if(fex) then
                write(stdo,*) 'WARNING: I also found a file ',trim(filenamealt),&
                     ' in addition to ',trim(filename),' (is ok, but just so you are aware).'
+            endif
+            !
+            ! If necessary, also read the angular-dependency of the
+            ! parallel and orthogonal absorption coefficient of the grains,
+            ! assuming they are aligned with some direction. Note that this
+            ! is a very simplistic treatment of polarized thermal emission
+            ! by aligned grains, in which the emission/absorption is treated
+            ! as aligned grains while the scattering is treated as randomly
+            ! oriented grains (which the read_dustkapscatmat_file handles).
+            ! But this is the easiest method, and is presumably sufficient
+            ! for most purposes.
+            !
+            if(idum.eq.20) then
+               base='dustkapalignfact_'
+               ext ='.inp'
+               call make_indexed_filename_string(base,iduststring,ext,filenamealt)
+               call read_dustalign_angdep(ispec,filenamealt)
             endif
             !
          elseif(idum.eq.100) then
@@ -526,6 +546,12 @@ subroutine dust_remove_opacity(ispec)
        deallocate(dust_kappa_arrays(ispec)%mu)
   if(associated(dust_kappa_arrays(ispec)%zscat)) &
        deallocate(dust_kappa_arrays(ispec)%zscat)
+  if(associated(dust_kappa_arrays(ispec)%alignmu)) &
+       deallocate(dust_kappa_arrays(ispec)%alignmu)
+  if(associated(dust_kappa_arrays(ispec)%alignorth)) &
+       deallocate(dust_kappa_arrays(ispec)%alignorth)
+  if(associated(dust_kappa_arrays(ispec)%alignpara)) &
+       deallocate(dust_kappa_arrays(ispec)%alignpara)
 end subroutine dust_remove_opacity
 
 !-------------------------------------------------------------------
@@ -1460,6 +1486,190 @@ subroutine read_dustkapscatmat_file(ispec,filename)
   stop
   !
 end subroutine read_dustkapscatmat_file
+
+
+!-------------------------------------------------------------------
+! READ ANGULAR DEPENDENCE OF ABSORPTION OPACITY FOR ALIGNED GRAINS
+!-------------------------------------------------------------------
+subroutine read_dustalign_angdep(ispec,filename)
+  implicit none
+  integer :: ispec,filename_len,iformat,nlam,nmu,ierr,imu,ilam,i,iline,k
+  character*80 :: filename,string
+  doubleprecision :: dum,dmu,dum2(1:2)
+  logical :: fex
+  !
+  ! Check if dust_kappa_arrays is present
+  !
+  if(.not.allocated(dust_kappa_arrays)) then 
+     write(stdo,*) 'ERROR: In version 0.32 and higher the dust_kappa_arrays MUST be allocated.'
+     stop
+  endif
+  !
+  ! Check if the file exists
+  !
+  inquire(file=filename,exist=fex)
+  if(.not.fex) then
+     write(stdo,*) 'ERROR: Could not find file ',trim(filename)
+     stop
+  endif
+
+  !
+  ! Open the file 
+  !
+  filename_len = len_trim(filename)
+  open(unit=1,file=filename,status='old')
+  !
+  ! Skip all lines at the beginning of file that start with one of the
+  ! symbols ";", "#" or "!". These are meant as comments. 300 such lines
+  ! is the maximum. 
+  !
+  do iline=1,300
+     read(1,'(A158)',end=10) string
+     i=1
+     do k=1,100
+        if(string(i:i).ne.' ') goto 30
+        i=i+1
+     enddo
+     write(stdo,*) 'ERROR While reading ',filename(1:filename_len)
+     write(stdo,*) '  Detected line full of spaces...'
+30   continue
+     if((string(i:i).ne.';').and.(string(i:i).ne.'#').and.(string(i:i).ne.'!')) then
+        goto 20
+     endif
+  enddo
+  stop 8901
+10 continue
+  write(stdo,*) 'ERROR while reading file ',filename(1:filename_len)
+  write(stdo,*) 'Did not find data before end of file.'
+  stop 8902
+20 continue
+  !
+  ! First read the format number. Do so from the above read string.
+  !
+  read(string,*) iformat
+  if(iformat.ne.1) then
+     write(stdo,*) 'ERROR: Format number ',iformat,' of file ',trim(filename),&
+          ' not known.'
+     stop
+  endif
+  !
+  ! Read the number of frequencies
+  !
+  read(1,*) nlam
+  if(dust_kappa_arrays(ispec)%nrfreq.ne.nlam) then
+     write(stdo,*) 'ERROR while reading file',filename(1:filename_len)
+     write(stdo,*) 'Nr of frequencies not the same as in the corresponding scattering matrix file.'
+     stop
+  endif
+  !
+  ! Read the number of scattering angles
+  !
+  read(1,*) nmu
+  dust_kappa_arrays(ispec)%namu = nmu
+  !
+  ! Make a check
+  !
+  if(nmu.lt.2) then
+     write(stdo,*) 'ERROR: RADMC-3D cannot accept alignment ratios for fewer than 2 angles'
+     write(stdo,*) '       in file ',trim(filename)
+     stop
+  endif
+  !
+  ! Allocate arrays
+  !
+  allocate(dust_kappa_arrays(ispec)%alignmu(1:nmu),STAT=ierr)
+  if(ierr.ne.0) then
+     write(stdo,*) 'ERROR in dust module: Could not allocate alignment arrays'
+     stop
+  endif
+  allocate(dust_kappa_arrays(ispec)%alignorth(1:nmu,1:nlam),STAT=ierr)
+  if(ierr.ne.0) then
+     write(stdo,*) 'ERROR in dust module: Could not allocate alignment arrays'
+     stop
+  endif
+  allocate(dust_kappa_arrays(ispec)%alignpara(1:nmu,1:nlam),STAT=ierr)
+  if(ierr.ne.0) then
+     write(stdo,*) 'ERROR in dust module: Could not allocate alignment arrays'
+     stop
+  endif
+  !
+  ! Check the wavelength grid, which must be the same as the one
+  ! read in for the scattering matrix
+  !
+  do ilam=1,nlam
+     read(1,*) dum
+     dum = 2.9979d14/dum
+     if(abs(dust_kappa_arrays(ispec)%freq(ilam)/dum-1.d0).gt.1d-4) then
+        write(stdo,*) 'ERROR while reading file',filename(1:filename_len)
+        write(stdo,*) 'Wavelength grid not the same as for the scattering matrix file'
+        stop
+     endif
+  enddo
+  !
+  ! Read the angular grid 
+  !
+  do imu=1,nmu
+     read(1,*) dum
+     dust_kappa_arrays(ispec)%alignmu(imu) = cos(dum*pi/180.d0)
+  enddo
+  if(dust_kappa_arrays(ispec)%alignmu(1).lt.dust_kappa_arrays(ispec)%alignmu(nmu)) then
+     if(dust_kappa_arrays(ispec)%alignmu(1).lt.-1d-8) then
+        write(stdo,*) 'ERROR while reading file ',filename(1:filename_len)
+        write(stdo,*) '   angular grid does not span cos(theta) in [0,1]'
+        stop
+     endif
+     dust_kappa_arrays(ispec)%alignmu(1)   = 0.d0
+     dust_kappa_arrays(ispec)%alignmu(nmu) = 1.d0
+  else
+     if(dust_kappa_arrays(ispec)%alignmu(nmu).lt.-1d-8) then
+        write(stdo,*) 'ERROR while reading file ',filename(1:filename_len)
+        write(stdo,*) '   angular grid does not span cos(theta) in [0,1]'
+        stop
+     endif
+     dust_kappa_arrays(ispec)%alignmu(nmu) = 0.d0
+     dust_kappa_arrays(ispec)%alignmu(1)   = 1.d0
+  endif
+  !
+  ! Read the ratios of alpha_abs_para / alpha_abs_orth
+  !
+  do ilam=1,nlam
+     do imu=1,nmu
+        read(1,*) dum2
+        dust_kappa_arrays(ispec)%alignorth(imu,ilam) = dum2(1)
+        dust_kappa_arrays(ispec)%alignpara(imu,ilam) = dum2(2)
+     enddo
+  enddo
+  !
+  ! Now renormalize the align ratio such that when we integrate the
+  ! ratio over random angles, the result is 1. This ensures that
+  ! when we place the grains at random orientations, the resulting
+  ! absorption opacity is equal to the one we already read in from
+  ! the opacity (kappascatmat) file. 
+  !
+  do ilam=1,nlam
+     dum = 0.d0
+     do imu=2,nmu
+        dmu = abs( dust_kappa_arrays(ispec)%alignmu(imu) -    &
+                   dust_kappa_arrays(ispec)%alignmu(imu-1) )
+        dum = dum + dmu * 0.5d0 * (                           &
+              dust_kappa_arrays(ispec)%alignorth(imu,ilam) +  &
+              dust_kappa_arrays(ispec)%alignorth(imu-1,ilam) )
+        dum = dum + dmu * 0.5d0 * (                           &
+              dust_kappa_arrays(ispec)%alignpara(imu,ilam) +  &
+              dust_kappa_arrays(ispec)%alignpara(imu-1,ilam) )
+     enddo
+     dum = 0.5d0 * dum   ! Because int 0.5*(kap_h+kap_v) dmu is normalized
+     dust_kappa_arrays(ispec)%alignorth(:,ilam) =             &
+          dust_kappa_arrays(ispec)%alignorth(:,ilam) / dum
+     dust_kappa_arrays(ispec)%alignpara(:,ilam) =             &
+          dust_kappa_arrays(ispec)%alignpara(:,ilam) / dum
+  enddo
+  !
+  ! Close the file
+  !
+  close(1)
+  !
+end subroutine read_dustalign_angdep
 
 
 !-------------------------------------------------------------------
