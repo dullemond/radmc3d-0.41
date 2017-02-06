@@ -243,6 +243,10 @@ module rtglobal_module
   !
   double precision, allocatable :: electron_numdens(:),ion_numdens(:)
   !
+  ! For grain alignment in polarization of dust emission (and in future: scattering)
+  !
+  double precision, allocatable :: grainalign_dir(:,:)
+  !
   ! The cell volume array
   !
   double precision, allocatable :: cellvolume(:)
@@ -825,6 +829,10 @@ subroutine rtglobal_cleanup
   lines_maxturbc = 0.d0
   lines_maxtempc = 0.d0
   lines_maxshift = 0.d0
+  !
+  ! Cleanup polarization by alignment stuff
+  !
+  if(allocated(grainalign_dir)) deallocate(grainalign_dir)
   !
   ! Issue warning
   !

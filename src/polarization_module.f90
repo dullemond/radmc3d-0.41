@@ -608,6 +608,8 @@
 !   positive Theta is that we scatter to the right (when looking into the
 !   beam of radiation). This is also our definition.
 !
+! NOTE: Some additions for aligned grains are at the very end.
+!
 !========================================================================
 
 module polarization_module
@@ -1483,6 +1485,412 @@ subroutine hunt3(a1,a2,a3,x1,x2,x3,n,x,jlo)
   endif
   goto 3
 END SUBROUTINE hunt3
+
+
+
+!=======================================================================
+!                    ROUTINES FOR ALIGNED GRAINS
+! 
+! The code above assumes randomly oriented grains or spherical grains.
+! Below are routines for implementing aligned grains. This will be 
+! implemented step-by-step. First only the polarized emission by aligned
+! grains. We will not include the physics of how grains are aligned
+! and by how much. We will simply assume grains to be aligned in a
+! certain direction.
+!=======================================================================
+
+!-------------------------------------------------------------------
+!                 READ THE ALIGNMENT DIRECTION FIELD
+!-------------------------------------------------------------------
+subroutine read_grainaligndir_field(action)
+  implicit none
+  character*80 :: filename1,filename2,filename3
+  integer :: ispec,ierr,index,action,icell,i,idum,precis,style,reclen
+  integer(kind=8) :: iiformat,nn,kk,reclen8
+  logical :: fex1,fex2,fex3
+  double precision :: dummy
+  !
+  ! Action=0 means do nothing, action=1 means read if not yet read,
+  ! action=2 means re-read.
+  !
+  if(action.eq.0) then
+     return
+  elseif(action.eq.1) then
+     if(allocated(grainalign_dir)) then
+        !
+        ! The alignment direction is already determined.
+        ! Let us make sure that it is normalized to unity.
+        !
+        do icell=1,nrcells
+           index = cellindex(icell)
+           dummy = grainalign_dir(1,index)**2 + grainalign_dir(2,index)**2 + grainalign_dir(3,index)**2 
+           if(dummy.eq.0.d0) then
+              write(stdo,*) 'ERROR: Grain alignment direction vector has length 0'
+              stop 73328
+           endif
+           grainalign_dir(1,index) = grainalign_dir(1,index) / dummy
+           grainalign_dir(2,index) = grainalign_dir(2,index) / dummy
+           grainalign_dir(3,index) = grainalign_dir(3,index) / dummy
+        enddo
+        return
+     endif
+  endif
+  !
+  ! Default
+  !
+  precis = 8
+  !
+  ! Message
+  !
+  write(stdo,*) 'Reading grain alignment direction field...'
+  call flush(stdo)
+  !
+  ! Create the file name and find if the input file is present and if
+  ! it is in text format (.inp) or unformatted (.uinp)
+  !
+  filename1 = 'grainalign_dir.inp'
+  filename2 = 'grainalign_dir.uinp'
+  filename3 = 'grainalign_dir.binp'
+  inquire(file=filename1,exist=fex1)
+  inquire(file=filename2,exist=fex2)
+  inquire(file=filename3,exist=fex3)
+  idum=0
+  if(fex1) idum=idum+1
+  if(fex2) idum=idum+1
+  if(fex3) idum=idum+1
+  if(idum.gt.1) then
+     write(stdo,*) 'ERROR: Found more than one file grainalign_dir.*inp'
+     stop
+  endif
+  if(idum.eq.0) then
+     write(stdo,*) 'Could not find any grainalign_dir.*inp. For aligned grain mode, we need this. Aborting.'
+     stop 3903
+  endif
+  !
+  ! Switch formatted/unformatted
+  !
+  if(fex1) then
+     !
+     ! Open formatted ascii style
+     !
+     style = 1
+     open(unit=1,file=filename1)
+     !
+     ! Read format number
+     !
+     read(1,*) iiformat
+     if(iiformat.ne.1) then
+        write(stdo,*) 'ERROR: Format number of '//TRIM(filename1)//' is invalid/unknown.'
+        write(stdo,*) 'Format number = ',iiformat
+        stop
+     endif
+     !
+     ! Read number of grid points
+     !
+     read(1,*) nn
+  elseif(fex2) then
+     !
+     ! Open f77-style unformatted (with records)
+     !
+     style = 2
+     open(unit=1,file=filename2,form='unformatted')
+     !
+     ! Read format number
+     !
+     read(1) iiformat,reclen8
+     reclen = reclen8
+     if(iiformat.ne.1) then
+        write(stdo,*) 'ERROR: Format number of '//TRIM(filename2)//' is invalid/unknown.'
+        write(stdo,*) 'Format number = ',iiformat
+        stop
+     endif
+     read(1) nn
+  else
+     !
+     ! Open C-compliant binary
+     !
+     style = 3
+     open(unit=1,file=filename3,status='old',access='stream')
+     !
+     ! Read format number
+     !
+     read(1) iiformat
+     if(iiformat.ne.1) then
+        write(stdo,*) 'ERROR: Format number of '//TRIM(filename3)//' is invalid/unknown.'
+        write(stdo,*) 'Format number = ',iiformat
+        stop
+     endif
+     read(1) nn
+     precis = nn
+     read(1) nn
+  endif
+  !
+  ! Do some checks
+  !
+  if(nn.ne.nrcellsinp) then
+     write(stdo,*) 'ERROR: grainalign_dir.*inp does not have same number'
+     write(stdo,*) '       of cells as the grid.'
+     write(stdo,*) nn,nrcellsinp
+     stop
+  endif
+  !
+  ! Create the grainalign_dir arrays
+  !
+  if(allocated(grainalign_dir)) deallocate(grainalign_dir)
+  allocate(grainalign_dir(1:3,1:nrcells),STAT=ierr)
+  if(ierr.ne.0) then
+     write(stdo,*) 'ERROR: Could not allocate the grainalign_dir() array'
+     stop
+  endif
+  !
+  ! Now read the grainalign_dir field
+  !
+  call read_vectorfield(1,style,precis,3,3,nrcellsinp,1,1,reclen=reclen, &
+                        vector0=grainalign_dir)
+  !
+  ! Close file
+  !
+  close(1)
+  !
+  ! Normalize this vector field
+  !
+  do icell=1,nrcells
+     index = cellindex(icell)
+     dummy = grainalign_dir(1,index)**2 + grainalign_dir(2,index)**2 + grainalign_dir(3,index)**2 
+     if(dummy.eq.0.d0) then
+        write(stdo,*) 'ERROR: Grain alignment direction vector has length 0'
+        stop 73328
+     endif
+     grainalign_dir(1,index) = grainalign_dir(1,index) / dummy
+     grainalign_dir(2,index) = grainalign_dir(2,index) / dummy
+     grainalign_dir(3,index) = grainalign_dir(3,index) / dummy
+  enddo
+  !
+end subroutine read_grainaligndir_field
+
+
+!-----------------------------------------------------------------------
+!      FIRST ORDER INTEGRATION OF RT EQUATION WITH ALIGNED GRAINS
+!-----------------------------------------------------------------------
+subroutine pol_integrate_rt_aligned(int_iquv,dir,svec,aligndir,freq,
+                                    src0,alp0,srcscat_iquv,alpa,alps,temp,
+                                    orthpara_cosang,orth_fact,para_fact,
+                                    orthpara_nang,ds)
+  implicit none
+  integer :: orthpara_nang,iop
+  double precision :: int_iquv(1:4),src0,alp0,srcscat_iquv(1:4),alpa,alps,temp
+  double precision :: dir(1:3),svec(1:3),aligndir(1:3),ds
+  double precision :: orthpara_cosang(1:orthpara_nang)
+  double precision :: para_fact(1:orthpara_nang)
+  double precision :: orth_fact(1:orthpara_nang)
+  double precision :: salign(1:3),dum
+  double precision :: aligned_iquv(1:4),aligned_opuv(1:4)
+  double precision :: aligned_scat_iquv(1:4),aligned_scat_opuv(1:4)
+  double precision :: cosa,sina,cos2a,sin2a,cosb
+  double precision :: paraf,orthf,epspo,bpl
+  double precision :: aligned_alpha_opuv(1:4),aligned_jnu_opuv(1:4)
+  double precision :: aligned_snu_opuv(1:4),exptau_opuv(1:4),exptau1_opuv(1:4)
+  !
+  ! Trivial tests (can perhaps be removed later, if these 
+  ! tests are done elsewhere)
+  !
+  if(orthpara_cosang(1).ne.0.d0) then
+     write(stdo,*) 'ERROR in aligned grains: orthpara_cosang(1) not 0.0'
+  endif
+  if(orthpara_cosang(orthpara_nang).ne.1.d0) then
+     write(stdo,*) 'ERROR in aligned grains: orthpara_cosang(orthpara_nang) not 1.0'
+  endif
+  !
+  !################################
+  ! Test normalization; can be removed after testing
+  dum = aligndir(1)*aligndir(1)+aligndir(2)*aligndir(2)+aligndir(3)*aligndir(3)
+  if(abs(dum-1.d0).gt.1d-6) stop 30511
+  dum = svec(1)*svec(1)+svec(2)*svec(2)+svec(3)*svec(3)
+  if(abs(dum-1.d0).gt.1d-6) stop 30512
+  dum = dir(1)*dir(1)+dir(2)*dir(2)+dir(3)*dir(3)
+  if(abs(dum-1.d0).gt.1d-6) stop 30513
+  !################################
+  !
+  ! Compute the temporary s-vector that is aligned with the alignment
+  ! direction, but still perpendicular to the line-of-sight direction.
+  !
+  dum       = aligndir(1)*dir(1) + aligndir(2)*dir(2) + aligndir(3)*dir(3)
+  salign(1) = aligndir(1) - dum*dir(1)
+  salign(2) = aligndir(2) - dum*dir(2)
+  salign(3) = aligndir(3) - dum*dir(3)
+  dum       = sqrt(salign(1)*salign(1) + salign(2)*salign(2) + salign(3)*salign(3))
+  if(dum.lt.1d-8) then
+     salign(1) = svec(1)
+     salign(2) = svec(2)
+     salign(3) = svec(3)
+  else
+     salign(1) = salign(1) / dum
+     salign(2) = salign(2) / dum
+     salign(3) = salign(3) / dum
+  endif
+  !
+  !################################
+  ! Test if new vector is indeed perpendicular to n
+  dum = salign(1)*dir(1) + salign(2)*dir(2) + salign(3)*dir(3)
+  if(abs(dum).gt.1d-4) stop 30514
+  dum = salign(1)*salign(1) + salign(2)*salign(2) + salign(3)*salign(3)
+  if(abs(dum-1.d0).gt.1d-4) stop 30515
+  !################################
+  !
+  ! Determine the cos(ang) between the salign and the original
+  ! aligndir. This is necessary to compute the ratio of the
+  ! absorption opacity in parallel and orthogonal directions
+  ! with respect to the salign vector. We are only interested
+  ! in the absolute value, because we assume that the grains
+  ! are ellipsoidal without top/bottom asymmetry. If cosb=1
+  ! then the alignment vector was already in the plane of the
+  ! sky, which means that we have (assuming the grains are 
+  ! oblate with the minor axis aligned with the alignment
+  ! vector) the strongest ratio of parallel vs orthogonal.
+  ! If cosb=0, then parallel and orthogonal are the same.
+  !
+  cosb = salign(1)*aligndir(1) + salign(2)*aligndir(2) + salign(3)*aligndir(3)
+  cosb = abs(cosb)
+  !################################
+  ! Stupidity test. Can be removed after testing.
+  if(cosb.gt.1.0001d0) stop 30517
+  !################################
+  if(cosb.ge.1.d0) cosb = 0.999999d0
+  !
+  ! Interpolate the para_fact and orth_fact
+  !
+  call hunt(orthpara_cosang,orthpara_nang,cosb,iop)
+  if(iop.ge.orthpara_nang) stop 30518
+  epspo = (cosb-orthpara_cosang(iop)) /                  &
+          (orthpara_cosang(iop+1)-orthpara_cosang(iop)) 
+  !################################
+  ! Stupidity test. Can be removed after testing.
+  if(epspo.gt.1.d0) stop 30519
+  if(epspo.lt.0.d0) stop 30520
+  !################################
+  orthf = (1.d0-epspo)*orth_fact(iop) + epspo*orth_fact(iop+1)
+  paraf = (1.d0-epspo)*para_fact(iop) + epspo*para_fact(iop+1)
+  !
+  ! Determine the cos(ang) between this salign and the S-vector 
+  ! of the incoming light along the line-of-sight (i.e. the 
+  ! global S-vector of the image, i.e. svec(:))
+  !
+  cosa = salign(1)*svec(1) + salign(2)*svec(2) + salign(3)*svec(3)
+  !
+  ! Now the cross- and inner product formula for finding sin(a). The sign
+  ! convention is such that if the alignment S-vector is
+  ! counter-clockwise from the incoming light S-vector when the photon
+  ! propagation direction is pointing toward the observer, then the angle
+  ! is positive.
+  !
+  sina = ( svec(2)*salign(3) - svec(3)*salign(2) ) * dir(1) + &
+         ( svec(3)*salign(1) - svec(1)*salign(3) ) * dir(2) + &
+         ( svec(1)*salign(2) - svec(2)*salign(1) ) * dir(3)
+  !
+  ! Since we need cos(2*ang) and sin(2*ang) for the rotation of the
+  ! Stokes vector, we compute them here.
+  !
+  cos2a = cosa**2 - sina**2
+  sin2a = 2d0*sina*cosa
+  !
+  !################################
+  ! Test if sin2a^2 + cos2a^2 = 1
+  dum = cos2a*cos2a + sin2a*sin2a
+  if(abs(dum-1.0).gt.1d-6) stop 30516
+  !################################
+  !
+  ! Now rotate the Stokes vector of the photon to the new S-vector
+  !
+  aligned_iquv(1) =  int_iquv(1)
+  aligned_iquv(2) =  int_iquv(2)*cos2a + int_iquv(3)*sin2a
+  aligned_iquv(3) = -int_iquv(2)*sin2a + int_iquv(3)*cos2a
+  aligned_iquv(4) =  int_iquv(4)
+  !
+  ! Now change from Stokes IQUV to OPUV with O being orthogonal
+  ! to the alignment direction salign, and P being parallel
+  ! to the alignment direction salign.
+  !
+  aligned_opuv(1) =  0.5d0 * ( aligned_iquv(1) + aligned_iquv(2) )
+  aligned_opuv(2) =  0.5d0 * ( aligned_iquv(1) - aligned_iquv(2) )
+  aligned_opuv(3) =  aligned_iquv(3) 
+  aligned_opuv(4) =  aligned_iquv(4) 
+  !
+  ! Now rotate the Stokes vector of the scattering source to the new S-vector
+  !
+  aligned_scat_iquv(1) =  srcscat_iquv(1)
+  aligned_scat_iquv(2) =  srcscat_iquv(2)*cos2a + srcscat_iquv(3)*sin2a
+  aligned_scat_iquv(3) = -srcscat_iquv(2)*sin2a + srcscat_iquv(3)*cos2a
+  aligned_scat_iquv(4) =  srcscat_iquv(4)
+  !
+  ! Now change from Stokes IQUV to OPUV with O being orthogonal
+  ! to the alignment direction salign, and P being parallel
+  ! to the alignment direction salign.
+  !
+  aligned_scat_opuv(1) =  0.5d0 * ( aligned_scat_iquv(1) + aligned_scat_iquv(2) )
+  aligned_scat_opuv(2) =  0.5d0 * ( aligned_scat_iquv(1) - aligned_scat_iquv(2) )
+  aligned_scat_opuv(3) =  aligned_scat_iquv(3) 
+  aligned_scat_opuv(4) =  aligned_scat_iquv(4) 
+  !
+  ! Now we can calculate the alpha coefficient in each component
+  ! separately.
+  !
+  ! NOTE: Here we still assume that the scattering extinction is
+  !       angle-dependent! Hence we simply add alps. In the 
+  !       future, when also scattering off aligned grains is
+  !       included, the alps here also have to be ortho and para.
+  !
+  aligned_alpha_opuv(1) = alp0 + alps + orthf*alpa
+  aligned_alpha_opuv(2) = alp0 + alps + paraf*alpa
+  aligned_alpha_opuv(3) = 0.5d0 * ( aligned_alpha_opuv(1) + aligned_alpha_opuv(2) )
+  aligned_alpha_opuv(4) = aligned_alpha_opuv(3)
+  bpl                   = bplanck(temp,freq)
+  !
+  ! Compute the emissivity source terms
+  !
+  ! NOTE: The factor 0.5d0*src0 is because I_orth = 0.5*(I+Q)
+  !       and I_para = 0.5*(I-Q), so both take care of 50% of
+  !       the "normal" unpolarized source term
+  !
+  aligned_jnu_opuv(1)   = 0.5d0*src0 + aligned_scat_opuv(1) + orthf*alpa*bpl
+  aligned_jnu_opuv(2)   = 0.5d0*src0 + aligned_scat_opuv(2) + paraf*alpa*bpl
+  aligned_jnu_opuv(3)   = aligned_scat_opuv(3)
+  aligned_jnu_opuv(4)   = aligned_scat_opuv(4)
+  !
+  ! Calculate the real "source term" S_nu = j_nu / alpha_nu
+  !
+  aligned_snu_opuv(:)   = aligned_jnu_opuv(:)/(aligned_alpha_opuv(:)+1d-40)
+  !
+  ! Compute the exp(-tau) and 1-exp(-tau), where for the latter we take
+  ! special care of tau << 1.
+  !
+  exptau_opuv(:)        = exp(-aligned_alpha_opuv(:)*ds)
+  exptau1_opuv(:)       = 1.d0-exptau_opuv(:)
+  if(exptau1_opuv(1).lt.1d-5) exptau1_opuv(1) = aligned_alpha_opuv(1)*ds
+  if(exptau1_opuv(2).lt.1d-5) exptau1_opuv(2) = aligned_alpha_opuv(2)*ds
+  if(exptau1_opuv(3).lt.1d-5) exptau1_opuv(3) = aligned_alpha_opuv(3)*ds
+  if(exptau1_opuv(4).lt.1d-5) exptau1_opuv(4) = aligned_alpha_opuv(4)*ds
+  !
+  ! Now the first order integration of the RT equation
+  !
+  aligned_opuv(:)       = exptau_opuv(:)*aligned_opuv(:) +     &
+                          exptau1_opuv(:)*aligned_snu_opuv(:)
+  !
+  ! Recompute the IQUV
+  !
+  aligned_iquv(1) = aligned_opuv(1) + aligned_opuv(2)
+  aligned_iquv(2) = aligned_opuv(1) - aligned_opuv(2)
+  aligned_iquv(3) = aligned_opuv(3)
+  aligned_iquv(4) = aligned_opuv(4)
+  !
+  ! Now rotate the Stokes vector back to the original svec
+  !
+  int_iquv(1) =  aligned_iquv(1)
+  int_iquv(2) =  aligned_iquv(2)*cos2a - aligned_iquv(3)*sin2a
+  int_iquv(3) =  aligned_iquv(2)*sin2a + aligned_iquv(3)*cos2a
+  int_iquv(4) =  aligned_iquv(4)
+  !
+end subroutine pol_integrate_rt_aligned
+
 
 
 end module polarization_module

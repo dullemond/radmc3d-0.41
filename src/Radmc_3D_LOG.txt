@@ -7943,6 +7943,7 @@ finetuning: I noticed during some testing with a supersimple annulus model
             the Monte Carlo of each photon package is stopped after each
             discrete scattering event. 
 
+            [git:2c6c35a]
 
 05.02.2017  
    +++      Added the possibility of using single scattering or double 
@@ -7977,4 +7978,16 @@ finetuning: I noticed during some testing with a supersimple annulus model
             apparently important here.
 
             I now added the corresponding text to the manual.
+
+            [git:5438c29]
+
+  +++       polarization_module.f90, rtglobal_module.f90:
+            I have added stuff for the aligned grain thermal emission.
+            The reading routine for the alignment direction is done.
+            The RT routine for the aligned grains is programmed.
+            But still not tested. And we have to create an
+            aligned grain mode, remove the dust stuff from the 
+            get_src_alp if this mode is on, read the orth and 
+            para factors as a function of cos(angle) and frequency,
+            call the rt routine. Still lots of stuff to do.
 
