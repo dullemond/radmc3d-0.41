@@ -3163,7 +3163,7 @@ subroutine camera_make_rect_image(img,tausurf)
      call read_dust_density(1)
      call read_dust_temperature(1)
      if(alignment_mode.ne.0) then
-        call read_grainaligndir_field(1)
+        call aligned_grains_init(1)
      endif
   endif
   !
@@ -4591,7 +4591,7 @@ subroutine camera_make_spectrum()
      call read_dust_density(1)
      call read_dust_temperature(1)
      if(alignment_mode.ne.0) then
-        call read_grainaligndir_field(1)
+        call aligned_grains_init(1)
      endif
   endif
   !
@@ -6146,7 +6146,7 @@ subroutine camera_make_circ_image()
      call read_dust_density(1)
      call read_dust_temperature(1)
      if(alignment_mode.ne.0) then
-        call read_grainaligndir_field(1)
+        call aligned_grains_init(1)
      endif
   endif
   !

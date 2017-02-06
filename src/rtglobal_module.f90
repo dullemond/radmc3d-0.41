@@ -205,6 +205,12 @@ module rtglobal_module
   !integer :: scat_phinr = 0
   doubleprecision, allocatable :: scat_mui_grid(:),scat_thetai_grid(:)
   !
+  ! For aligned grains: mu grid
+  ! Note that they are grid points (hence mui) instead of grid cells.
+  !
+  integer :: align_munr = 0
+  doubleprecision, allocatable :: align_mui_grid(:),align_etai_grid(:)
+  !
   ! Thermal boundaries (only for cartesian coordinates!)
   !
   integer :: incl_thermbc = 0
@@ -803,6 +809,9 @@ subroutine rtglobal_cleanup
   if(allocated(scat_mui_grid)) deallocate(scat_mui_grid)
   if(allocated(scat_thetai_grid)) deallocate(scat_thetai_grid)
   scat_munr = 0
+  if(allocated(align_mui_grid)) deallocate(align_mui_grid)
+  if(allocated(align_etai_grid)) deallocate(align_etai_grid)
+  align_munr = 0
   if(allocated(cellvolume)) deallocate(cellvolume)
   if(allocated(cellindex)) deallocate(cellindex)
   if(allocated(dustdens)) deallocate(dustdens)

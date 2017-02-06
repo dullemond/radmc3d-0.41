@@ -155,14 +155,14 @@ subroutine sources_init(nrfreq,frequencies,secondorder,doppcatch)
      ! Do a few checks for grain alignment mode
      !
      if(alignment_mode.ne.0) then
-        if(.not.allocated(sources_get_src_alp)) then
+        if(.not.allocated(grainalign_dir)) then
            write(stdo,*) 'ERROR: If alignment_mode.ne.0 then the alignment vector ', &
                 'field must be read. Appears to be a bug in the code.'
            stop
         endif
         havealignopac = .false.
         do ispec=1,dust_nr_species
-           if(allocated(dust_kappa_arrays(ispec)%alignmu)) then
+           if(associated(dust_kappa_arrays(ispec)%alignmu)) then
               havealignopac = .true.
            endif
         enddo

@@ -1499,6 +1499,190 @@ END SUBROUTINE hunt3
 ! certain direction.
 !=======================================================================
 
+
+!-------------------------------------------------------------------
+!                INITIALIZE THE ALIGNED GRAINS MODE
+!-------------------------------------------------------------------
+subroutine aligned_grains_init(action)
+  implicit none
+  integer :: action
+  logical :: fex
+  !
+  ! Read the directional field
+  !
+  call read_grainaligndir_field(action)
+  !
+  ! Make sure that we have a global cos(eta) grid for the angle
+  ! between the line-of-sight and the directional field. This is
+  ! necessary because different opacity files can have different
+  ! angular grids. 
+  !
+  inquire(file='alignment_angular_grid.inp',exist=fex)
+  if(fex) then
+     !
+     ! Read the alignment angle grid from the file
+     ! alignment_angular_grid.inp
+     !
+     call read_align_angular_grid(action)
+  else
+     !
+     ! Generate the global alignment angle grid
+     ! Let us take the number of points to be 20
+     !
+     call create_align_angular_grid(20)
+  endif
+  !
+end subroutine aligned_grains_init
+
+
+!-------------------------------------------------------------------
+!                READ THE GLOBAL ALIGNMENT ANGLE ARRAY 
+!
+! The eta-grid is used for the treatment of aligned grains. 
+!-------------------------------------------------------------------
+subroutine read_align_angular_grid(action)
+  implicit none
+  integer :: imu,ierr,action,iformat
+  logical :: fex
+  !
+  ! Action=0 means do nothing, action=1 means read if not yet read,
+  ! action=2 means re-read.
+  !
+  if(action.eq.0) then
+     return
+  elseif(action.eq.1) then
+     if(allocated(align_mui_grid)) return
+  elseif(action.eq.2) then
+     if(allocated(align_mui_grid)) deallocate(align_mui_grid)
+     if(allocated(align_etai_grid)) deallocate(align_etai_grid)
+  endif
+  !
+  ! Check which file is present
+  !
+  inquire(file='alignment_angular_grid.inp',exist=fex)
+  if(.not.fex) then
+     write(stdo,*) 'ERROR: When using aligned grains you must define a global'
+     write(stdo,*) '       angular grid with an input file called:'
+     write(stdo,*) '       alignment_angular_grid.inp'
+     write(stdo,*) '       (see manual for its contents).'
+     stop
+  endif
+  !
+  ! Message
+  !
+  write(stdo,*) 'Reading global angular grid for alignment of grains...'
+  call flush(stdo)
+  !
+  ! Read this file
+  !
+  open(unit=1,file='alignment_angular_grid.inp',status='old',err=701)
+  read(1,*) iformat
+  if(iformat.ne.1) then
+     write(stdo,*) 'ERROR: File format of alignment_angular_grid.inp must be 1'
+     stop
+  endif
+  read(1,*) align_munr
+  !
+  ! Allocate the mu angular array. 
+  !
+  if(allocated(align_mui_grid)) deallocate(align_mui_grid)
+  allocate(align_mui_grid(1:align_munr),STAT=ierr)
+  if(ierr.ne.0) then
+     write(stdo,*) 'ERROR in RTGLobal Module: Could not allocate align_mui_grid'
+     stop 
+  endif
+  if(allocated(align_etai_grid)) deallocate(align_etai_grid)
+  allocate(align_etai_grid(1:align_munr),STAT=ierr)
+  if(ierr.ne.0) then
+     write(stdo,*) 'ERROR in RTGLobal Module: Could not allocate align_etai_grid'
+     stop 
+  endif
+  !
+  ! Now read the angular grid from 0 all the way to 180
+  !
+  do imu=1,align_munr
+     read(1,*,end=702,err=702) align_etai_grid(imu)
+     if(imu.gt.1) then
+        if(align_etai_grid(imu).le.align_etai_grid(imu-1)) then
+           write(stdo,*) 'ERROR in file alignment_angular_grid.inp:'
+           write(stdo,*) '   theta grid must be monotonically increasing'
+           write(stdo,*) '   from 0 to 90 (the rest is a mirror copy from 90 to 180)'
+           stop
+        endif
+     endif
+     align_mui_grid(imu) = cos(align_etai_grid(imu)*pi/180.d0)
+  enddo
+  close(1)
+  !
+  ! Do some elementary checks
+  !
+  if(align_etai_grid(1).ne.0.d0) then
+     write(stdo,*) 'ERROR while reading alignment_angular_grid.inp file:'
+     write(stdo,*) '      The first theta value MUST be 0'
+     stop
+  endif
+  if(align_etai_grid(align_munr).ne.90.d0) then
+     write(stdo,*) 'ERROR while reading alignment_angular_grid.inp file:'
+     write(stdo,*) '      The last theta value MUST be 90'
+     stop
+  endif
+  align_mui_grid(1)          = 1.d0
+  align_mui_grid(align_munr) = 0.d0
+  !
+  goto 710
+701 continue
+  write(stdo,*) 'Could not open file alignment_angular_grid.inp'
+  stop 13
+702 continue
+  write(stdo,*) 'alignment_angular_grid.inp: either wrong format or other reading error'
+  stop 
+710 continue
+  return
+end subroutine read_align_angular_grid
+
+
+!-------------------------------------------------------------------
+!                READ THE GLOBAL ALIGNMENT ANGLE ARRAY 
+!
+! The eta-grid is used for the treatment of aligned grains. 
+!-------------------------------------------------------------------
+subroutine create_align_angular_grid(nang)
+  implicit none
+  integer :: nang,imu,ierr
+  !
+  ! Store the nang
+  !
+  align_munr = nang
+  !
+  ! Allocate the mu angular array. 
+  !
+  if(allocated(align_mui_grid)) deallocate(align_mui_grid)
+  allocate(align_mui_grid(1:align_munr),STAT=ierr)
+  if(ierr.ne.0) then
+     write(stdo,*) 'ERROR in RTGLobal Module: Could not allocate align_mui_grid'
+     stop 
+  endif
+  if(allocated(align_etai_grid)) deallocate(align_etai_grid)
+  allocate(align_etai_grid(1:align_munr),STAT=ierr)
+  if(ierr.ne.0) then
+     write(stdo,*) 'ERROR in RTGLobal Module: Could not allocate align_etai_grid'
+     stop 
+  endif
+  !
+  ! Make the grid between eta
+  !
+  do imu=1,align_munr
+     align_etai_grid(imu) = 0.5d0 * pi * (imu-1.d0) / (align_munr-1.d0)
+     align_mui_grid(imu)    = cos(align_etai_grid(imu))
+  enddo
+  if(abs(align_mui_grid(1)-1.d0).gt.1d-12) stop 538
+  if(abs(align_mui_grid(align_munr)).gt.1d-12) stop 539
+  align_mui_grid(1)          = 1.d0
+  align_mui_grid(align_munr) = 0.d0
+  !
+end subroutine create_align_angular_grid
+
+
 !-------------------------------------------------------------------
 !                 READ THE ALIGNMENT DIRECTION FIELD
 !-------------------------------------------------------------------
@@ -1718,7 +1902,7 @@ subroutine pol_integrate_rt_aligned(int_iquv,dir,svec,aligndir,freq,       &
   if(abs(dum-1.d0).gt.1d-6) stop 30513
   !################################
   !
-  ! Calculate the cos(theta) between the line-of-sight direction and the
+  ! Calculate the cos(eta) between the line-of-sight direction and the
   ! alignment direction.
   !
   cosb      = aligndir(1)*dir(1) + aligndir(2)*dir(2) + aligndir(3)*dir(3)
