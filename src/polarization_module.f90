@@ -1720,6 +1720,7 @@ subroutine pol_integrate_rt_aligned(int_iquv,dir,svec,aligndir,freq,       &
   !
   ! Compute the temporary s-vector that is aligned with the alignment
   ! direction, but still perpendicular to the line-of-sight direction.
+  ! In other words: the projected alignment direction.
   !
   dum       = aligndir(1)*dir(1) + aligndir(2)*dir(2) + aligndir(3)*dir(3)
   salign(1) = aligndir(1) - dum*dir(1)
@@ -1744,7 +1745,7 @@ subroutine pol_integrate_rt_aligned(int_iquv,dir,svec,aligndir,freq,       &
   if(abs(dum-1.d0).gt.1d-4) stop 30515
   !################################
   !
-  ! Determine the cos(ang) between the salign and the original
+  ! Determine the cos(ang) between the line-of-sight and the 
   ! aligndir. This is necessary to compute the ratio of the
   ! absorption opacity in parallel and orthogonal directions
   ! with respect to the salign vector. We are only interested
@@ -1756,7 +1757,7 @@ subroutine pol_integrate_rt_aligned(int_iquv,dir,svec,aligndir,freq,       &
   ! vector) the strongest ratio of parallel vs orthogonal.
   ! If cosb=0, then parallel and orthogonal are the same.
   !
-  cosb = salign(1)*aligndir(1) + salign(2)*aligndir(2) + salign(3)*aligndir(3)
+  cosb = dir(1)*aligndir(1) + dir(2)*aligndir(2) + dir(3)*aligndir(3)
   cosb = abs(cosb)
   !################################
   ! Stupidity test. Can be removed after testing.
