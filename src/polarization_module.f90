@@ -1718,14 +1718,18 @@ subroutine pol_integrate_rt_aligned(int_iquv,dir,svec,aligndir,freq,       &
   if(abs(dum-1.d0).gt.1d-6) stop 30513
   !################################
   !
+  ! Calculate the cos(theta) between the line-of-sight direction and the
+  ! alignment direction.
+  !
+  cosb      = aligndir(1)*dir(1) + aligndir(2)*dir(2) + aligndir(3)*dir(3)
+  !
   ! Compute the temporary s-vector that is aligned with the alignment
   ! direction, but still perpendicular to the line-of-sight direction.
   ! In other words: the projected alignment direction.
   !
-  dum       = aligndir(1)*dir(1) + aligndir(2)*dir(2) + aligndir(3)*dir(3)
-  salign(1) = aligndir(1) - dum*dir(1)
-  salign(2) = aligndir(2) - dum*dir(2)
-  salign(3) = aligndir(3) - dum*dir(3)
+  salign(1) = aligndir(1) - cosb*dir(1)
+  salign(2) = aligndir(2) - cosb*dir(2)
+  salign(3) = aligndir(3) - cosb*dir(3)
   dum       = sqrt(salign(1)*salign(1) + salign(2)*salign(2) + salign(3)*salign(3))
   if(dum.lt.1d-8) then
      salign(1) = svec(1)
@@ -1756,8 +1760,8 @@ subroutine pol_integrate_rt_aligned(int_iquv,dir,svec,aligndir,freq,       &
   ! oblate with the minor axis aligned with the alignment
   ! vector) the strongest ratio of parallel vs orthogonal.
   ! If cosb=0, then parallel and orthogonal are the same.
+  ! Note: we already computed cosb. Now only abs().
   !
-  cosb = dir(1)*aligndir(1) + dir(2)*aligndir(2) + dir(3)*aligndir(3)
   cosb = abs(cosb)
   !################################
   ! Stupidity test. Can be removed after testing.
