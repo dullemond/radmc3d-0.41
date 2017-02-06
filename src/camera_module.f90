@@ -2532,8 +2532,14 @@ subroutine camera_serial_raytrace(nrfreq,inu0,inu1,x,y,z,dx,dy,dz,distance,   &
                       'any other camera_tracemode than 1. Sorry...'
                  stop
               endif
+              !
+              ! Get the src and alp values for all process other than
+              ! dust. Note that sources_get_src_alp() knows itself
+              ! that dust has to be skipped because it checks the
+              ! alignment_mode flag.
+              !
+              call sources_get_src_alp(inu0,inu1,nrfreq,src,alp,camera_stokesvector)
               
-
 
 
 
@@ -3156,6 +3162,9 @@ subroutine camera_make_rect_image(img,tausurf)
      call read_dustdata(1)
      call read_dust_density(1)
      call read_dust_temperature(1)
+     if(alignment_mode.ne.0) then
+        call read_grainaligndir_field(1)
+     endif
   endif
   !
   ! If line emission is included, then make sure the line data are
@@ -4581,6 +4590,9 @@ subroutine camera_make_spectrum()
      call read_dustdata(1)
      call read_dust_density(1)
      call read_dust_temperature(1)
+     if(alignment_mode.ne.0) then
+        call read_grainaligndir_field(1)
+     endif
   endif
   !
   ! If line emission is included, then make sure the line data are
@@ -6133,6 +6145,9 @@ subroutine camera_make_circ_image()
      call read_dustdata(1)
      call read_dust_density(1)
      call read_dust_temperature(1)
+     if(alignment_mode.ne.0) then
+        call read_grainaligndir_field(1)
+     endif
   endif
   !
   ! If line emission is included, then make sure the line data are

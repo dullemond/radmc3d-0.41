@@ -661,6 +661,14 @@ subroutine montecarlo_init(params,ierr,mcaction,resetseed)
         endif
      endif
      !
+     ! Check the alignment mode
+     !
+     if(alignment_mode.gt.0) then
+        write(stdo,*) 'MAJOR WARNING: Grain alignment is not yet included in ', &
+             'Bjorkman and Wood thermal Monte Carlo! So RADMC-3D will ignore ', &
+             'grain alignment in thermal MC even though alignment_mode.gt.0!'
+     endif
+     !
   elseif((mcaction.eq.101).or.(mcaction.eq.102)) then
      !
      ! The frequency-by-frequency scattering Monte Carlo simulation
@@ -753,6 +761,14 @@ subroutine montecarlo_init(params,ierr,mcaction,resetseed)
 !       stop
 !    endif
 !----TO-ADD----
+     !
+     ! Check the alignment mode
+     !
+     if(alignment_mode.gt.0) then
+        write(stdo,*) 'MAJOR WARNING: Grain alignment is not yet included in ', &
+             'Scattering Monte Carlo! So RADMC-3D will ignore ', &
+             'grain alignment in scattering MC even though alignment_mode.gt.0!'
+     endif
      !
   else
      stop 7012

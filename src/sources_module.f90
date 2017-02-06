@@ -74,7 +74,7 @@ contains
 subroutine sources_init(nrfreq,frequencies,secondorder,doppcatch)
   implicit none
   integer :: nrfreq
-  logical :: secondorder,doppcatch
+  logical :: secondorder,doppcatch,havealignopac
   integer :: ierr,inu,ispec,itempl,iinu
   double precision :: temp,eps
   double precision :: frequencies(nrfreq)
@@ -150,6 +150,28 @@ subroutine sources_init(nrfreq,frequencies,secondorder,doppcatch)
               sources_dustkappa_s(inu,ispec) = 0.d0
            enddo
         enddo
+     endif
+     !
+     ! Do a few checks for grain alignment mode
+     !
+     if(alignment_mode.ne.0) then
+        if(.not.allocated(sources_get_src_alp)) then
+           write(stdo,*) 'ERROR: If alignment_mode.ne.0 then the alignment vector ', &
+                'field must be read. Appears to be a bug in the code.'
+           stop
+        endif
+        havealignopac = .false.
+        do ispec=1,dust_nr_species
+           if(allocated(dust_kappa_arrays(ispec)%alignmu)) then
+              havealignopac = .true.
+           endif
+        enddo
+        if(.not.havealignopac) then
+           write(stdo,*) 'ERROR: If alignment_mode.ne.0 then at least one of the ', &
+                'dust opacities must be accompanied by a file dustkapalignfact_*.inp ', &
+                'which sets the strength and shape of the alignment effect.'
+           stop
+        endif
      endif
   endif
   !
