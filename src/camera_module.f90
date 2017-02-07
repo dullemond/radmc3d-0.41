@@ -6629,6 +6629,272 @@ end subroutine camera_make_circ_image
 
 
 
+!==========================================================================
+!                   ALIGNED GRAINS POLARIZATION STUFF
+!==========================================================================
+
+
+!-----------------------------------------------------------------------
+!      FIRST ORDER INTEGRATION OF RT EQUATION WITH ALIGNED GRAINS
+!-----------------------------------------------------------------------
+subroutine pol_integrate_rt_aligned(int_iquv,dir,svec,aligndir,inu0,inu1,       &
+                                    src0,alp0,srcscat_iquv,dustdens,dusttemp,ds)
+  implicit none
+  integer :: iop,inu0,inu1,inu,ispec
+  double precision :: int_iquv(1:4,1:sources_nrfreq)
+  double precision :: src0(1:sources_nrfreq),alp0(1:sources_nrfreq)
+  double precision :: srcscat_iquv(1:4,1:sources_nrfreq)
+  double precision :: dustdens(1:dust_nr_species),dusttemp(1:dust_nr_species)
+  double precision :: dir(1:3),svec(1:3),aligndir(1:3),ds,freq
+  double precision :: salign(1:3),dum
+  double precision :: aligned_iquv(1:4),aligned_opuv(1:4)
+  double precision :: aligned_scat_iquv(1:4),aligned_scat_opuv(1:4)
+  double precision :: cosa,sina,cos2a,sin2a,cosb
+  double precision :: alpabs,para_alpabs,orth_alpabs,epspo,bpl
+  double precision :: aligned_alpha_opuv(1:4),aligned_jnu_opuv(1:4)
+  double precision :: aligned_snu_opuv(1:4),exptau_opuv(1:4),exptau1_opuv(1:4)
+  !
+  !################################
+  ! Test normalization; can be removed after testing
+  dum = aligndir(1)*aligndir(1)+aligndir(2)*aligndir(2)+aligndir(3)*aligndir(3)
+  if(abs(dum-1.d0).gt.1d-6) stop 30511
+  dum = svec(1)*svec(1)+svec(2)*svec(2)+svec(3)*svec(3)
+  if(abs(dum-1.d0).gt.1d-6) stop 30512
+  dum = dir(1)*dir(1)+dir(2)*dir(2)+dir(3)*dir(3)
+  if(abs(dum-1.d0).gt.1d-6) stop 30513
+  !################################
+  !
+  ! Calculate the cos(eta) between the line-of-sight direction and the
+  ! alignment direction.
+  !
+  cosb      = aligndir(1)*dir(1) + aligndir(2)*dir(2) + aligndir(3)*dir(3)
+  !
+  ! Compute the temporary s-vector that is aligned with the alignment
+  ! direction, but still perpendicular to the line-of-sight direction.
+  ! In other words: the projected alignment direction.
+  !
+  salign(1) = aligndir(1) - cosb*dir(1)
+  salign(2) = aligndir(2) - cosb*dir(2)
+  salign(3) = aligndir(3) - cosb*dir(3)
+  dum       = sqrt(salign(1)*salign(1) + salign(2)*salign(2) + salign(3)*salign(3))
+  if(dum.lt.1d-8) then
+     salign(1) = svec(1)
+     salign(2) = svec(2)
+     salign(3) = svec(3)
+  else
+     salign(1) = salign(1) / dum
+     salign(2) = salign(2) / dum
+     salign(3) = salign(3) / dum
+  endif
+  !
+  !################################
+  ! Test if new vector is indeed perpendicular to n
+  dum = salign(1)*dir(1) + salign(2)*dir(2) + salign(3)*dir(3)
+  if(abs(dum).gt.1d-4) stop 30514
+  dum = salign(1)*salign(1) + salign(2)*salign(2) + salign(3)*salign(3)
+  if(abs(dum-1.d0).gt.1d-4) stop 30515
+  !################################
+  !
+  ! Determine the cos(ang) between the line-of-sight and the 
+  ! aligndir. This is necessary to compute the ratio of the
+  ! absorption opacity in parallel and orthogonal directions
+  ! with respect to the salign vector. We are only interested
+  ! in the absolute value, because we assume that the grains
+  ! are ellipsoidal without top/bottom asymmetry. If cosb=1
+  ! then the alignment vector was already in the plane of the
+  ! sky, which means that we have (assuming the grains are 
+  ! oblate with the minor axis aligned with the alignment
+  ! vector) the strongest ratio of parallel vs orthogonal.
+  ! If cosb=0, then parallel and orthogonal are the same.
+  ! Note: we already computed cosb. Now only abs().
+  !
+  cosb = abs(cosb)
+  !################################
+  ! Stupidity test. Can be removed after testing.
+  if(cosb.gt.1.0001d0) stop 30517
+  !################################
+  if(cosb.ge.1.d0) cosb = 0.999999d0
+  !
+  ! Interpolate the angular grid
+  !
+  call hunt(sources_align_mu,sources_align_munr,cosb,iop)
+  if(iop.ge.sources_align_munr) stop 30518
+  epspo = (cosb-sources_align_mu(iop)) /                  &
+          (sources_align_mu(iop+1)-sources_align_mu(iop)) 
+  !################################
+  ! Stupidity test. Can be removed after testing.
+  if(epspo.gt.1.d0) stop 30519
+  if(epspo.lt.0.d0) stop 30520
+  !################################
+  !
+  ! Determine the cos(ang) between this salign and the S-vector 
+  ! of the incoming light along the line-of-sight (i.e. the 
+  ! global S-vector of the image, i.e. svec(:))
+  !
+  cosa = salign(1)*svec(1) + salign(2)*svec(2) + salign(3)*svec(3)
+  !
+  ! Now the cross- and inner product formula for finding sin(a). The sign
+  ! convention is such that if the alignment S-vector is
+  ! counter-clockwise from the incoming light S-vector when the photon
+  ! propagation direction is pointing toward the observer, then the angle
+  ! is positive.
+  !
+  sina = ( svec(2)*salign(3) - svec(3)*salign(2) ) * dir(1) + &
+         ( svec(3)*salign(1) - svec(1)*salign(3) ) * dir(2) + &
+         ( svec(1)*salign(2) - svec(2)*salign(1) ) * dir(3)
+  !
+  ! Since we need cos(2*ang) and sin(2*ang) for the rotation of the
+  ! Stokes vector, we compute them here.
+  !
+  cos2a = cosa**2 - sina**2
+  sin2a = 2d0*sina*cosa
+  !
+  !################################
+  ! Test if sin2a^2 + cos2a^2 = 1
+  dum = cos2a*cos2a + sin2a*sin2a
+  if(abs(dum-1.0).gt.1d-6) stop 30516
+  !################################
+  !
+  ! Now loop over frequency
+  !
+  do inu=inu0,inu1
+     !
+     ! Rotate the Stokes vector of the incoming photon to the new S-vector
+     !
+     aligned_iquv(1) =  int_iquv(1,inu)
+     aligned_iquv(2) =  int_iquv(2,inu)*cos2a + int_iquv(3,inu)*sin2a
+     aligned_iquv(3) = -int_iquv(2,inu)*sin2a + int_iquv(3,inu)*cos2a
+     aligned_iquv(4) =  int_iquv(4,inu)
+     !
+     ! Now change from Stokes IQUV to OPUV with O being orthogonal
+     ! to the alignment direction salign, and P being parallel
+     ! to the alignment direction salign.
+     !
+     aligned_opuv(1) =  0.5d0 * ( aligned_iquv(1) + aligned_iquv(2) )
+     aligned_opuv(2) =  0.5d0 * ( aligned_iquv(1) - aligned_iquv(2) )
+     aligned_opuv(3) =  aligned_iquv(3) 
+     aligned_opuv(4) =  aligned_iquv(4) 
+     !
+     ! Now rotate the Stokes vector of the scattering source to the new S-vector
+     !
+     aligned_scat_iquv(1) =  srcscat_iquv(1,inu)
+     aligned_scat_iquv(2) =  srcscat_iquv(2,inu)*cos2a + srcscat_iquv(3,inu)*sin2a
+     aligned_scat_iquv(3) = -srcscat_iquv(2,inu)*sin2a + srcscat_iquv(3,inu)*cos2a
+     aligned_scat_iquv(4) =  srcscat_iquv(4,inu)
+     !
+     ! Now change from Stokes IQUV to OPUV with O being orthogonal
+     ! to the alignment direction salign, and P being parallel
+     ! to the alignment direction salign.
+     !
+     aligned_scat_opuv(1) =  0.5d0 * ( aligned_scat_iquv(1) + aligned_scat_iquv(2) )
+     aligned_scat_opuv(2) =  0.5d0 * ( aligned_scat_iquv(1) - aligned_scat_iquv(2) )
+     aligned_scat_opuv(3) =  aligned_scat_iquv(3) 
+     aligned_scat_opuv(4) =  aligned_scat_iquv(4) 
+     !
+     ! Now add to the absorption coefficient the non-dust isotropic absorption
+     !
+     aligned_alpha_opuv(:) = alp0(inu)
+     !
+     ! Now add to the emissivity the non-dust isotropic emissivity
+     !
+     ! NOTE: The factor 0.5d0*src0 is because I_orth = 0.5*(I+Q)
+     !       and I_para = 0.5*(I-Q), so both take care of 50% of
+     !       the "normal" unpolarized source term
+     !
+     aligned_jnu_opuv(1)   = 0.5d0*src0(inu)
+     aligned_jnu_opuv(2)   = 0.5d0*src0(inu)
+     aligned_jnu_opuv(3)   = 0.d0
+     aligned_jnu_opuv(4)   = 0.d0
+     !
+     ! Now add the dust scattering emissivity
+     !
+     aligned_jnu_opuv(:)   = aligned_jnu_opuv(:) + aligned_scat_opuv(:)
+     !
+     ! Now we must do a loop over the dust species
+     ! 
+     do ispec=1,dust_nr_species
+        !
+        ! Add the scattering opacity
+        !
+        ! NOTE: Here we still assume that the scattering extinction is
+        !       angle-independent! In the future, when also scattering 
+        !       off aligned grains is included, this must also be
+        !       split into orth and para
+        !
+        aligned_alpha_opuv(:) = aligned_alpha_opuv(:) + &
+             dustdens(ispec) * sources_dustkappa_s(inu,ispec)
+        !
+        ! Now for the absorption opacity
+        !
+        ! ...First get the angle-averaged absorption opacity
+        !
+        alpabs = dustdens(ispec) * sources_dustkappa_a(inu,ispec)
+        !
+        ! ...Then compute the orth and para versions
+        !
+        orth_alpabs = alpabs *                                    &
+             ( (1.d0-epspo)*sources_align_orth(iop,inu,ispec) +   &
+                      epspo*sources_align_orth(iop+1,inu,ispec) )
+        para_alpabs = alpabs *                                    &
+             ( (1.d0-epspo)*sources_align_para(iop,inu,ispec) +   &
+                      epspo*sources_align_para(iop+1,inu,ispec) )
+        !
+        ! ...Then add
+        !
+        dum = 0.5d0 * ( orth_alpabs + para_alpabs )
+        aligned_alpha_opuv(1) = aligned_alpha_opuv(1) + orth_alpabs
+        aligned_alpha_opuv(2) = aligned_alpha_opuv(2) + para_alpabs
+        aligned_alpha_opuv(3) = aligned_alpha_opuv(3) + dum
+        aligned_alpha_opuv(4) = aligned_alpha_opuv(4) + dum
+        !
+        ! Now add the polarized thermal emission of the aligned
+        ! grains
+        !
+        ! NOTE: The factor 0.5d0*bpl is because I_orth = 0.5*(I+Q)
+        !       and I_para = 0.5*(I-Q), so both take care of 50% of
+        !       the thermal emission
+        !
+        bpl = bplanck(dusttemp(ispec),sources_frequencies(inu))
+        aligned_jnu_opuv(1)   = aligned_jnu_opuv(1) + 0.5d0*orth_alpabs*bpl
+        aligned_jnu_opuv(2)   = aligned_jnu_opuv(2) + 0.5d0*para_alpabs*bpl
+     enddo
+     !
+     ! Calculate the real "source term" S_nu = j_nu / alpha_nu
+     !
+     aligned_snu_opuv(:)   = aligned_jnu_opuv(:)/(aligned_alpha_opuv(:)+1d-40)
+     !
+     ! Compute the exp(-tau) and 1-exp(-tau), where for the latter we take
+     ! special care of tau << 1.
+     !
+     exptau_opuv(:)        = exp(-aligned_alpha_opuv(:)*ds)
+     exptau1_opuv(:)       = 1.d0-exptau_opuv(:)
+     if(exptau1_opuv(1).lt.1d-5) exptau1_opuv(1) = aligned_alpha_opuv(1)*ds
+     if(exptau1_opuv(2).lt.1d-5) exptau1_opuv(2) = aligned_alpha_opuv(2)*ds
+     if(exptau1_opuv(3).lt.1d-5) exptau1_opuv(3) = aligned_alpha_opuv(3)*ds
+     if(exptau1_opuv(4).lt.1d-5) exptau1_opuv(4) = aligned_alpha_opuv(4)*ds
+     !
+     ! Now the first order integration of the RT equation
+     !
+     aligned_opuv(:)       = exptau_opuv(:)*aligned_opuv(:) +     &
+                             exptau1_opuv(:)*aligned_snu_opuv(:)
+     !
+     ! Recompute the IQUV
+     !
+     aligned_iquv(1) = aligned_opuv(1) + aligned_opuv(2)
+     aligned_iquv(2) = aligned_opuv(1) - aligned_opuv(2)
+     aligned_iquv(3) = aligned_opuv(3)
+     aligned_iquv(4) = aligned_opuv(4)
+     !
+     ! Now rotate the Stokes vector back to the original svec
+     !
+     int_iquv(1,inu) =  aligned_iquv(1)
+     int_iquv(2,inu) =  aligned_iquv(2)*cos2a - aligned_iquv(3)*sin2a
+     int_iquv(3,inu) =  aligned_iquv(2)*sin2a + aligned_iquv(3)*cos2a
+     int_iquv(4,inu) =  aligned_iquv(4)
+  enddo
+  !
+end subroutine pol_integrate_rt_aligned
+
 
 
 end module camera_module

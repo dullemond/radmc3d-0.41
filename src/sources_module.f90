@@ -163,6 +163,10 @@ subroutine sources_init(nrfreq,frequencies,secondorder,doppcatch)
         !
         ! Do a few checks for grain alignment mode
         !
+        if(rt_incl_lines) then
+           write(stdo,*) 'ERROR: If alignment_mode is switched on, then gas lines are incompatible...'
+           stop
+        endif
         if(.not.allocated(grainalign_dir)) then
            write(stdo,*) 'ERROR: If alignment_mode.ne.0 then the alignment vector ', &
                 'field must be read. Appears to be a bug in the code.'
