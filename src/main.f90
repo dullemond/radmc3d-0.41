@@ -452,6 +452,13 @@ program radmc3d
         stop
      endif
   endif
+  if(alignment_mode.ne.0) then
+     if(.not.camera_stokesvector) then
+        camera_stokesvector = .true.
+        write(stdo,*) 'Setting camera_stokesvector=.true. because ', &
+             'aligned grains mode requires full Stokes treatment.'
+     endif
+  endif
   !
   ! Handle safety settings
   !

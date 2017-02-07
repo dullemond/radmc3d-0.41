@@ -360,6 +360,32 @@ subroutine camera_init()
      stop
   endif
   !
+  ! Aligned grains are incompatible with gas lines
+  !
+  if((alignment_mode.ne.0).and.(rt_incl_lines)) then
+     write(stdo,*) 'ERROR: Grain alignment is incompatible with gas lines.'
+     stop
+  endif
+  !
+  ! Aligned grains require full Stokes
+  !
+  if((alignment_mode.ne.0).and.(.not.camera_stokesvector)) then
+     write(stdo,*) 'ERROR: Grain alignment requires full Stokes vector mode.'
+     stop
+  endif
+  !
+  ! Aligned grains (for now) only guaranteed to work if 
+  ! scattering_mode.ge.4, which automatically includes
+  ! the full Stokes vectors in the Monte Carlo module.
+  ! Maybe I will later do some checks if it can also
+  ! work if MC does not use the full Stokes, but that
+  ! is not so urgent.
+  !
+  if((alignment_mode.ne.0).and.(scattering_mode.lt.4)) then
+     write(stdo,*) 'ERROR: Grain alignment requires (at least for now) scattering_mode >= 4.'
+     stop
+  endif
+  !
   ! Check that the camera frequency array or choice of frequencies from the
   ! global frequency array is made.
   !
