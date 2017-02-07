@@ -13,7 +13,7 @@ module sources_module
   !
   ! Basic variables
   !
-  integer :: sources_nrfreq
+  integer :: sources_nrfreq,sources_align_munr
   logical :: sources_secondorder,sources_catch_doppler_line
   logical :: sources_interpol_jnu=.true.
   logical :: sources_localobserver=.false.  
@@ -25,6 +25,11 @@ module sources_module
   double precision, allocatable :: sources_dustdens(:),sources_dusttemp(:)
   double precision, allocatable :: sources_dustkappa_a(:,:),sources_dustkappa_s(:,:)
   double precision, allocatable :: sources_alpha_a(:),sources_alpha_s(:)
+  !
+  ! Arrays for the aligned grains mode
+  !
+  double precision, allocatable :: sources_align_mu(:)
+  double precision, allocatable :: sources_align_orth(:,:,:),sources_align_para(:,:,:)
   !
   !    Arrays for templates of stellar source spectra
   !
@@ -75,8 +80,8 @@ subroutine sources_init(nrfreq,frequencies,secondorder,doppcatch)
   implicit none
   integer :: nrfreq
   logical :: secondorder,doppcatch,havealignopac
-  integer :: ierr,inu,ispec,itempl,iinu
-  double precision :: temp,eps
+  integer :: ierr,inu,ispec,itempl,iinu,imu
+  double precision :: temp,eps,orth,para
   double precision :: frequencies(nrfreq)
   !
   ! Memorize nr of frequencies and order
@@ -152,12 +157,25 @@ subroutine sources_init(nrfreq,frequencies,secondorder,doppcatch)
         enddo
      endif
      !
-     ! Do a few checks for grain alignment mode
+     ! Grain alignment mode
      !
      if(alignment_mode.ne.0) then
+        !
+        ! Do a few checks for grain alignment mode
+        !
         if(.not.allocated(grainalign_dir)) then
            write(stdo,*) 'ERROR: If alignment_mode.ne.0 then the alignment vector ', &
                 'field must be read. Appears to be a bug in the code.'
+           stop
+        endif
+        if(align_munr.eq.0) then
+           write(stdo,*) 'ERROR: If alignment_mode.ne.0 then align_munr ', &
+                'must be larger than 0. Appears to be a bug in the code.'
+           stop
+        endif
+        if(.not.allocated(align_mui_grid)) then
+           write(stdo,*) 'ERROR: If alignment_mode.ne.0 then a global align_mui_grid ', &
+                'must be present. Appears to be a bug in the code.'
            stop
         endif
         havealignopac = .false.
@@ -172,6 +190,30 @@ subroutine sources_init(nrfreq,frequencies,secondorder,doppcatch)
                 'which sets the strength and shape of the alignment effect.'
            stop
         endif
+        !
+        ! Allocate the global alignfact arrays
+        !
+        sources_align_munr = align_munr
+        if(allocated(sources_align_mu)) deallocate(sources_align_mu)
+        if(allocated(sources_align_orth)) deallocate(sources_align_orth)
+        if(allocated(sources_align_para)) deallocate(sources_align_para)
+        allocate(sources_align_mu(sources_align_munr))
+        allocate(sources_align_orth(sources_align_munr,sources_nrfreq,dust_nr_species))
+        allocate(sources_align_para(sources_align_munr,sources_nrfreq,dust_nr_species))
+        !
+        ! Now fill these arrays
+        !
+        sources_align_mu(:) = align_mui_grid(:)
+        do ispec=1,dust_nr_species
+           do inu=1,nrfreq
+              do imu=1,sources_align_munr
+                 call find_dust_alignfact_interpol(sources_frequencies(inu), &
+                      sources_align_mu(imu),ispec,1,0,.true.,orth,para)
+                 sources_align_orth(imu,inu,ispec) = orth
+                 sources_align_para(imu,inu,ispec) = para
+              enddo
+           enddo
+        enddo
      endif
   endif
   !
@@ -268,6 +310,9 @@ subroutine sources_partial_cleanup()
   if(allocated(sources_dustkappa_s)) deallocate(sources_dustkappa_s)
   if(allocated(sources_alpha_a)) deallocate(sources_alpha_a)
   if(allocated(sources_alpha_s)) deallocate(sources_alpha_s)
+  if(allocated(sources_align_mu)) deallocate(sources_align_mu)
+  if(allocated(sources_align_orth)) deallocate(sources_align_orth)
+  if(allocated(sources_align_para)) deallocate(sources_align_para)
 end subroutine sources_partial_cleanup
 
 !-------------------------------------------------------------------
