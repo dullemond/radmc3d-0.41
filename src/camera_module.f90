@@ -2575,31 +2575,36 @@ subroutine camera_serial_raytrace(nrfreq,inu0,inu1,x,y,z,dx,dy,dz,distance,   &
                  stop
               endif
               !
-              ! Get the src and alp values for all process other than
-              ! dust. Note that sources_get_src_alp() knows itself
-              ! that dust has to be skipped because it checks the
-              ! alignment_mode flag.
+              ! Only do RT if iray_index.gt.0 (i.e. if we are inside a cell)
               !
-              call sources_get_src_alp(inu0,inu1,nrfreq,src,alp,camera_stokesvector)
-              !
-              ! Copy the scattering source terms to the local array (necessary
-              ! because unfortunately the index order of mcscat_scatsrc_iquv
-              ! is unconvenient).
-              !
-              idir = 1    ! For now only one vantage point
-              camera_srcscat_iquv(:,1) = mcscat_scatsrc_iquv(:,ray_index,1,idir)
-              camera_srcscat_iquv(:,2) = mcscat_scatsrc_iquv(:,ray_index,2,idir)
-              camera_srcscat_iquv(:,3) = mcscat_scatsrc_iquv(:,ray_index,3,idir)
-              camera_srcscat_iquv(:,4) = mcscat_scatsrc_iquv(:,ray_index,4,idir)
-              !
-              ! Now call the first order integration routine that takes
-              ! care of the alignment effects
-              !
-              call pol_integrate_rt_aligned(intensity,camera_dir,camera_svec,    &
-                                     grainalign_dir(:,ray_index),inu0,inu1,      &
-                                     src,alp,camera_srcscat_iquv,                &
-                                     dustdens(:,ray_index),dusttemp(:,ray_index),&
+              if(ray_index.gt.0) then
+                 !
+                 ! Get the src and alp values for all process other than
+                 ! dust. Note that sources_get_src_alp() knows itself
+                 ! that dust has to be skipped because it checks the
+                 ! alignment_mode flag.
+                 !
+                 call sources_get_src_alp(inu0,inu1,nrfreq,src,alp,camera_stokesvector)
+                 !
+                 ! Copy the scattering source terms to the local array (necessary
+                 ! because unfortunately the index order of mcscat_scatsrc_iquv
+                 ! is unconvenient).
+                 !
+                 idir = 1    ! For now only one vantage point
+                 camera_srcscat_iquv(:,1) = mcscat_scatsrc_iquv(:,ray_index,1,idir)
+                 camera_srcscat_iquv(:,2) = mcscat_scatsrc_iquv(:,ray_index,2,idir)
+                 camera_srcscat_iquv(:,3) = mcscat_scatsrc_iquv(:,ray_index,3,idir)
+                 camera_srcscat_iquv(:,4) = mcscat_scatsrc_iquv(:,ray_index,4,idir)
+                 !
+                 ! Now call the first order integration routine that takes
+                 ! care of the alignment effects
+                 !
+                 call pol_integrate_rt_aligned(intensity,camera_dir,camera_svec,  &
+                                     grainalign_dir(:,ray_index),inu0,inu1,       &
+                                     src,alp,camera_srcscat_iquv,                 &
+                                     dustdens(:,ray_index),dusttemp(:,ray_index), &
                                      ray_ds)
+              endif
            endif
         endif
      elseif(camera_incl_stars.ne.0) then
