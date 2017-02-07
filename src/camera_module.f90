@@ -2543,6 +2543,10 @@ subroutine camera_serial_raytrace(nrfreq,inu0,inu1,x,y,z,dx,dy,dz,distance,   &
 
 
 
+              call pol_integrate_rt_aligned(int_iquv,dir,svec,aligndir,inu0,inu1,       &
+                                    src0,alp0,srcscat_iquv,dustdens,dusttemp,ds)
+
+
 
 
 
@@ -6641,9 +6645,9 @@ subroutine pol_integrate_rt_aligned(int_iquv,dir,svec,aligndir,inu0,inu1,       
                                     src0,alp0,srcscat_iquv,dustdens,dusttemp,ds)
   implicit none
   integer :: iop,inu0,inu1,inu,ispec
-  double precision :: int_iquv(1:4,1:sources_nrfreq)
+  double precision :: int_iquv(1:sources_nrfreq,1:4)
   double precision :: src0(1:sources_nrfreq),alp0(1:sources_nrfreq)
-  double precision :: srcscat_iquv(1:4,1:sources_nrfreq)
+  double precision :: srcscat_iquv(1:sources_nrfreq,1:4)
   double precision :: dustdens(1:dust_nr_species),dusttemp(1:dust_nr_species)
   double precision :: dir(1:3),svec(1:3),aligndir(1:3),ds,freq
   double precision :: salign(1:3),dum
@@ -6761,10 +6765,10 @@ subroutine pol_integrate_rt_aligned(int_iquv,dir,svec,aligndir,inu0,inu1,       
      !
      ! Rotate the Stokes vector of the incoming photon to the new S-vector
      !
-     aligned_iquv(1) =  int_iquv(1,inu)
-     aligned_iquv(2) =  int_iquv(2,inu)*cos2a + int_iquv(3,inu)*sin2a
-     aligned_iquv(3) = -int_iquv(2,inu)*sin2a + int_iquv(3,inu)*cos2a
-     aligned_iquv(4) =  int_iquv(4,inu)
+     aligned_iquv(1) =  int_iquv(inu,1)
+     aligned_iquv(2) =  int_iquv(inu,2)*cos2a + int_iquv(inu,3)*sin2a
+     aligned_iquv(3) = -int_iquv(inu,2)*sin2a + int_iquv(inu,3)*cos2a
+     aligned_iquv(4) =  int_iquv(inu,4)
      !
      ! Now change from Stokes IQUV to OPUV with O being orthogonal
      ! to the alignment direction salign, and P being parallel
@@ -6777,10 +6781,10 @@ subroutine pol_integrate_rt_aligned(int_iquv,dir,svec,aligndir,inu0,inu1,       
      !
      ! Now rotate the Stokes vector of the scattering source to the new S-vector
      !
-     aligned_scat_iquv(1) =  srcscat_iquv(1,inu)
-     aligned_scat_iquv(2) =  srcscat_iquv(2,inu)*cos2a + srcscat_iquv(3,inu)*sin2a
-     aligned_scat_iquv(3) = -srcscat_iquv(2,inu)*sin2a + srcscat_iquv(3,inu)*cos2a
-     aligned_scat_iquv(4) =  srcscat_iquv(4,inu)
+     aligned_scat_iquv(1) =  srcscat_iquv(inu,1)
+     aligned_scat_iquv(2) =  srcscat_iquv(inu,2)*cos2a + srcscat_iquv(inu,3)*sin2a
+     aligned_scat_iquv(3) = -srcscat_iquv(inu,2)*sin2a + srcscat_iquv(inu,3)*cos2a
+     aligned_scat_iquv(4) =  srcscat_iquv(inu,4)
      !
      ! Now change from Stokes IQUV to OPUV with O being orthogonal
      ! to the alignment direction salign, and P being parallel
@@ -6888,10 +6892,10 @@ subroutine pol_integrate_rt_aligned(int_iquv,dir,svec,aligndir,inu0,inu1,       
      !
      ! Now rotate the Stokes vector back to the original svec
      !
-     int_iquv(1,inu) =  aligned_iquv(1)
-     int_iquv(2,inu) =  aligned_iquv(2)*cos2a - aligned_iquv(3)*sin2a
-     int_iquv(3,inu) =  aligned_iquv(2)*sin2a + aligned_iquv(3)*cos2a
-     int_iquv(4,inu) =  aligned_iquv(4)
+     int_iquv(inu,1) =  aligned_iquv(1)
+     int_iquv(inu,2) =  aligned_iquv(2)*cos2a - aligned_iquv(3)*sin2a
+     int_iquv(inu,3) =  aligned_iquv(2)*sin2a + aligned_iquv(3)*cos2a
+     int_iquv(inu,4) =  aligned_iquv(4)
   enddo
   !
 end subroutine pol_integrate_rt_aligned
