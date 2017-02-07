@@ -6651,7 +6651,7 @@ subroutine pol_integrate_rt_aligned(int_iquv,dir,svec,aligndir,inu0,inu1,       
   double precision :: aligned_scat_iquv(1:4),aligned_scat_opuv(1:4)
   double precision :: cosa,sina,cos2a,sin2a,cosb
   double precision :: alpabs,para_alpabs,orth_alpabs,epspo,bpl
-  double precision :: aligned_alpha_opuv(1:4),aligned_jnu_opuv(1:4)
+  double precision :: aligned_alpha_opuv(1:4),aligned_jnu_opuv(1:4),xp(1:4)
   double precision :: aligned_snu_opuv(1:4),exptau_opuv(1:4),exptau1_opuv(1:4)
   !
   !################################
@@ -6866,12 +6866,13 @@ subroutine pol_integrate_rt_aligned(int_iquv,dir,svec,aligndir,inu0,inu1,       
      ! Compute the exp(-tau) and 1-exp(-tau), where for the latter we take
      ! special care of tau << 1.
      !
-     exptau_opuv(:)        = exp(-aligned_alpha_opuv(:)*ds)
+     xp(:)                 = aligned_alpha_opuv(:)*ds
+     exptau_opuv(:)        = exp(-xp(:))
      exptau1_opuv(:)       = 1.d0-exptau_opuv(:)
-     if(exptau1_opuv(1).lt.1d-5) exptau1_opuv(1) = aligned_alpha_opuv(1)*ds
-     if(exptau1_opuv(2).lt.1d-5) exptau1_opuv(2) = aligned_alpha_opuv(2)*ds
-     if(exptau1_opuv(3).lt.1d-5) exptau1_opuv(3) = aligned_alpha_opuv(3)*ds
-     if(exptau1_opuv(4).lt.1d-5) exptau1_opuv(4) = aligned_alpha_opuv(4)*ds
+     if(xp(1).lt.1d-5) exptau1_opuv(1) = xp(1)
+     if(xp(2).lt.1d-5) exptau1_opuv(2) = xp(2)
+     if(xp(3).lt.1d-5) exptau1_opuv(3) = xp(3)
+     if(xp(4).lt.1d-5) exptau1_opuv(4) = xp(4)
      !
      ! Now the first order integration of the RT equation
      !
