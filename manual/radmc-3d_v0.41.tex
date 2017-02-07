@@ -2601,12 +2601,11 @@ It is important to distinguish between two situations:
     be isotropic. Moreover, they are no longer scalar: they are described
     by a non-trivial M\"uller matrix.
   \end{itemize}
-  The complexity of this case is rather large, and a proper treatment
-  requires substantial departures of the standard structure of the scalar
-  radiative transfer method in RADMC-3D. In particular this requires 
-  drastic changes in the Monte Carlo module. We may, at some point,
-  include this in its full glory in RADMC-3D, but for now we will 
-  not allow aligned grains.
+  The complexity of this case is rather large. As of version 0.41 we
+  have included polarized thermal emission by aligned grains (see
+  Section \ref{sec-polarized-thermal-emission}), and we will
+  implement more of the above mentioned aspects of aligned grains
+  step by step.
 \end{enumerate}
  
 \subsection{Definitions and conventions for Stokes vectors}
@@ -3609,7 +3608,7 @@ will be different for the orthogonal (horizontal) and parallel (vertical)
 Stokes components. That is easy to include in this formalism.
 
 
-\subsection{Input file for RADMC-3D}
+\subsection{Input files for RADMC-3D for aligned grains}
 In RADMC-3D we implement the functions $\kappa_{\mathrm{abs},\nu,h}$ and
 $\kappa_{\mathrm{abs},\nu,v}$ as a function of angle $\theta$ which the
 alignment axis makes with the light of sight. For $\theta$ we see the oblate
@@ -3677,8 +3676,17 @@ not have to be the same) as those in the {\small\tt dustkapscatmat\_*.inp}
 file. But the wavelength grid must be identical to the one in 
 the {\small\tt dustkapscatmat\_*.inp} file.
 
-In addition to the {\small\tt dustkapalignfact\_*.inp} for each dust
-species, RADMC-3D also needs to know the orientation direction of the
+Note that at this moment (February 2017) the alignment is assumed to be
+always perfect. So the {\small\tt dustkapalignfact\_*.inp} file gives
+the angular dependency of the absorption opacity everywhere in the model.
+In practice it can well be that some regions in your model the alignment
+is more effective while in other regions it is less strong (i.e.\ a larger
+percentage of the grains is not very well aligned). 
+
+{\em Implementing space-varying degree of alignment is still on the todo
+  list.}
+
+In addition, RADMC-3D also needs to know the orientation direction of the
 grains. This is a vector field $\vec n_{\mathrm{align}}(\vec x)$ which
 should consist of unit-length vectors. They only give the direction in which
 the alignment occurs, not the degree of alignment (in future versions this
@@ -3694,11 +3702,6 @@ n_x[1]       n_y[1]       n_z[1]
 ..
 n_x[nrcells] n_y[nrcells] n_z[nrcells]
 \end{verbatim}}
-
-
-
-%\section{A simple model for an oblate grain}
-%In principle one can compute 
 
 \subsection{Effect of aligned grains on the scattering}
 \label{sec-align-scat}
