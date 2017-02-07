@@ -7991,3 +7991,12 @@ finetuning: I noticed during some testing with a supersimple annulus model
             para factors as a function of cos(angle) and frequency,
             call the rt routine. Still lots of stuff to do.
 
+07.02.2017  ADDED ALIGNED GRAIN THERMAL EMISSION
+  ++++++    polarization_module.f90, camera_module.f90,
+            sources_module.f90, dust_module.f90 
+            Added the possibility to treat, in simplified form,
+            the thermal absorption and emission by aligned
+            grains.
+
+            ---> Compiles, but is still untested!
+

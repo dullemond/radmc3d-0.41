@@ -183,7 +183,7 @@ in the testing phase are marked with [t].
     \item[][+] Regular
     \item[][+] Adaptive Mesh Refinement: oct-tree style
     \item[][+] Adaptive Mesh Refinement: layered ('patch') style
-    \item[][.] Tetrahedral gridding {\em [being developed]}
+    %\item[][.] Tetrahedral gridding {\em [being developed]}
     \item[][-] Voronoi gridding {\em [To be implemented on request]}
   \end{itemize}
 \item Radiation mechanisms:
@@ -192,11 +192,12 @@ in the testing phase are marked with [t].
     \item[][t] Dust continuum scattering:
       \begin{itemize}
       \item[][+] ...in isotropic approximation
-      \item[][t] ...with full anisotropy
+      \item[][+] ...with full anisotropy
+      \item[][+] ...with full Stokes and Polarization
       \end{itemize}
     \item[][-] Dust quantum heated grains {\em [To be implemented on request]}
-    \item[][.] Polarized dust emission {\em [being developed]}
-    \item[][-] Polarized line emission {\em [planned]}
+    \item[][t] Polarized dust emission by aligned grains {\em [first test version]}
+    %\item[][-] Polarized line emission {\em [planned]}
     \item[][+] Gas line transfer (LTE)
     \item[][+] Gas line transfer (non-LTE: LVG)
     \item[][+] Gas line transfer (non-LTE: LVG + Escape Probability)
@@ -3145,6 +3146,567 @@ without this mode but with a huge number of photon packages to compensate -
 just to check if there are no bugs or other subtleties. You can switch the
 mode off by setting {\small\tt mc\_weighted\_photons}=0 in the {\small\tt
   radmc3d.inp} file.
+
+
+\section{Polarized emission and absorption by aligned grains}
+\label{sec-polarized-thermal-emission}
+%
+{\bf NOTE: This mode is still in the testing phase (February 2017)!}
+
+Grain alignment and its effects on radiative transfer is a complex topic. A
+review is e.g.~Andersson, B.G., Lazarian, A., \& Vaillancourt, J.E.\ (2015)
+``Interstellar Dust Grain Alignment'', Annual Review of Astronomy and
+Astrophysics, 53(1), 501–539. In RADMC-3D grain alignment is included only
+in a limited form. First and foremost: RADMC-3D does not know about the
+physics {\em causing} the grain alignment. You, the user, will have to tell
+how the grain are aligned by giving the code a directional vector field and
+for each wavelength the degree to which the grain is aligned to that
+directional vector (more on this later). This is according to the RADMC-3D
+philosophy of doing {\em only} the radiative transfer and leaving the
+physics of the material to the user.
+
+\subsection{Basics}
+\label{sec-basic-equations}
+%
+Suppose we have flattened (oblate) ellipsoidal grains with one axis of
+symmetry and no helicity\footnote{While helicity may be needed to
+  radiatively spin up grains, we assume that on average the helicity of the
+  grains is zero.}. Let us assume that they are aligned with that symmetry
+axis along the $y$-axis. We view radiation from the point where the $z$-axis
+points toward us. Horizontally polarized light (which has $E$-field in
+horizontal direction, i.e.\ in $x$-direction) has $Q/I=+1$, vertically
+polarized light (with the $\vec E$ vector aligned with the symmetry axis of
+the grain) has $Q/I=-1$. We can then assume that the dust has different
+extinction coefficients for the horizontal and vertical axis. Let us call
+these:
+\begin{eqnarray}
+\alpha_{\mathrm{abs},\nu,\mathrm{h}} &\equiv& \rho_d\kappa_{\mathrm{abs},\nu,\mathrm{h}}\\
+\alpha_{\mathrm{abs},\nu,\mathrm{v}} &\equiv& \rho_d\kappa_{\mathrm{abs},\nu,\mathrm{v}}
+\end{eqnarray}
+%The 'E' stands for electric field, the 'M' for magnetic field. These are the
+%nomenclature of Wolf et al.~A\&A 385, 365 (2002). {\em Question: Check out
+%if his E and M are not swapped...}
+
+We can define $I$, $Q$, $U$ and $V$ in terms of the electric field
+components $E_x$ and $E_y$. The electric field components for a perfectly
+coherent wave can be written as
+\begin{eqnarray}
+E_x&=&E_{x,0}\cos(\omega t-\Delta_x)\\
+E_y&=&E_{y,0}\cos(\omega t-\Delta_y)
+\end{eqnarray}
+where $\Delta_x$ and $\Delta_y$ are phase lags. The phase lag between
+the $y$ and $x$-fields is $\Delta=\Delta_y-\Delta_x$, meaning that for
+positive $\Delta$ the $y$-field lags behind the $x$-field. We then 
+define the Stokes components as:
+\begin{eqnarray}
+I &=& E_{x,0}^2+E_{y,0}^2\label{eq-def-stokes-i}\\
+Q &=& E_{x,0}^2-E_{y,0}^2\label{eq-def-stokes-q}\\
+U &=& 2E_{x,0}E_{y,0}\cos\Delta\label{eq-def-stokes-u}\\
+V &=& 2E_{x,0}E_{y,0}\sin\Delta\label{eq-def-stokes-v}
+\end{eqnarray}
+Note that for $V=I$ ($\Delta=\pi/2$, i.e.\ the $E_y$ lags $\pi/2$ behind
+$E_x$) we have {\em right-handed} circularly polarized light, meaning that
+the tip of the $\vec E$ field at a fixed point in space, when looking into
+the light (the propagation of light is toward the reader) rotates
+counter-clockwise (when the $x$-coordinate points right, and the
+$y$-coordinate points up). The 3-D helix of his field will be {\em
+  left-handed} (when the z-coordinate points into the propagation direction
+of the light, i.e. toward the reader, i.e.\ a right-handed coordinate
+system). For $Q=I$ we have linearly polarized light in which the $\vec
+E$-field lies in the $x$-direction. For $U=I$ we have linearly polarized
+light in which $\vec E$ lies along the $x=y$ line (when looking into the
+light). These definitions are consistent with the IAU 1974 definitions
+(Hamaker \& Bregman 1996, A\&AS 117, pp.161).
+
+The $E_x$ and $E_y$ get absorbed in the following way:
+\begin{eqnarray}
+E_{x,0}' &=& E_{x,0} e^{-\tfrac{1}{2}\alpha_{\mathrm{abs},\nu,\mathrm{h}}s}\\
+E_{y,0}' &=& E_{y,0} e^{-\tfrac{1}{2}\alpha_{\mathrm{abs},\nu,\mathrm{v}}s}
+\end{eqnarray}
+where $s$ is a length along the ray.
+
+For this kind of problem it is convenient to introduce the so-called {\em
+  modified Stokes parameters} $I_{\mathrm{h}}$ and $I_{\mathrm{v}}$:
+\begin{eqnarray}
+I_{\mathrm{h}} &=& \frac{1}{2}(I+Q)\label{eq-modif-stokes-h}\\
+I_{\mathrm{v}} &=& \frac{1}{2}(I-Q)\label{eq-modif-stokes-v}
+\end{eqnarray}
+so that we have 
+\begin{eqnarray}
+I &=& I_{\mathrm{h}}+I_{\mathrm{v}}\\
+Q &=& I_{\mathrm{h}}-I_{\mathrm{v}}
+\end{eqnarray}
+so that one can say, for perfectly coherent light,
+\begin{eqnarray}
+I_{\mathrm{h}} &=& E_{x,0}^2\\
+I_{\mathrm{v}} &=& E_{y,0}^2
+\end{eqnarray}
+With this we get the following extinction law:
+\begin{eqnarray}
+I_{\mathrm{h}}' &=& I_{\mathrm{h}} e^{-\alpha_{\mathrm{abs},\nu,\mathrm{h}}s}\\
+I_{\mathrm{v}}' &=& I_{\mathrm{v}} e^{-\alpha_{\mathrm{abs},\nu,\mathrm{v}}s}
+\end{eqnarray}
+
+How do $U$ and $V$ extinct? If we use Eqs.~(\ref{eq-def-stokes-u},
+\ref{eq-def-stokes-v}), and assume that the phase lag $\Delta$ will not
+change during the extinction, then 
+\begin{equation}
+\begin{split}
+U' &= U e^{-\tfrac{1}{2}\alpha_{\mathrm{abs},\nu,\mathrm{h}}s} e^{-\tfrac{1}{2}\alpha_{\mathrm{abs},\nu,\mathrm{v}}s}\\
+&=U e^{-\tfrac{1}{2}(\alpha_{\mathrm{abs},\nu,\mathrm{h}}+\alpha_{\mathrm{abs},\nu,\mathrm{v}})s}
+\end{split}
+\end{equation}
+This means that 
+\begin{equation}
+\alpha_{\mathrm{abs},\nu,\mathrm{uv}} =
+\frac{1}{2}\left(\alpha_{\mathrm{abs},\nu,\mathrm{h}}+\alpha_{\mathrm{abs},\nu,\mathrm{v}}\right)
+\end{equation}
+and
+\begin{eqnarray}
+I_{\mathrm{u}}' &=& I_{\mathrm{u}} e^{-\alpha_{\mathrm{abs},\nu,\mathrm{uv}}s}\\
+I_{\mathrm{v}}' &=& I_{\mathrm{v}} e^{-\alpha_{\mathrm{abs},\nu,\mathrm{uv}}s}
+\end{eqnarray}
+In matrix notation
+\begin{equation}
+\frac{d}{ds}
+\left(\begin{matrix}
+I_{\mathrm{h}} \\
+I_{\mathrm{v}} \\
+U \\
+V \\
+\end{matrix}\right)
+= - 
+\left(\begin{matrix}
+\alpha_{\mathrm{h}} & 0 & 0 & 0 \\
+0 & \alpha_{\mathrm{v}} & 0 & 0  \\
+0 & 0 & \alpha_{\mathrm{uv}} & 0 \\
+0 & 0 & 0 & \alpha_{\mathrm{uv}} \\
+\end{matrix}\right)
+\left(\begin{matrix}
+I_{\mathrm{h}} \\
+I_{\mathrm{v}} \\
+U \\
+V \\
+\end{matrix}\right)
+\end{equation}
+If we translate this to the usual Stokes components we get
+\begin{equation}
+\frac{d}{ds}
+\left(\begin{matrix}
+I \\
+Q \\
+U \\
+V \\
+\end{matrix}\right)
+= - 
+\left(\begin{matrix}
+\alpha_1 & \alpha_2 & 0 & 0 \\
+\alpha_2 & \alpha_1 & 0 & 0  \\
+0 & 0 & \alpha_1 & 0 \\
+0 & 0 & 0 & \alpha_1 \\
+\end{matrix}\right)
+\left(\begin{matrix}
+I \\
+Q \\
+U \\
+V \\
+\end{matrix}\right)
+\end{equation}
+with
+\begin{eqnarray}
+\alpha_1 &=& \frac{1}{2}\left(\alpha_{\mathrm{abs},\nu,\mathrm{h}}+\alpha_{\mathrm{abs},\nu,\mathrm{v}}\right) 
+= \alpha_{\mathrm{abs},\nu,\mathrm{uv}}\\
+\alpha_2 &=& \frac{1}{2}\left(\alpha_{\mathrm{abs},\nu,\mathrm{h}}-\alpha_{\mathrm{abs},\nu,\mathrm{v}}\right) 
+\end{eqnarray}
+
+The emission will be also independently in horizontal and vertical
+direction. But nothing will be emitted in U or V direction. So it is most
+convenient to express the emission/absorption process in terms of the
+modified Stokes parameters:
+\begin{eqnarray}
+\frac{dI_{\nu,\mathrm{h}}}{ds} &=& \alpha_{\mathrm{abs},\nu,\mathrm{h}} (\frac{1}{2}B_\nu(T)-I_{\nu,\mathrm{h}}) \\
+\frac{dI_{\nu,\mathrm{v}}}{ds} &=& \alpha_{\mathrm{abs},\nu,\mathrm{v}} (\frac{1}{2}B_\nu(T)-I_{\nu,\mathrm{v}}) \\
+\frac{dU_{\nu}}{ds} &=& -\alpha_{\mathrm{abs},\nu,\mathrm{uv}} U_{\nu} \\
+\frac{dV_{\nu}}{ds} &=& -\alpha_{\mathrm{abs},\nu,\mathrm{uv}} V_{\nu}
+\end{eqnarray}
+In terms of matrix notation this becomes
+\begin{equation}\label{eq-formal-rt-emisabs-in-rotated-system}
+\frac{d}{ds}
+\left(\begin{matrix}
+I_{\mathrm{h}} \\
+I_{\mathrm{v}} \\
+U \\
+V \\
+\end{matrix}\right)
+= \left(\begin{matrix}
+\tfrac{1}{2}\alpha_{\mathrm{h}} B_\nu(T) \\
+\tfrac{1}{2}\alpha_{\mathrm{v}} B_\nu(T) \\
+0 \\
+0 \\
+\end{matrix}\right)
+- 
+\left(\begin{matrix}
+\alpha_{\mathrm{h}} & 0 & 0 & 0 \\
+0 & \alpha_{\mathrm{v}} & 0 & 0  \\
+0 & 0 & \alpha_{\mathrm{uv}} & 0 \\
+0 & 0 & 0 & \alpha_{\mathrm{uv}} \\
+\end{matrix}\right)
+\left(\begin{matrix}
+I_{\mathrm{h}} \\
+I_{\mathrm{v}} \\
+U \\
+V \\
+\end{matrix}\right)
+\end{equation}
+In terms of the normal Stokes parameters this becomes
+\begin{equation}
+\frac{d}{ds}
+\left(\begin{matrix}
+I \\
+Q \\
+U \\
+V \\
+\end{matrix}\right)
+= \left(\begin{matrix}
+\alpha_1 B_\nu(T) \\
+\alpha_2 B_\nu(T) \\
+0 \\
+0 \\
+\end{matrix}\right)
+- 
+\left(\begin{matrix}
+\alpha_1 & \alpha_2 & 0 & 0 \\
+\alpha_2 & \alpha_1 & 0 & 0  \\
+0 & 0 & \alpha_1 & 0 \\
+0 & 0 & 0 & \alpha_1 \\
+\end{matrix}\right)
+\left(\begin{matrix}
+I \\
+Q \\
+U \\
+V \\
+\end{matrix}\right)
+\end{equation}
+or written slightly differently:
+\begin{equation}
+\frac{d}{ds}
+\left(\begin{matrix}
+I \\
+Q \\
+U \\
+V \\
+\end{matrix}\right)
+=  
+\left(\begin{matrix}
+\alpha_1 & \alpha_2 & 0 & 0 \\
+\alpha_2 & \alpha_1 & 0 & 0  \\
+0 & 0 & \alpha_1 & 0 \\
+0 & 0 & 0 & \alpha_1 \\
+\end{matrix}\right)
+\left[
+\left(\begin{matrix}
+B_\nu(T) \\
+0 \\
+0 \\
+0 \\
+\end{matrix}\right)
+-\left(\begin{matrix}
+I \\
+Q \\
+U \\
+V \\
+\end{matrix}\right)\right]
+\end{equation}
+
+
+So to sum things up: We need only the absorption opacity for light with
+$\vec E$ perpencidular to the symmetry axis ($\kappa_{\mathrm{abs},\nu,h}$)
+and the absorption opacity for light with $\vec E$ parallel to the symmetry
+axis ($\kappa_{\mathrm{abs},\nu,v}$).
+
+% However, there is still a little catch: The grain can have an angle $\xi$
+% with respect to the $y$-axis in the $y-z$ plane. We define the angle $\xi$
+% such that the symmetry axis of the grain $\vec n$ is:
+% \begin{equation}
+% \vec n=\left(\begin{matrix}
+% 0 \\
+% \cos\xi \\
+% \sin\xi
+% \end{matrix}\right)
+% \end{equation}
+% Note that we can always rotate away any angle in the $x-y$-plane, so we only
+% need to worry about the angle in the $y-z$-plane. So for every frequency
+% $\nu$, for every angle $\xi$ we must specify $\kappa_{\mathrm{h}}$
+% (perpendicular to $\vec n$) and $\kappa_{\mathrm{v}}$ (parallel to $\vec
+% n$).
+
+
+\subsection{Implementation in RADMC-3D}
+\subsubsection{Polarized emission as source term in the Monte Carlo simulation}
+{\em At the moment this is not yet implemented...}
+
+\subsubsection{Polarized emission in the images and spectra}
+When creating images (and spectra) the {\small\tt camera} module of RADMC-3D
+performs a ray-tracing calculation (``volume renderung'') through the grid.
+Normally (for randomly oriented grains) the extinction along the line of
+sight is always unpolarized, i.e.\ each Stokes component is extincted
+equally much. The thermal emission along the line of sight is also
+unpolarized. 
+
+Now, however, we wish to include the effect of grain alignment in the
+ray-tracing. We assume that at position $\vec x$ in the grid our oblate
+grain is aligned such that the minor axis points in the direction of the
+orientation vector $\vec n_{\mathrm{align}}(\vec x)$. If the grain is
+prolate, we assume that it spins along one of its minor axes such that this
+spin axis is pointing along $\vec n_{\mathrm{align}}(\vec x)$, so that, in
+effect, it acts as if it were an oblate grain again. In practice the
+alignment vector $\vec n_{\mathrm{align}}(\vec x)$ does not lie always in
+the plane of the sky of the observer. Instead it will have an angle $\theta$
+with the line-of-sight direction vector $\vec n_{\mathrm{los}}$ (note that
+this $\theta$ angle is different from the scattering angle $\theta$), 
+defined as
+\begin{equation}
+\cos\theta \equiv = \left|\vec n_{\mathrm{align}}\cdot 
+\vec n_{\mathrm{los}}\right|
+\end{equation}
+Here we assume that the grains have top/bottom symmetry so that we only
+have to concern ourselves with the positive values of $\cos\theta$, hence
+the $||$. If $\cos\theta=1$ then we see the oblate grain from the top or
+the bottom, so that we do not expect any polarized emission. The strongest
+polarized emission is expected when $\cos\theta=0$, which means that the 
+oblate grain is seen edge-on. 
+
+We can now define the ``projected alignment vector'' $\vec
+n_{\mathrm{align,proj}}$, which is the alignment vector projected into
+the image plane:
+\begin{equation}
+\vec n_{\mathrm{align,proj}} = \vec n_{\mathrm{align}} - (\vec n_{\mathrm{align}}\cdot 
+\vec n_{\mathrm{los}})\;\vec n_{\mathrm{los}}
+\end{equation}
+To use the equations from Section \ref{sec-basic-equations} we must first
+rotate our image plane coordinates $(x,y)$ to new coordinates $(x',y')$ such
+that the $y'$ (vertical) direction points along the $\vec
+n_{\mathrm{align,proj}}$ vector while the $x'$ (horizontal) direction points
+perpendicular to it. Let us write the Stokes vector of the radiation along
+the line of sight
+$(I_{\mathrm{in}},Q_{\mathrm{in}},U_{\mathrm{in}},V_{\mathrm{in}})$, where
+we implicitly know that these are also a function of frequency $\nu$. This
+Stokes vector is defined with respect to the vector $\vec S$ which is
+perpendicular to the line-of-sight direction vector $\vec n_{\mathrm{los}}$
+and defines the direction in which the $y$-coordinate of the image plane
+points. We must now express this incoming radiation (at the start of the
+segment) in the new $(x',y')$ image plane coordinates, i.e.~with respect to
+the new vector $\vec S'$ that points along $\vec n_{\mathrm{align,proj}}$
+(i.e.~$\vec S'$ is the normalized version of $\vec
+n_{\mathrm{align,proj}}$). This rotation is performed using
+\begin{equation}\label{eq-rot-stokes-align}
+\left(\begin{matrix}
+I'\\Q'\\U'\\V'
+\end{matrix}\right)
+=
+\left(\begin{matrix}
+1 & 0 & 0 & 0 \\
+0 & \cos(2\alpha) & \sin(2\alpha) & 0 \\
+0 & -\sin(2\alpha) & \cos(2\alpha) & 0 \\
+0 & 0 & 0 & 1
+\end{matrix}\right)
+\left(\begin{matrix}
+I_{\mathrm{in}}\\Q_{\mathrm{in}}\\U_{\mathrm{in}}\\V_{\mathrm{in}}
+\end{matrix}\right)
+\end{equation}
+where $\alpha$ is the angle between $\vec S'$ and $\vec S$ such that if (as
+seen by the observer) $\vec S'$ lies counter-clockwise from $\vec S$,
+$\alpha$ is positive (the usual definition). With this new Stokes vector
+$(I',Q',U',V')$ we will now use the equations of Section
+\ref{sec-basic-equations}. 
+
+To be able to perform this rotation in a uniquely defined way, it is
+necessary that along each segment along the line of sight this new $(x',y')$
+orientation stays fixed (but can vary from segment to segment). As the
+line-of-sight ray enters a cell and leaves it again, this line element
+(segment) will have its image-plane coordinates rotated according to the
+alignment vector of that cell. As a result, the integration must be done
+first order (assuming all source terms to be constant along the segment).
+In principle second order integration would also be possible, but then the
+trick with the rotation of the image coordinate plane such that $y'$ points
+along the orientation vector does no longer work, and the integration of the
+formal transfer equation would become much more complex, involving the full
+M\"uller matrix formulation. We will not do this, so we will stick to first
+order integration of Eq.~\ref{eq-formal-rt-emisabs-in-rotated-system}.
+
+For convenience we will leave out the primes (') from here on, so while we
+write $(I,Q,U,V)$ we mean in fact $(I',Q',U',V')$. We now compute
+$I_{\mathrm{h}}$ and $I_{\mathrm{v}}$ using Eqs.~(\ref{eq-modif-stokes-h},
+\ref{eq-modif-stokes-v}). Now, along this segment of the ray, we can write
+Eq.~\ref{eq-formal-rt-emisabs-in-rotated-system} in the following form:
+\begin{equation}\label{eq-firstorder-int-emisabs}
+\frac{d}{ds}
+\left(\begin{matrix}
+I_{\mathrm{h}} \\
+I_{\mathrm{v}} \\
+U \\
+V \\
+\end{matrix}\right)
+= 
+\left(\begin{matrix}
+\alpha_{\mathrm{h}} & 0 & 0 & 0 \\
+0 & \alpha_{\mathrm{v}} & 0 & 0  \\
+0 & 0 & \alpha_{\mathrm{uv}} & 0 \\
+0 & 0 & 0 & \alpha_{\mathrm{uv}} \\
+\end{matrix}\right)
+\left[
+\left(\begin{matrix}
+\tfrac{1}{2} B_\nu(T) \\
+\tfrac{1}{2} B_\nu(T) \\
+0 \\
+0 \\
+\end{matrix}\right)
+- 
+\left(\begin{matrix}
+I_{\mathrm{h}} \\
+I_{\mathrm{v}} \\
+U \\
+V \\
+\end{matrix}\right)\right]
+\end{equation}
+It becomes clear that it is easy to perform the first order 
+integration of this equation along this ray segment:
+\begin{eqnarray}
+I_{\mathrm{h,end}} &=&  e^{-\tau_h}I_{\mathrm{h,start}} + \tfrac{1}{2}e^{-\tau_h}B_\nu(T)\\
+I_{\mathrm{v,end}} &=&  e^{-\tau_v}I_{\mathrm{v,start}} + \tfrac{1}{2}e^{-\tau_v}B_\nu(T) \\
+U_{\mathrm{end}} &=&    e^{-\tau_{uv}}U_{\mathrm{start}}\\
+V_{\mathrm{end}} &=&    e^{-\tau_{uv}}V_{\mathrm{start}}
+\end{eqnarray}
+where ``start'' stands for the start of the ray segment, and ``end'' the end
+of the ray segment (which becomes the start of the next ray segment), and
+$\tau_h=\alpha_{\mathrm{h}}\Delta s$, $\tau_v=\alpha_{\mathrm{v}}\Delta s$
+and $\tau_{uv}=\alpha_{\mathrm{uv}}\Delta s$, with $\Delta s$ being the
+length of the segment.
+
+We now compute $I_{\mathrm{end}}$ and $Q_{\mathrm{end}}$, and rotate back to
+the $(x,y)$ image plane coordinate system (i.e.~using $\vec S$ instead of
+$\vec S'$ to define the Stokes parameters) by applying
+Eq.~\ref{eq-rot-stokes-align} but now with $\alpha\rightarrow -\alpha$, and
+we have the values of the Stokes parameter at the end of the ray
+segment. Now we repeat this whole procedure for the next ray segment.
+
+
+\subsection{Consistency with other radiative processes}
+The above equations assume that the absorption/emission is the only
+radiative process included. However, in practice we also have other
+processes involved, such as line emission/absorption or the scattering
+source function. The way this can be treated here is to simply add these
+additional opacities to all four components of the extinction matrix of
+Eq.~(\ref{eq-formal-rt-emisabs-in-rotated-system}) and to add the additional
+emissivities to the vector with the Planck functions in
+Eq.~(\ref{eq-formal-rt-emisabs-in-rotated-system}). For the scattered light
+emissivity (which is a Stokes vector) we must also first perform a rotation
+from $\vec S$ to $\vec S'$ using the Stokes rotation formula of
+Eq.~(\ref{eq-rot-stokes-align}) before we add this emissivity to the
+equation. If we include the effect of alignment on the scattering
+(see Section \ref{sec-align-scat}) then also the scattering extinction
+will be different for the orthogonal (horizontal) and parallel (vertical)
+Stokes components. That is easy to include in this formalism.
+
+
+\subsection{Input file for RADMC-3D}
+In RADMC-3D we implement the functions $\kappa_{\mathrm{abs},\nu,h}$ and
+$\kappa_{\mathrm{abs},\nu,v}$ as a function of angle $\theta$ which the
+alignment axis makes with the light of sight. For $\theta$ we see the oblate
+grain from the top (face-on), so that there is no asymmetry between
+horizontal (orthogonal to the alignment orientation vector) and vertical
+(parallel to the alignment orientation vector). Then we will have
+$\kappa_{\mathrm{abs},\nu,h}=\kappa_{\mathrm{abs},\nu,v}$. For
+$\theta=90^{\circ}$ we will have the maximum difference between
+$\kappa_{\mathrm{abs},\nu,h}$ and $\kappa_{\mathrm{abs},\nu,v}$. We write
+\begin{eqnarray}
+\kappa_{\mathrm{abs},\nu,h}(\theta) &=& \kappa_{\mathrm{abs},\nu}\,k_{\nu,h}(\theta) \\
+\kappa_{\mathrm{abs},\nu,v}(\theta) &=& \kappa_{\mathrm{abs},\nu}\,k_{\nu,v}(\theta) 
+\end{eqnarray}
+where $k_{\nu,h}(\theta)$ and $k_{\nu,v}(\theta)$ are dimensionless
+functions, and where we take $\theta\in[0,90]$ (in degrees), or equivalently
+$\cos(\theta)\in [0,1]$. We impose the condition that if we randomly orient
+this grain, the average opacity becomes the one we computed for the randomly
+oriented grains:
+\begin{equation}
+\int_0^\infty \frac{1}{2}\left[\kappa_{\mathrm{abs},\nu,h}(\theta)
++\kappa_{\mathrm{abs},\nu,v}(\theta)\right]d\mu = \kappa_{\mathrm{abs},\nu}
+\end{equation}
+This yields the following integration condition on the dimensionless
+$k_{\nu,h}$ and $k_{\nu,v}$:
+\begin{equation}
+\int_0^\infty \frac{1}{2}\left[k_{\nu,h}(\theta)+k_{\nu,v}(\theta)\right]d\mu = 1
+\end{equation}
+If we set, for all values of $\theta$,
+$k_{\nu,h}(\theta)=k_{\nu,v}(\theta)=1$ then we retrieve the result for
+spherical grains.
+
+In RADMC-3D the functions $k_{\nu,h}(\theta)$ and $k_{\nu,v}(\theta)$
+are read in via the file {\small\tt dustkapalignfact\_*.inp}. This file
+has the following structure:
+{\small\begin{verbatim}
+# Any amount of arbitrary
+# comment lines that tell which opacity this is.
+# Each comment line must start with an # or ; or ! character
+iformat                            <=== Typically 1 at present
+nlam                               <=== Nr of wavelengths
+nmu                                <=== Nr of angles sampled
+lambda[1]                          <=== Wavelength grid in micron
+...                                           
+lambda[nlam]                                  
+theta[1]                           <=== Angle grid in degrees
+...                                           
+theta[nmu]                              
+k_orth[1,1]       k_para[1,1]      <=== The arrays k_orth and k_para
+...                                            
+k_orth[nmu,1]     k_para[nmu,1]               
+k_orth[1,2]       k_para[1,2]                 
+...
+k_orth[nmu,2]     k_para[nmu,2]
+...
+...
+...
+k_orth[1,nlam]    k_para[1,nlam]
+...
+k_orth[nmu,nlam]  k_para[nmu,nlam]
+\end{verbatim}}
+The angles {\small\tt theta} are in degrees and must start at 0 and end
+at 90, or vice versa. 
+The {\small\tt nmu} does not have to be the same (and the angles do
+not have to be the same) as those in the {\small\tt dustkapscatmat\_*.inp}
+file. But the wavelength grid must be identical to the one in 
+the {\small\tt dustkapscatmat\_*.inp} file.
+
+In addition to the {\small\tt dustkapalignfact\_*.inp} for each dust
+species, RADMC-3D also needs to know the orientation direction of the
+grains. This is a vector field $\vec n_{\mathrm{align}}(\vec x)$ which
+should consist of unit-length vectors. They only give the direction in which
+the alignment occurs, not the degree of alignment (in future versions this
+may change, but for now it must be a unit vector). This vector field is in
+the file {\small\tt grainalign\_dir.inp} (or its binary formatted version
+{\small\tt grainalign\_dir.binp}). The format of this file is exactly the
+same as that of the gas velocity file {\small\tt gas\_velocity.inp}. The
+ascii format looks like:
+{\small\begin{verbatim}
+iformat                                  <=== Typically 1 at present
+nrcells
+n_x[1]       n_y[1]       n_z[1]
+..
+n_x[nrcells] n_y[nrcells] n_z[nrcells]
+\end{verbatim}}
+
+
+
+%\section{A simple model for an oblate grain}
+%In principle one can compute 
+
+\subsection{Effect of aligned grains on the scattering}
+\label{sec-align-scat}
+%
+{\em This is, currently, not yet implemented.}
+
+
+
 
 
 %----------------------------------------------------------------------------
@@ -12050,6 +12612,12 @@ modus of polarization is implemented.
     Henyey-Greenstein (scattering mode 2) or full polarization (scattering
     mode 5), all of which are ok. At any rate: the problem is now fixed,
     so scattering mode 3 should now also work.
+  \end{itemize}
+\item {\bf Version 0.41}\\
+  \begin{itemize}
+    \item Implemented a first testing version of the aligned grains:
+      only polarized thermal emission so far. Still very much a testing
+      version.
   \end{itemize}
 \end{itemize}
 
