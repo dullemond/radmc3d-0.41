@@ -1613,7 +1613,7 @@ subroutine read_dustalign_angdep(ispec,filename)
      read(1,*) dum
      dum = 2.9979d14/dum
      if(abs(dust_kappa_arrays(ispec)%freq(ilam)/dum-1.d0).gt.1d-4) then
-        write(stdo,*) 'ERROR while reading file',filename(1:filename_len)
+        write(stdo,*) 'ERROR while reading file ',filename(1:filename_len)
         write(stdo,*) 'Wavelength grid not the same as for the scattering matrix file'
         stop
      endif
