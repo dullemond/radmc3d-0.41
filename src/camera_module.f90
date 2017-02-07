@@ -276,6 +276,16 @@ module camera_module
   !    
   integer :: camera_lambda_starlight_single_scat_mode = 0
   !
+  ! For convenience (in particular when using aligned grains): the 
+  ! line-of-sight direction vector and the polarization orientation vector
+  !
+  double precision :: camera_dir(1:3),camera_svec(1:3)
+  !
+  ! For the aligned grain stuff we need a temporary array for the
+  ! scattering source function
+  !
+  double precision, allocatable :: camera_srcscat_iquv(:,:)
+  !
 contains
 
 
@@ -424,6 +434,11 @@ subroutine camera_init()
      write(stdo,*) 'ERROR in camera module: Could not allocate camera_intensity_iquv() array'
      stop
   endif
+  allocate(camera_srcscat_iquv(1:camera_nrfreq,1:4),STAT=ierr)
+  if(ierr.ne.0) then
+     write(stdo,*) 'ERROR in camera module: Could not allocate camera_srcscat_iquv() array'
+     stop
+  endif
   !
 end subroutine camera_init
 
@@ -487,6 +502,7 @@ subroutine camera_partial_cleanup()
   if(allocated(camera_rect_image_iquv)) deallocate(camera_rect_image_iquv)
   if(allocated(camera_spectrum_iquv)) deallocate(camera_spectrum_iquv)
   if(allocated(camera_intensity_iquv)) deallocate(camera_intensity_iquv)
+  if(allocated(camera_srcscat_iquv)) deallocate(camera_srcscat_iquv)
   if(allocated(camera_xstop)) deallocate(camera_xstop)
   if(allocated(camera_ystop)) deallocate(camera_ystop)
   if(allocated(camera_zstop)) deallocate(camera_zstop)
@@ -1017,7 +1033,7 @@ subroutine camera_serial_raytrace(nrfreq,inu0,inu1,x,y,z,dx,dy,dz,distance,   &
   doubleprecision :: nstp,nu,nu0,nu0_prev,nu0_curr
   doubleprecision :: ap,jp(1:4),sp(1:4),ac,jc(1:4),sc(1:4),theomax(1:4),qdr(1:4)
   doubleprecision :: duc,eps,eps1,eps0,temp,resol,margin
-  integer :: nsteps,iline,ilactive,istep
+  integer :: nsteps,iline,ilactive,istep,idir
   integer :: ixx,iyy,izz,bc_idir,bc_ilr
   double precision :: xbk,ybk,zbk,spx,spy,spz,rx1,ry1,rz1,rx0,ry0,rz0
   !
@@ -2539,27 +2555,25 @@ subroutine camera_serial_raytrace(nrfreq,inu0,inu1,x,y,z,dx,dy,dz,distance,   &
               ! alignment_mode flag.
               !
               call sources_get_src_alp(inu0,inu1,nrfreq,src,alp,camera_stokesvector)
-              
-
-
-
-              call pol_integrate_rt_aligned(int_iquv,dir,svec,aligndir,inu0,inu1,       &
-                                    src0,alp0,srcscat_iquv,dustdens,dusttemp,ds)
-
-
-
-
-
-
-              write(stdo,*) 'Aligned grains mode still under development... Does not yet work.'
-              stop
-
-
-
-
-
-
-
+              !
+              ! Copy the scattering source terms to the local array (necessary
+              ! because unfortunately the index order of mcscat_scatsrc_iquv
+              ! is unconvenient).
+              !
+              idir = 1    ! For now only one vantage point
+              camera_srcscat_iquv(:,1) = mcscat_scatsrc_iquv(:,ray_index,1,idir)
+              camera_srcscat_iquv(:,2) = mcscat_scatsrc_iquv(:,ray_index,2,idir)
+              camera_srcscat_iquv(:,3) = mcscat_scatsrc_iquv(:,ray_index,3,idir)
+              camera_srcscat_iquv(:,4) = mcscat_scatsrc_iquv(:,ray_index,4,idir)
+              !
+              ! Now call the first order integration routine that takes
+              ! care of the alignment effects
+              !
+              call pol_integrate_rt_aligned(intensity,camera_dir,camera_svec,    &
+                                     grainalign_dir(:,ray_index),inu0,inu1,      &
+                                     src,alp,camera_srcscat_iquv,                &
+                                     dustdens(:,ray_index),dusttemp(:,ray_index),&
+                                     ray_ds)
            endif
         endif
      elseif(camera_incl_stars.ne.0) then
@@ -3581,6 +3595,13 @@ subroutine camera_make_rect_image(img,tausurf)
      mcscat_dirs(2,1:1) = diry
      mcscat_dirs(3,1:1) = dirz
      !
+     ! For convenience, store this also here in the camera module
+     ! (works only for a single vantage point)
+     !
+     camera_dir(1) = dirx
+     camera_dir(2) = diry
+     camera_dir(3) = dirz
+     !
      ! In case you want to include polarization, we set also the
      ! S-vectors, which will be perpendicular to the direction 
      ! vector, and pointing vertically upward in the image plane.
@@ -3594,6 +3615,13 @@ subroutine camera_make_rect_image(img,tausurf)
      mcscat_svec(1,1:1) = svcx
      mcscat_svec(2,1:1) = svcy
      mcscat_svec(3,1:1) = svcz
+     !
+     ! For convenience, store this also here in the camera module
+     ! (works only for a single vantage point)
+     !
+     camera_svec(1) = svcx
+     camera_svec(2) = svcy
+     camera_svec(3) = svcz
      !
      ! For now anisotropic scattering is not available for 2-D axisymmetric
      ! models or 1-D spherically symmetric models, because those would require 
