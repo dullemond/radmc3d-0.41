@@ -2372,7 +2372,12 @@ subroutine find_dust_alignfact_interpol(freq,mu,ispec,iabs,iscat,  &
      ! Find where we are in the mu grid
      ! 
      call hunt(dust_kappa_arrays(ispec)%alignmu,nmu,mu,imu)
-     if((imu.lt.1).or.(imu.ge.nmu)) stop 8202
+     if(imu.eq.nmu) then
+        if(mu.eq.dust_kappa_arrays(ispec)%alignmu(nmu)) then
+           imu = nmu-1
+        endif
+     endif
+     if((imu.lt.1).or.(imu.gt.nmu)) stop 8202
      epsmu = (mu-dust_kappa_arrays(ispec)%alignmu(imu)) /            &
               (dust_kappa_arrays(ispec)%alignmu(imu+1)-              &
                dust_kappa_arrays(ispec)%alignmu(imu))
