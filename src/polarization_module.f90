@@ -1845,6 +1845,7 @@ subroutine read_grainaligndir_field(action)
         write(stdo,*) 'ERROR: Grain alignment direction vector has length 0'
         stop 73328
      endif
+     dummy = sqrt(dummy)
      grainalign_dir(1,index) = grainalign_dir(1,index) / dummy
      grainalign_dir(2,index) = grainalign_dir(2,index) / dummy
      grainalign_dir(3,index) = grainalign_dir(3,index) / dummy
