@@ -6781,7 +6781,14 @@ subroutine pol_integrate_rt_aligned(int_iquv,dir,svec,aligndir,inu0,inu1,       
   ! Interpolate the angular grid
   !
   call hunt(sources_align_mu,sources_align_munr,cosb,iop)
-  if(iop.ge.sources_align_munr) stop 30518
+  if(iop.ge.sources_align_munr) then
+     if(cosb.eq.sources_align_mu(sources_align_munr)) then
+        iop = sources_align_munr-1
+     else
+        write(stdo,*) sources_align_mu(:),cosb
+        stop 30518
+     endif
+  endif
   epspo = (cosb-sources_align_mu(iop)) /                  &
           (sources_align_mu(iop+1)-sources_align_mu(iop)) 
   !################################
