@@ -8000,3 +8000,6 @@ finetuning: I noticed during some testing with a supersimple annulus model
 
             ---> Compiles, but is still untested!
 
+08.02.2017  First tests appear to work well (after a number of bugfixes).
+            Have a look at examples/run_simple_1_align/.
+
