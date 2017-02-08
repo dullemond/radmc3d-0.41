@@ -2600,7 +2600,8 @@ subroutine camera_serial_raytrace(nrfreq,inu0,inu1,x,y,z,dx,dy,dz,distance,   &
                  ! care of the alignment effects
                  !
                  call pol_integrate_rt_aligned(intensity,camera_dir,camera_svec,  &
-                                     grainalign_dir(:,ray_index),inu0,inu1,       &
+                                     grainalign_dir(:,ray_index),                 &
+                                     grainalign_eff(ray_index),inu0,inu1,         &
                                      src,alp,camera_srcscat_iquv,                 &
                                      dustdens(:,ray_index),dusttemp(:,ray_index), &
                                      ray_ds)
@@ -6700,7 +6701,7 @@ end subroutine camera_make_circ_image
 !-----------------------------------------------------------------------
 !      FIRST ORDER INTEGRATION OF RT EQUATION WITH ALIGNED GRAINS
 !-----------------------------------------------------------------------
-subroutine pol_integrate_rt_aligned(int_iquv,dir,svec,aligndir,inu0,inu1,       &
+subroutine pol_integrate_rt_aligned(int_iquv,dir,svec,aligndir,aligneff,inu0,inu1,  &
                                     src0,alp0,srcscat_iquv,dustdens,dusttemp,ds)
   implicit none
   integer :: iop,inu0,inu1,inu,ispec
@@ -6708,12 +6709,13 @@ subroutine pol_integrate_rt_aligned(int_iquv,dir,svec,aligndir,inu0,inu1,       
   double precision :: src0(1:sources_nrfreq),alp0(1:sources_nrfreq)
   double precision :: srcscat_iquv(1:sources_nrfreq,1:4)
   double precision :: dustdens(1:dust_nr_species),dusttemp(1:dust_nr_species)
-  double precision :: dir(1:3),svec(1:3),aligndir(1:3),ds,freq
+  double precision :: dir(1:3),svec(1:3),aligndir(1:3),aligneff,aligneff1,ds,freq
   double precision :: salign(1:3),dum
   double precision :: aligned_iquv(1:4),aligned_opuv(1:4)
   double precision :: aligned_scat_iquv(1:4),aligned_scat_opuv(1:4)
   double precision :: cosa,sina,cos2a,sin2a,cosb
   double precision :: alpabs,para_alpabs,orth_alpabs,epspo,bpl
+  double precision :: para_alpabs_eff,orth_alpabs_eff
   double precision :: aligned_alpha_opuv(1:4),aligned_jnu_opuv(1:4),xp(1:4)
   double precision :: aligned_snu_opuv(1:4),exptau_opuv(1:4),exptau1_opuv(1:4)
   !
@@ -6909,11 +6911,21 @@ subroutine pol_integrate_rt_aligned(int_iquv,dir,svec,aligndir,inu0,inu1,       
              ( (1.d0-epspo)*sources_align_para(iop,inu,ispec) +   &
                       epspo*sources_align_para(iop+1,inu,ispec) )
         !
+        ! ...The grains may not be perfectly aligned. Here aligneff is the
+        !    efficiency of alignment. If aligneff==1.0 then the grains are
+        !    perfectly aligned. If aligneff=0.0 the grains are not aligned
+        !    at all. Partial alignment (0<aligneff<1) is treated as a linear
+        !    sum of aligned and non-aligned opacities.
+        !
+        aligneff1       = 1.d0 - aligneff
+        orth_alpabs_eff = aligneff*orth_alpabs + aligneff1*alpabs
+        para_alpabs_eff = aligneff*para_alpabs + aligneff1*alpabs
+        !
         ! ...Then add
         !
-        dum = 0.5d0 * ( orth_alpabs + para_alpabs )
-        aligned_alpha_opuv(1) = aligned_alpha_opuv(1) + orth_alpabs
-        aligned_alpha_opuv(2) = aligned_alpha_opuv(2) + para_alpabs
+        dum                   = 0.5d0 * ( orth_alpabs_eff + para_alpabs_eff )
+        aligned_alpha_opuv(1) = aligned_alpha_opuv(1) + orth_alpabs_eff
+        aligned_alpha_opuv(2) = aligned_alpha_opuv(2) + para_alpabs_eff
         aligned_alpha_opuv(3) = aligned_alpha_opuv(3) + dum
         aligned_alpha_opuv(4) = aligned_alpha_opuv(4) + dum
         !
@@ -6925,8 +6937,8 @@ subroutine pol_integrate_rt_aligned(int_iquv,dir,svec,aligndir,inu0,inu1,       
         !       the thermal emission
         !
         bpl = bplanck(dusttemp(ispec),sources_frequencies(inu))
-        aligned_jnu_opuv(1)   = aligned_jnu_opuv(1) + 0.5d0*orth_alpabs*bpl
-        aligned_jnu_opuv(2)   = aligned_jnu_opuv(2) + 0.5d0*para_alpabs*bpl
+        aligned_jnu_opuv(1)   = aligned_jnu_opuv(1) + 0.5d0*orth_alpabs_eff*bpl
+        aligned_jnu_opuv(2)   = aligned_jnu_opuv(2) + 0.5d0*para_alpabs_eff*bpl
      enddo
      !
      ! Calculate the real "source term" S_nu = j_nu / alpha_nu

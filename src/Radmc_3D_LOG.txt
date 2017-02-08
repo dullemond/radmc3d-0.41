@@ -8003,3 +8003,9 @@ finetuning: I noticed during some testing with a supersimple annulus model
 08.02.2017  First tests appear to work well (after a number of bugfixes).
             Have a look at examples/run_simple_1_align/.
 
+   ++       Added partial alignment: the length of the alignment 
+            direction vector field also serves to indicate how
+            strongly the grains are aligned: =0.d0 is no alignment,
+            =1.d0 is perfect alignment. Partial alignment is
+            treated as a linear sum of fully aligned and not
+            aligned. 

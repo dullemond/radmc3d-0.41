@@ -1821,9 +1821,15 @@ subroutine read_grainaligndir_field(action)
   ! Create the grainalign_dir arrays
   !
   if(allocated(grainalign_dir)) deallocate(grainalign_dir)
+  if(allocated(grainalign_eff)) deallocate(grainalign_eff)
   allocate(grainalign_dir(1:3,1:nrcells),STAT=ierr)
   if(ierr.ne.0) then
      write(stdo,*) 'ERROR: Could not allocate the grainalign_dir() array'
+     stop
+  endif
+  allocate(grainalign_eff(1:nrcells),STAT=ierr)
+  if(ierr.ne.0) then
+     write(stdo,*) 'ERROR: Could not allocate the grainalign_eff() array'
      stop
   endif
   !
@@ -1841,14 +1847,37 @@ subroutine read_grainaligndir_field(action)
   do icell=1,nrcells
      index = cellindex(icell)
      dummy = grainalign_dir(1,index)**2 + grainalign_dir(2,index)**2 + grainalign_dir(3,index)**2 
-     if(dummy.eq.0.d0) then
-        write(stdo,*) 'ERROR: Grain alignment direction vector has length 0'
-        stop 73328
-     endif
      dummy = sqrt(dummy)
-     grainalign_dir(1,index) = grainalign_dir(1,index) / dummy
-     grainalign_dir(2,index) = grainalign_dir(2,index) / dummy
-     grainalign_dir(3,index) = grainalign_dir(3,index) / dummy
+     if(dummy.gt.0.d0) then
+        !
+        ! The dir vector must be of length unity
+        !
+        grainalign_dir(1,index) = grainalign_dir(1,index) / dummy
+        grainalign_dir(2,index) = grainalign_dir(2,index) / dummy
+        grainalign_dir(3,index) = grainalign_dir(3,index) / dummy
+     else
+        !
+        ! When vector has length 0, then it does not matter in which 
+        ! direction this unit vector points. Just take something,
+        ! for consistency.
+        !
+        grainalign_dir(1,index) = 1.0
+        grainalign_dir(2,index) = 0.0
+        grainalign_dir(3,index) = 0.0
+     endif
+     !
+     ! The length of the original vector gives the efficiency
+     ! of the alignment. It cannot be >1
+     !
+     if(dummy.gt.1.01d0) then
+        write(stdo,*) 'ERROR: Length of alignment vector > 1. This would mean ', &
+             'more than 100% efficient alignment. Aborting.'
+        stop
+     endif
+     if(dummy.gt.1.d0) then
+        dummy = 1.d0
+     endif
+     grainalign_eff(index) = dummy
   enddo
   !
 end subroutine read_grainaligndir_field
