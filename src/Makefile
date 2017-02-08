@@ -1,5 +1,5 @@
 SRC = .
-#SRC = /Users/cornelisdullemond/science/prog/radmc-3d/version_0.39/src
+#SRC = /Users/cornelisdullemond/science/prog/radmc-3d/version_0.41/src
 
 # Optimize
 # OPTIM = -O2 -fopenmp
