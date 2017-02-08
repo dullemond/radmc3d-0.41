@@ -1204,15 +1204,15 @@ def plotImage(image=None, arcsec=False, au=False, log=False, dpc=None, maxlog=No
 
         if stokes.strip().upper()=='V':
             if dum_image.nwav==1:
-                dum_image.image = image.image[:,:,2]
+                dum_image.image = image.image[:,:,3]
             else:    
-                dum_image.image = image.image[:,:,2,:]
+                dum_image.image = image.image[:,:,3,:]
 
         if stokes.strip().upper()=='PI':
             if dum_image.nwav==1:
-                dum_image.image = np.sqrt(image.image[:,:,1]**2 + image.image[:,:,2]**2)
+                dum_image.image = np.sqrt(image.image[:,:,1]**2 + image.image[:,:,2]**2 + image.image[:,:,3]**2)
             else:    
-                dum_image.image = np.sqrt(image.image[:,:,1,:]**2 + image.image[:,:,2,:]**2)
+                dum_image.image = np.sqrt(image.image[:,:,1,:]**2 + image.image[:,:,2,:]**2 + image.image[:,:,3]**2)
 
 
     if cmask_rad!=None:
