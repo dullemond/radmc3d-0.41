@@ -4980,7 +4980,7 @@ subroutine walk_full_path_scat(params,inu,ierror)
   double precision :: dir_perp,dir_planex,dir_planey,dummy
   integer :: ispec,iqactive,istar,icell,itemplate,iscatevent
   integer :: ibnd,bc_idir,bc_ilr,ix,iy,iz,illum,ierr
-  logical :: ok,arrived,usesphere
+  logical :: ok,arrived,usesphere,todo_photpkg
   type(amr_branch), pointer :: acell
   !
   ! Do checks
@@ -5001,6 +5001,7 @@ subroutine walk_full_path_scat(params,inu,ierror)
   iqactive = 0
   mc_photon_destroyed = .false.
   ray_inu  = inu
+  todo_photpkg = .true.
   !
   ! First choose whether to launch the photon from (one of) the star(s) or
   ! from the external radiation field or from inside the grid (due to the
@@ -5522,7 +5523,29 @@ subroutine walk_full_path_scat(params,inu,ierror)
      !
      ! Find the direction in which to emit
      !
-     call montecarlo_randomdir(ray_cart_dirx,ray_cart_diry,ray_cart_dirz)
+     if(alignment_mode.le.0) then
+        !
+        ! Simple case: just random direction
+        !
+        call montecarlo_randomdir(ray_cart_dirx,ray_cart_diry,ray_cart_dirz)
+     else
+        !
+        ! If aligned grains, then we must choose the direction from the
+        ! angular probability distribution function for the thermal
+        ! emission from the aligned grain. Also the polarization state 
+        ! must be randomly chosen from the appropriate distribution function.
+        !
+        call montecarlo_aligned_randomphot(ray_index,inu,photpkg)
+        ray_cart_dirx = photpkg%n(1)
+        ray_cart_diry = photpkg%n(2)
+        ray_cart_dirz = photpkg%n(3)
+        !
+        ! Signal that we already set the photpkg, so that it is not
+        ! overridden.
+        !
+        todo_photpkg = .false.
+        !
+     endif
      !
      ! If weighted photon packages, then get the energy
      !
@@ -5575,13 +5598,14 @@ subroutine walk_full_path_scat(params,inu,ierror)
      stop
   endif
   !
-  ! In case we use polarization, init the photpkg structure 
-  ! We always assume the photon to start non-polarized
+  ! In case we use polarization, init the photpkg structure.
+  ! We assume the photon to start non-polarized.
+  ! Exception: the thermal dust emission if the grains 
+  ! are aligned. If that is the case, the todo_photpkg
+  ! is switched to .false. because then it is initialized
+  ! above. 
   !
-  ! NOTE: When we build in polarized thermal emission this must
-  !       be changed!
-  !
-  if(scattering_mode.ge.5) then
+  if((scattering_mode.ge.5).and.todo_photpkg) then
      photpkg%E    = ener
      photpkg%Q    = 0.d0
      photpkg%U    = 0.d0
@@ -8114,6 +8138,20 @@ function anisoscat_phasefunc(inu,ispec,mu)
   anisoscat_phasefunc = anisoscat_phasefunc * fourpi / kappa_s(inu,ispec)
   return
 end function anisoscat_phasefunc
+
+
+!--------------------------------------------------------------------------
+!    FOR ALIGNED GRAINS: RANDOM PHOTON EMISSION DIRECTION AND POL STATE
+!--------------------------------------------------------------------------
+subroutine montecarlo_aligned_randomphot(index,inu,pkg)
+  implicit none
+  integer :: index,inu
+  type(photon) :: pkg
+
+  write(stdo,*) 'ERROR: Polarized thermal source still in progress'
+  stop
+
+end subroutine montecarlo_aligned_randomphot
 
 
 !--------------------------------------------------------------------------
