@@ -101,7 +101,14 @@ para  = 1.e0 + ampl*np.cos(muang*math.pi)
 # Now the alignment vector field.
 #
 alvec = np.zeros((nz,ny,nx,3))
-alvec[:,:,:,2] = 1.0   # Vertical field config
+#alvec[:,:,:,2] = 1.0   # Vertical field config
+#rrc       = np.sqrt(xx**2+yy**2)
+#alvec[:,:,:,0] = yy/rrc  # Circular field config (will automatically be normalized)
+#alvec[:,:,:,1] = -xx/rrc # Circular field config (will automatically be normalized)
+#alvec[:,:,:,2] = 1e-6    # Make sure direc vector is never exactly 0
+alvec[:,:,:,0] = 1.0
+alvec[:,:,:,1] = 1.0
+alvec[:,:,:,2] = 0.0
 #
 # Write the wavelength file
 #
