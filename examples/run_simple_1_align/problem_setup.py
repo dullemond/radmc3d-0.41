@@ -98,19 +98,30 @@ orth  = np.zeros(nrang) + 1.e0
 ampl  = 0.5
 para  = ( 1.e0 - ampl*np.cos(muang*math.pi) ) / ( 1.e0 + ampl)
 #
-# Now the alignment vector field.
+# Now the alignment vector field. This is ONLY FOR TESTING.
 #
 alvec = np.zeros((nx,ny,nz,3))
 #alvec[:,:,:,2] = 1.0   # Vertical field config
-rrc       = np.sqrt(xx**2+yy**2)
-alvec[:,:,:,0] = yy/rrc  # Circular field config (will automatically be normalized)
-alvec[:,:,:,1] = -xx/rrc # Circular field config (will automatically be normalized)
-#alvec[:,:,:,0] = xx/rrc  # Radial field config (will automatically be normalized)
-#alvec[:,:,:,1] = yy/rrc  # Radial field config (will automatically be normalized)
-#alvec[:,:,:,2] = 1e-6    # Make sure direc vector is never exactly 0
-#alvec[:,:,:,0] = 1.0
-#alvec[:,:,:,1] = 0.0
-#alvec[:,:,:,2] = 0.0
+rrc            = np.sqrt(xx**2+yy**2)
+alvec[:,:,:,0] = yy/rrc  # Circular field config
+alvec[:,:,:,1] = -xx/rrc # Circular field config
+#
+# Normalize 
+#
+length = np.sqrt(alvec[:,:,:,0]*alvec[:,:,:,0]+alvec[:,:,:,1]*alvec[:,:,:,1]+alvec[:,:,:,2]*alvec[:,:,:,2])
+alvec[:,:,:,0] = np.squeeze(alvec[:,:,:,0]) / ( length + 1e-60 )
+alvec[:,:,:,1] = np.squeeze(alvec[:,:,:,1]) / ( length + 1e-60 )
+alvec[:,:,:,2] = np.squeeze(alvec[:,:,:,2]) / ( length + 1e-60 )
+#
+# Now include the alignment efficiency. Simple model: zero near
+# midplane, then quadratically up to 1 with z, where 1 is reached
+# at a distance 'radius' from the midplane. This is ONLY FOR TESTING.
+#
+epsal  = (zz/radius)*(zz/radius)
+epsal[epsal>1.0] = 1.0
+alvec[:,:,:,0]  = np.squeeze(alvec[:,:,:,0]) * epsal
+alvec[:,:,:,1]  = np.squeeze(alvec[:,:,:,1]) * epsal
+alvec[:,:,:,2]  = np.squeeze(alvec[:,:,:,2]) * epsal
 #
 # Write the wavelength file
 #
