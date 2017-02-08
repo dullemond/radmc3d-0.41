@@ -92,11 +92,11 @@ with open('dustkapscatmat_pyrmg70.inp','r') as f:
 # Now make a mock alignment factor model. This is ONLY FOR TESTING.
 # 
 nrang = 20
-muang = np.linspace(0.e0,1.e0,nrang)
+muang = np.linspace(1.e0,0.e0,nrang)
 eta   = np.arccos(muang)*180./math.pi
 orth  = np.zeros(nrang) + 1.e0
 ampl  = 0.5
-para  = 1.e0 + ampl*np.cos(muang*math.pi)
+para  = ( 1.e0 - ampl*np.cos(muang*math.pi) ) / ( 1.e0 + ampl)
 #
 # Now the alignment vector field.
 #
@@ -105,9 +105,11 @@ alvec = np.zeros((nx,ny,nz,3))
 rrc       = np.sqrt(xx**2+yy**2)
 alvec[:,:,:,0] = yy/rrc  # Circular field config (will automatically be normalized)
 alvec[:,:,:,1] = -xx/rrc # Circular field config (will automatically be normalized)
-alvec[:,:,:,2] = 1e-6    # Make sure direc vector is never exactly 0
+#alvec[:,:,:,0] = xx/rrc  # Radial field config (will automatically be normalized)
+#alvec[:,:,:,1] = yy/rrc  # Radial field config (will automatically be normalized)
+#alvec[:,:,:,2] = 1e-6    # Make sure direc vector is never exactly 0
 #alvec[:,:,:,0] = 1.0
-#alvec[:,:,:,1] = 1.000001
+#alvec[:,:,:,1] = 0.0
 #alvec[:,:,:,2] = 0.0
 #
 # Write the wavelength file
