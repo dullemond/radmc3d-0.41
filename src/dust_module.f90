@@ -231,6 +231,9 @@ subroutine read_dustdata(action)
      nullify(dust_kappa_arrays(ispec)%k)
      nullify(dust_kappa_arrays(ispec)%mu)
      nullify(dust_kappa_arrays(ispec)%zscat)
+     nullify(dust_kappa_arrays(ispec)%alignmu)
+     nullify(dust_kappa_arrays(ispec)%alignorth)
+     nullify(dust_kappa_arrays(ispec)%alignpara)
      dust_kappa_arrays(ispec)%nrfreq = 0
      dust_kappa_arrays(ispec)%nmu = 0
      dust_kappa_arrays(ispec)%type = 0
