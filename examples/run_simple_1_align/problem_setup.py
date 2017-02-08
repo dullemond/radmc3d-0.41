@@ -100,15 +100,15 @@ para  = 1.e0 + ampl*np.cos(muang*math.pi)
 #
 # Now the alignment vector field.
 #
-alvec = np.zeros((nz,ny,nx,3))
+alvec = np.zeros((nx,ny,nz,3))
 #alvec[:,:,:,2] = 1.0   # Vertical field config
-#rrc       = np.sqrt(xx**2+yy**2)
-#alvec[:,:,:,0] = yy/rrc  # Circular field config (will automatically be normalized)
-#alvec[:,:,:,1] = -xx/rrc # Circular field config (will automatically be normalized)
-#alvec[:,:,:,2] = 1e-6    # Make sure direc vector is never exactly 0
-alvec[:,:,:,0] = 1.0
-alvec[:,:,:,1] = 1.0
-alvec[:,:,:,2] = 0.0
+rrc       = np.sqrt(xx**2+yy**2)
+alvec[:,:,:,0] = yy/rrc  # Circular field config (will automatically be normalized)
+alvec[:,:,:,1] = -xx/rrc # Circular field config (will automatically be normalized)
+alvec[:,:,:,2] = 1e-6    # Make sure direc vector is never exactly 0
+#alvec[:,:,:,0] = 1.0
+#alvec[:,:,:,1] = 1.000001
+#alvec[:,:,:,2] = 0.0
 #
 # Write the wavelength file
 #
@@ -182,7 +182,7 @@ with open('grainalign_dir.inp','w+') as f:
     for iz in range(nz):
         for iy in range(ny):
             for ix in range(nx):
-                f.write('%13.6e %13.6e %13.6e\n'%(alvec[iz,iy,ix,0],alvec[iz,iy,ix,1],alvec[iz,iy,ix,2]))
+                f.write('%13.6e %13.6e %13.6e\n'%(alvec[ix,iy,iz,0],alvec[ix,iy,iz,1],alvec[ix,iy,iz,2]))
 #
 # Write the radmc3d.inp control file
 #
