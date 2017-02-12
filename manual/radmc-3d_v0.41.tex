@@ -3441,9 +3441,6 @@ axis ($\kappa_{\mathrm{abs},\nu,v}$).
 
 
 \subsection{Implementation in RADMC-3D}
-\subsubsection{Polarized emission as source term in the Monte Carlo simulation}
-{\em At the moment this is not yet implemented...}
-
 \subsubsection{Polarized emission in the images and spectra}
 When creating images (and spectra) the {\small\tt camera} module of RADMC-3D
 performs a ray-tracing calculation (``volume renderung'') through the grid.
@@ -3590,6 +3587,48 @@ we have the values of the Stokes parameter at the end of the ray
 segment. Now we repeat this whole procedure for the next ray segment.
 
 
+\subsubsection{Polarized emission as source term in the Monte Carlo simulation}
+The polarization effects and anisotropic emission by aligned grains will
+also affect the Monte Carlo simulations.
+
+For the {\em thermal Monte Carlo} (see Section
+\ref{sec-dust-thermal-monte-carlo}) this effect is {\em not included}. In
+principle it should be included, but it would slow the code down, and it is
+unlikely to play a significant role for the dust temperature, in particular
+since the anisotropy of thermal emission is not expected to be so strong
+(and the polarization state is irrelevant for computing the dust
+temperature). It is clear that we make a small error here, but we believe
+that this is well within the much stronger uncertainties of the dust
+opacities.
+
+For the {\em scattering Monte Carlo} (see Section
+\ref{sec-scat-monte-carlo}), however, this effect may be important! The
+polarization caused by scattering of light off dust grains yields of
+course different results if the incident light is unpolarized or if it
+is already strongly polarized through, for instance, polarized thermal
+emission. In RADMC-3D this is therefore built into the scattering
+Monte Carlo. This will not slow down the code much because (in contrast
+to the thermal Monte Carlo) the polarized thermal emission only has to
+be computed at the start of each photon path, if the photon is emitted
+by the dust. 
+
+The way this is included is that when a photon is emitted by the dust inside
+a cell, RADMC-3D first randomly chooses which of the dust species emits the
+photon (the probabilities are weighted by the contribution each dust species
+makes to the emissivity at the given wavelength).  Then the emission
+direction is randomly chosen, based on the $\theta$-dependent probability
+function (where $\theta$ is the angle with the alignment direction) given by
+the average of the orthogonal (horizontal) and parallel (vertical) absorption
+opacities. Once the emission direction is chosen, the polarization state of
+the photon package is computed based on the orthogonal and parallel
+absorption opacities. Then the photon package is sent on its way.
+
+Note that if {\small\tt alignment\_mode = -1} then the polarized (and
+anisotropic) thermal emission by aligned grains is only included in the
+ray-tracing for images and spectra, while for {\small\tt alignment\_mode =
+  1} it is {\em also} included in the scattering Monte Carlo computation.
+
+
 \subsection{Consistency with other radiative processes}
 The above equations assume that the absorption/emission is the only
 radiative process included. However, in practice we also have other
@@ -3676,6 +3715,11 @@ not have to be the same) as those in the {\small\tt dustkapscatmat\_*.inp}
 file. But the wavelength grid must be identical to the one in 
 the {\small\tt dustkapscatmat\_*.inp} file.
 
+In order to make RADMC-3D read this file {\small\tt dustkapalignfact\_*.inp}
+the {\small\tt dustopac.inp} file should, for this particular dust species,
+have ``20'' as the way in which this dust species is read (instead of 10
+which is used for polarized scattering with the Z matrix).
+
 In addition, RADMC-3D also needs to know the orientation direction of the
 grains. This is a vector field $\vec p_{\mathrm{align}}(\vec x)$. The length
 of these vectors should be between 0 and 1, where 1 means that the grains
@@ -3715,8 +3759,16 @@ Eqs.~(\ref{eq-align-kappa-k-h}, \ref{eq-align-kappa-k-v}) then become
 \kappa_{\mathrm{abs},\nu,v}(\theta) &=& \kappa_{\mathrm{abs},\nu}\,[\epsilon_{\mathrm{align}}k_{\nu,v}(\theta)+1-\epsilon_{\mathrm{align}}] 
 \end{eqnarray}
 
+In order to tell RADMC-3D that it should include the effect of alignment on
+the thermal emission of dust grains one must add a line in the {\small\tt
+  radmc3d.inp} file with 
+{\small\begin{verbatim}
+alignment_mode = 1
+\end{verbatim}}
 
-
+The example model in {\small\tt examples/run\_simple\_1\_align/}
+demonstrates how the input files have to be made to have RADMC-3D treat the
+aligned dust grains for thermal emission.
 
 \subsection{Effect of aligned grains on the scattering}
 \label{sec-align-scat}
