@@ -1896,7 +1896,11 @@ subroutine polarization_random_aligned_thermemis(phot,nmu,mui, &
   integer :: nmu,imu
   double precision :: mui(1:nmu),aligndir(1:3),aligneff
   double precision :: orth(1:nmu),para(1:nmu),opcumul(1:nmu)
-  double precision :: mu,eps,phi,perp(1:3),or,pa,rn
+  double precision :: mu,eps,phi,perp(1:3),or,pa,rn,dummy
+  !###################################
+  dummy = aligndir(1)**2+aligndir(2)**2+aligndir(3)**2
+  if(abs(dummy-1.d0).gt.1d-5) stop 4007
+  !###################################
   !
   ! Find out at which theta this photon is emitted
   !
@@ -1934,10 +1938,10 @@ subroutine polarization_random_aligned_thermemis(phot,nmu,mui, &
   !
   phot%n(:) = mu * aligndir(:) + sqrt(1.d0-mu*mu) * perp(:)
   !
-  ! ...Check if still unit
-  !
+  !#####################################
   dummy = sqrt(phot%n(1)**2+phot%n(2)**2+phot%n(3)**2)
   if(abs(dummy-1.d0).gt.1d-5) stop 8291
+  !#####################################
   !
   ! Create an appropriate S-vector: this should lie in the
   ! plane spanned between the phot%n direction vector and
@@ -1961,11 +1965,17 @@ subroutine polarization_random_aligned_thermemis(phot,nmu,mui, &
   endif
   !
   ! Now create the polarization state, normalized to 1.
+  ! Since the mu-dependence is already taken care of,
+  ! the orth and para must be normelized to 1.
   !
   or     = (1.d0-eps) * orth(imu) + eps * orth(imu+1)
   pa     = (1.d0-eps) * para(imu) + eps * para(imu+1)
-  phot%E = (1.d0-aligneff) + aligneff * 0.5d0 * ( or + pa )
-  phot%Q = (1.d0-aligneff) + aligneff * 0.5d0 * ( or - pa )
+  dummy  = or + pa
+  if(dummy.le.0.d0) stop 3003
+  or     = or / dummy
+  pa     = pa / dummy
+  phot%E = 1.d0
+  phot%Q = aligneff * ( or - pa )
   phot%U = 0.d0
   phot%V = 0.d0
   !
