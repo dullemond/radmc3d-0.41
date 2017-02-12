@@ -1883,4 +1883,94 @@ subroutine read_grainaligndir_field(action)
 end subroutine read_grainaligndir_field
 
 
+!-----------------------------------------------------------------------
+!             "RANDOM" THERMAL EMISSION FOR ALIGNED GRAINS
+!
+! This routine will create the starting photon package for thermal
+! emission from aligned grains.
+!-----------------------------------------------------------------------
+subroutine polarization_random_aligned_thermemis(phot,nmu,mui, &
+                         orth,para,opcumul,aligndir,aligneff)
+  implicit none
+  type(photon) :: phot
+  integer :: nmu,imu
+  double precision :: mui(1:nmu),aligndir(1:3),aligneff
+  double precision :: orth(1:nmu),para(1:nmu),opcumul(1:nmu)
+  double precision :: mu,eps,phi,perp(1:3),or,pa,rn
+  !
+  ! Find out at which theta this photon is emitted
+  !
+  rn  = ran2(iseed)
+  call hunt(opcumul,nmu,rn,imu)
+  if((imu.lt.1).or.(imu.ge.nmu)) stop 3726
+  eps = (rn-opcumul(imu)) / (opcumul(imu+1)-opcumul(imu))
+  mu  = (1.d0-eps)*mui(imu) + eps*mui(imu+1)
+  !
+  ! Since the table only goes from mu=0 to mu=1, we must
+  ! also randomly flip sign
+  !
+  rn  = ran2(iseed)
+  if(rn.ge.0.5d0) then
+     mu = -mu
+  endif
+  !
+  ! Find out at which phi this photon is emitted
+  !
+  phi = ran2(iseed) * twopi
+  !
+  ! Create the direction
+  !
+  ! ...first create an arbitrary unit vector perpendicular 
+  !    to the alignment direction. We can use the subroutine
+  !    for creating an S-vector.
+  !
+  call polarization_make_s_vector(aligndir,perp)
+  !
+  ! ...now rotate randomly (0..2*pi) around alignment direction
+  !
+  call polarization_rotateunitvector(perp,aligndir,phi)
+  !
+  ! ...then create the direction vector using these two unit vectors
+  !
+  phot%n(:) = mu * aligndir(:) + sqrt(1.d0-mu*mu) * perp(:)
+  !
+  ! ...Check if still unit
+  !
+  dummy = sqrt(phot%n(1)**2+phot%n(2)**2+phot%n(3)**2)
+  if(abs(dummy-1.d0).gt.1d-5) stop 8291
+  !
+  ! Create an appropriate S-vector: this should lie in the
+  ! plane spanned between the phot%n direction vector and
+  ! the aligndir vector. Use a kind of Gram-Schmidt process
+  ! for this.
+  !
+  dummy = phot%n(1)*aligndir(1) + phot%n(2)*aligndir(2) + phot%n(3)*aligndir(3) 
+  phot%s(:) = aligndir(:) - dummy*phot%n(:)
+  dummy = sqrt(phot%s(1)*phot%s(1) + phot%s(2)*phot%s(2) + phot%s(3)*phot%s(3))
+  if(dummy.gt.1d-5) then
+     !
+     ! Normalize the S-vector
+     !
+     phot%s(:) = phot%s(:) / dummy
+  else
+     !
+     ! The photon emission direction lies so close to the alignment
+     ! direction that we assume it to be unpolarized
+     !
+     call polarization_make_s_vector(phot%n,phot%s)
+  endif
+  !
+  ! Now create the polarization state, normalized to 1.
+  !
+  or     = (1.d0-eps) * orth(imu) + eps * orth(imu+1)
+  pa     = (1.d0-eps) * para(imu) + eps * para(imu+1)
+  phot%E = (1.d0-aligneff) + aligneff * 0.5d0 * ( or + pa )
+  phot%Q = (1.d0-aligneff) + aligneff * 0.5d0 * ( or - pa )
+  phot%U = 0.d0
+  phot%V = 0.d0
+  !
+end subroutine polarization_random_aligned_thermemis
+
+
+
 end module polarization_module

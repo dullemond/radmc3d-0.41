@@ -114,6 +114,13 @@ double precision,allocatable :: alpha_a(:),alpha_s(:),alphacum(:)
 double precision :: alpha_a_tot,alpha_s_tot
 double precision,allocatable :: zmatrix(:,:,:,:),zcumul(:,:,:,:)
 !
+! For the grain alignment we need additional arrays
+!
+integer :: mc_align_munr
+double precision, allocatable :: mc_align_mu(:)
+double precision, allocatable :: mc_align_orth(:,:,:),mc_align_para(:,:,:)
+double precision, allocatable :: mc_align_opcumul(:,:,:)
+!
 ! For photon statistics 
 ! (Must ensure huge range here)
 !
@@ -287,7 +294,7 @@ subroutine montecarlo_init(params,ierr,mcaction,resetseed)
   logical, optional :: resetseed
   !
   integer :: ispec,inu,iinu,itempl,istar,imu,iz
-  double precision :: temp,eps,dum,kapscat,g
+  double precision :: temp,eps,dum,kapscat,g,orth,para
   double precision :: dumarr6(1:6)
   logical :: iwarned,fex
   !
@@ -942,6 +949,51 @@ subroutine montecarlo_init(params,ierr,mcaction,resetseed)
      zcumul(:,:,:,:) = 0.d0
   endif
   !
+  ! If grain alignment mode > 0, then we have to allocate and
+  ! fill some additional arrays
+  !
+  if(alignment_mode.gt.0) then
+     mc_align_munr = align_munr
+     if(allocated(mc_align_mu)) deallocate(mc_align_mu)
+     if(allocated(mc_align_orth)) deallocate(mc_align_orth)
+     if(allocated(mc_align_para)) deallocate(mc_align_para)
+     if(allocated(mc_align_opcumul)) deallocate(mc_align_opcumul)
+     allocate(mc_align_mu(mc_align_munr))
+     allocate(mc_align_orth(mc_align_munr,mc_nrfreq,dust_nr_species))
+     allocate(mc_align_para(mc_align_munr,mc_nrfreq,dust_nr_species))
+     ! Note for below: since these values are on gridpoints, not
+     ! grid cells, the cumulative quantity also only has munr values
+     ! instead of munr+1.
+     allocate(mc_align_opcumul(mc_align_munr,mc_nrfreq,dust_nr_species))
+     !
+     ! Now fill these arrays
+     !
+     mc_align_mu(:) = align_mui_grid(:)
+     do ispec=1,dust_nr_species
+        do inu=1,nrfreq
+           do imu=1,mc_align_munr
+              call find_dust_alignfact_interpol(mc_frequencies(inu), &
+                   mc_align_mu(imu),ispec,1,0,.true.,orth,para)
+              mc_align_orth(imu,inu,ispec) = orth
+              mc_align_para(imu,inu,ispec) = para
+           enddo
+           mc_align_opcumul(1,inu,ispec) = 0.d0
+           do imu=2,mc_align_munr
+              mc_align_opcumul(imu,inu,ispec) = mc_align_opcumul(imu-1,inu,ispec) +    &
+                   abs(mc_align_mu(imu)-mc_align_mu(imu-1)) * 0.5d0 *                  &
+                   ( mc_align_orth(imu-1,inu,ispec) + mc_align_para(imu-1,inu,ispec) + &
+                     mc_align_orth(imu,inu,ispec) + mc_align_para(imu,inu,ispec) )
+           enddo
+           do imu=1,mc_align_munr-1
+              mc_align_opcumul(imu,inu,ispec) =               &
+                   mc_align_opcumul(imu,inu,ispec) /          &
+                   mc_align_opcumul(mc_align_munr,inu,ispec)
+           enddo
+           mc_align_opcumul(mc_align_munr,inu,ispec) = 1.d0
+        enddo
+     enddo
+  endif
+  !
   ! Get the opacities (assume global opacities for the moment)
   !
   temp    = 100.d0     ! Arbitrary temperature...
@@ -1130,6 +1182,10 @@ subroutine montecarlo_partial_cleanup()
   if(allocated(mrw_db_temp)) deallocate(mrw_db_temp)
   if(allocated(mrw_db_kappa_abs_planck)) deallocate(mrw_db_kappa_abs_planck)
   if(allocated(mrw_cell_uses_mrw)) deallocate(mrw_cell_uses_mrw)
+  if(allocated(mc_align_mu)) deallocate(mc_align_mu)
+  if(allocated(mc_align_orth)) deallocate(mc_align_orth)
+  if(allocated(mc_align_para)) deallocate(mc_align_para)
+  if(allocated(mc_align_opcumul)) deallocate(mc_align_opcumul)
   !
   !$OMP PARALLEL
   if(allocated(mc_enerpart)) deallocate(mc_enerpart)
@@ -5521,6 +5577,10 @@ subroutine walk_full_path_scat(params,inu,ierror)
      !
      call montecarlo_random_pos_in_cell(icell)
      !
+     ! If weighted photon packages, then get the energy
+     !
+     if(mc_weighted_photons) energy = mc_energy_thermal
+     !
      ! Find the direction in which to emit
      !
      if(alignment_mode.le.0) then
@@ -5535,7 +5595,8 @@ subroutine walk_full_path_scat(params,inu,ierror)
         ! emission from the aligned grain. Also the polarization state 
         ! must be randomly chosen from the appropriate distribution function.
         !
-        call montecarlo_aligned_randomphot(ray_index,inu,photpkg)
+        ener = energy
+        call montecarlo_aligned_randomphot(ray_index,inu,ener,photpkg)
         ray_cart_dirx = photpkg%n(1)
         ray_cart_diry = photpkg%n(2)
         ray_cart_dirz = photpkg%n(3)
@@ -5546,10 +5607,6 @@ subroutine walk_full_path_scat(params,inu,ierror)
         todo_photpkg = .false.
         !
      endif
-     !
-     ! If weighted photon packages, then get the energy
-     !
-     if(mc_weighted_photons) energy = mc_energy_thermal
      !
   endif
   !
@@ -8143,14 +8200,47 @@ end function anisoscat_phasefunc
 !--------------------------------------------------------------------------
 !    FOR ALIGNED GRAINS: RANDOM PHOTON EMISSION DIRECTION AND POL STATE
 !--------------------------------------------------------------------------
-subroutine montecarlo_aligned_randomphot(index,inu,pkg)
+subroutine montecarlo_aligned_randomphot(index,inu,ener,pkg)
   implicit none
   integer :: index,inu
+  double precision :: ener
   type(photon) :: pkg
-
-  write(stdo,*) 'ERROR: Polarized thermal source still in progress'
-  stop
-
+  integer :: ispec,imu
+  double precision :: rn
+  !
+  ! First find out which grain emitted this photon
+  ! 
+  alphacum(1) = 0.d0
+  do ispec=1,dust_nr_species
+     alphacum(ispec+1) = alphacum(ispec) + dustdens(ispec,index) * &
+                         kappa_a(inu,ispec)
+  enddo
+  if(alphacum(dust_nr_species+1).le.0.d0) stop 2244
+  do ispec=1,dust_nr_species
+     alphacum(ispec) = alphacum(ispec) / alphacum(dust_nr_species+1)
+  enddo
+  alphacum(dust_nr_species+1) = 1.d0
+  rn = ran2(iseed)
+  call hunt(alphacum,dust_nr_species+1,rn,ispec)
+  if((ispec.lt.1).or.(ispec.gt.dust_nr_species)) stop 7266
+  !
+  ! Now find out which direction the photon goes and
+  ! which polarization state it has
+  !
+  call polarization_random_aligned_thermemis(pkg,mc_align_munr,mc_align_mu, &
+                         mc_align_orth(:,inu,ispec),                        &
+                         mc_align_para(:,inu,ispec),                        &
+                         mc_align_opcumul(:,inu,ispec),                     &
+                         grainalign_dir(:,index),grainalign_eff(index))
+  !
+  ! Now make the dimensionless polarization state 
+  ! dimension-full
+  !
+  pkg%E    = ener*pkg%E
+  pkg%Q    = ener*pkg%Q
+  pkg%U    = ener*pkg%U
+  pkg%V    = ener*pkg%V
+  !
 end subroutine montecarlo_aligned_randomphot
 
 
