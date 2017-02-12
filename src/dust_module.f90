@@ -1509,7 +1509,7 @@ end subroutine read_dustkapscatmat_file
 !-------------------------------------------------------------------
 subroutine read_dustalign_angdep(ispec,filename)
   implicit none
-  integer :: ispec,filename_len,iformat,nlam,nmu,ierr,imu,ilam,i,iline,k
+  integer :: ispec,filename_len,iformat,nlam,nmu,ierr,imu,ilam,i,iline,k,imuface
   character*80 :: filename,string
   doubleprecision :: dum,dmu,dum2(1:2)
   logical :: fex
@@ -1636,6 +1636,7 @@ subroutine read_dustalign_angdep(ispec,filename)
      endif
      dust_kappa_arrays(ispec)%alignmu(1)   = 0.d0
      dust_kappa_arrays(ispec)%alignmu(nmu) = 1.d0
+     imuface = nmu
   else
      if(dust_kappa_arrays(ispec)%alignmu(nmu).lt.-1d-8) then
         write(stdo,*) 'ERROR while reading file ',filename(1:filename_len)
@@ -1644,6 +1645,7 @@ subroutine read_dustalign_angdep(ispec,filename)
      endif
      dust_kappa_arrays(ispec)%alignmu(nmu) = 0.d0
      dust_kappa_arrays(ispec)%alignmu(1)   = 1.d0
+     imuface = 1
   endif
   !
   ! Read the ratios of alpha_abs_para / alpha_abs_orth
@@ -1653,6 +1655,22 @@ subroutine read_dustalign_angdep(ispec,filename)
         read(1,*) dum2
         dust_kappa_arrays(ispec)%alignorth(imu,ilam) = dum2(1)
         dust_kappa_arrays(ispec)%alignpara(imu,ilam) = dum2(2)
+        if(imu.eq.imuface) then
+           !
+           ! Check that for face-on view the orth and para are
+           ! equal. If not, then the basic assumption of axially
+           ! symmetric (or fast-spinning) grains is not fulfilled.
+           !
+           if(abs((dum2(2)-dum2(1))/(dum2(2)+dum2(1)+1d-60)).gt.1d-8) then
+              write(stdo,*) 'ERROR while reading alignment data:'
+              write(stdo,*) '   A grain seen along the alignment axis must have zero polarization.'
+              write(stdo,*) '   Even if it is a prolate grain, because then it is spinning fast,'
+              write(stdo,*) '   so that it always should average out. In the file I now read in,'
+              write(stdo,*) '   however, the orthogonal and parallel opacity coefficients are not'
+              write(stdo,*) '   equal, even for face-on view (seen long alignment axis).'
+              stop
+           endif
+        endif
      enddo
   enddo
   !
