@@ -970,7 +970,7 @@ subroutine montecarlo_init(params,ierr,mcaction,resetseed)
      !
      mc_align_mu(:) = align_mui_grid(:)
      do ispec=1,dust_nr_species
-        do inu=1,nrfreq
+        do inu=1,mc_nrfreq
            do imu=1,mc_align_munr
               call find_dust_alignfact_interpol(mc_frequencies(inu), &
                    mc_align_mu(imu),ispec,1,0,.true.,orth,para)

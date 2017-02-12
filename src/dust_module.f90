@@ -1648,13 +1648,17 @@ subroutine read_dustalign_angdep(ispec,filename)
      imuface = 1
   endif
   !
-  ! Read the ratios of alpha_abs_para / alpha_abs_orth
+  ! Read the alpha_abs_orth and alpha_abs_para
   !
   do ilam=1,nlam
      do imu=1,nmu
         read(1,*) dum2
         dust_kappa_arrays(ispec)%alignorth(imu,ilam) = dum2(1)
         dust_kappa_arrays(ispec)%alignpara(imu,ilam) = dum2(2)
+        if((dum2(1).lt.0.d0).or.(dum2(2).lt.0.d0)) then
+           write(stdo,*) 'ERROR: Orthogonal and parallel opacities cannot be negative!'
+           stop
+        endif
         if(imu.eq.imuface) then
            !
            ! Check that for face-on view the orth and para are
