@@ -113,6 +113,8 @@ module rtglobal_module
   integer :: incl_extlum=0
   integer :: incl_heatsource=0           ! Include internal heat source
   integer :: incl_quantum=0              ! Include quantum-heated grains
+  logical :: dust_2danisoscat=.false.    ! If this flag is set, then do the special 2-D axisymmetric full scattering stuff
+  integer :: dust_2daniso_nphi=360       ! If dust_2danisoscat==.true., then this is the number of phi-angles
   logical :: do_writemodel               ! Write user-defined model to file
   logical :: do_writegridfile            ! Write the grid
   logical :: do_writepop                 ! Write the internally calculated level populations

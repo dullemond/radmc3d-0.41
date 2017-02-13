@@ -75,6 +75,9 @@ program radmc3d
   rt_incl_gascont_freefree   = .true.
   rt_incl_userdef_srcalp     = .false.
   !
+  dust_2danisoscat           = .false.
+  dust_2daniso_nphi          = 360 
+  !
   ! Defaults for the camera position and orientation. 
   !
   writeimage_unformatted     = .false.
@@ -2224,6 +2227,7 @@ subroutine read_radmcinp_file()
      call parse_input_double ('mc_scat_maxtauabs@            ',mc_scat_maxtauabs)
      call parse_input_integer('scat_munr@                    ',scat_munr)
      !call parse_input_integer('scat_phinr@                   ',scat_phinr)
+     call parse_input_integer('dust_2daniso_nphi@            ',dust_2daniso_nphi)
      call parse_input_integer('mc_weighted_photons@          ',wghtphot)
      call parse_input_integer('optimized_motion@             ',ioptmot)
      call parse_input_double ('optim_dtau@                   ',rt_mcparams%optim_dtau)
