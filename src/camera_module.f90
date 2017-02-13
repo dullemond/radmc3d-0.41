@@ -326,11 +326,9 @@ subroutine camera_init()
   ! not compatible with 2-D spherical coordinates.
   !
   if((scattering_mode.ge.2).and.(igrid_coord.ge.100).and. &
-     (amr_dim.ne.3)) then
+     (amr_dim.eq.1)) then
      write(stdo,*) 'ERROR: Non-isotropic scattering is incompatible with'
-     write(stdo,*) '       2-D spherical coordinates. Use 3-D spherical '
-     write(stdo,*) '       coordinates instead (i.e. include, say, 64 or'
-     write(stdo,*) '       more cells in phi-direction).'
+     write(stdo,*) '       1-D spherical coordinates.'
      stop
   endif
   !
