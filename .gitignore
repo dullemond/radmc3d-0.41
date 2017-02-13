@@ -37,3 +37,5 @@ radmc3d
 .#*
 test*
 .DS_Store
+models/
+test/
