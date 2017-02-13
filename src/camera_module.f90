@@ -1139,10 +1139,10 @@ subroutine camera_serial_raytrace(nrfreq,inu0,inu1,x,y,z,dx,dy,dz,distance,   &
            write(stdo,*) '       available.'
            stop
         endif
-        if(amr_dim.lt.3) then
+        if(amr_dim.eq.1) then
            if((igrid_coord.ge.100).and.(igrid_coord.lt.200)) then
               write(stdo,*) 'ERROR: Non-isotropic scattering in spherical coordinates'
-              write(stdo,*) '       is (for now) only available in full 3-D.'
+              write(stdo,*) '       is (for now) only available in 2-D or 3-D.'
               stop
            endif
         endif
@@ -2590,6 +2590,11 @@ subroutine camera_serial_raytrace(nrfreq,inu0,inu1,x,y,z,dx,dy,dz,distance,   &
                  ! because unfortunately the index order of mcscat_scatsrc_iquv
                  ! is unconvenient).
                  !
+                 if(dust_2danisoscat) then
+                    write(stdo,*) 'Sorry: for the moment aligned grains are not yet consistent with '
+                    write(stdo,*) '       the new 2-D axisymmetric anisotropic scattering mode. Will come in due time.'
+                    stop
+                 endif
                  idir = 1    ! For now only one vantage point
                  camera_srcscat_iquv(:,1) = mcscat_scatsrc_iquv(:,ray_index,1,idir)
                  camera_srcscat_iquv(:,2) = mcscat_scatsrc_iquv(:,ray_index,2,idir)
@@ -3623,6 +3628,11 @@ subroutine camera_make_rect_image(img,tausurf)
         if(scattering_mode.lt.5) then
            write(stdo,*) 'ERROR: scattering_mode.lt.5 is incompatible with'
            write(stdo,*) '       2-D spherical coordinates.'
+           stop
+        endif
+        if(camera_secondorder) then
+           write(stdo,*) 'ERROR: At the moment the 2-D axisymmetric full-scattering mode is not yet'
+           write(stdo,*) '       compatible with second order ray-tracing... :-('
            stop
         endif
         !

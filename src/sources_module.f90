@@ -705,6 +705,8 @@ subroutine sources_get_src_alp(inu0,inu1,nf,src,alp,inclstokes)
   double precision :: xav,yav,zav
   double precision :: rlen,cosp,sinp,cost,sint,vx,vy,vz
   double precision :: velgrad,turb
+  double precision :: levent,phievent
+  integer :: iphievent
   logical :: inclstokes
   !
   ! Find the local dust densities
@@ -1020,17 +1022,68 @@ subroutine sources_get_src_alp(inu0,inu1,nf,src,alp,inclstokes)
            ! Then the scattering part
            !
            if(scattering_mode.ge.1) then
-              if(inclstokes) then
-                 if(camera_mcscat_monochromatic) then
-                    src(inu,1:4) = src(inu,1:4) + mcscat_scatsrc_iquv(1,ray_index,1:4,mcscat_current_dir)
+              if(.not.dust_2danisoscat) then
+                 !
+                 ! Normal 3-D case
+                 !
+                 if(inclstokes) then
+                    if(camera_mcscat_monochromatic) then
+                       src(inu,1:4) = src(inu,1:4) + mcscat_scatsrc_iquv(1,ray_index,1:4,mcscat_current_dir)
+                    else
+                       src(inu,1:4) = src(inu,1:4) + mcscat_scatsrc_iquv(inu,ray_index,1:4,mcscat_current_dir)
+                    endif
                  else
-                    src(inu,1:4) = src(inu,1:4) + mcscat_scatsrc_iquv(inu,ray_index,1:4,mcscat_current_dir)
+                    if(camera_mcscat_monochromatic) then
+                       src(inu,1) = src(inu,1) + mcscat_scatsrc_iquv(1,ray_index,1,mcscat_current_dir)
+                    else
+                       src(inu,1) = src(inu,1) + mcscat_scatsrc_iquv(inu,ray_index,1,mcscat_current_dir)
+                    endif
                  endif
               else
-                 if(camera_mcscat_monochromatic) then
-                    src(inu,1) = src(inu,1) + mcscat_scatsrc_iquv(1,ray_index,1,mcscat_current_dir)
+                 !
+                 ! Special 2-D axisymmetric mode for spherical coordinates
+                 !
+                 ! First find the "average" position along this ray segment
+                 !
+                 xav = 0.5d0 * ( ray_cart_x + ray_prev_x )
+                 yav = 0.5d0 * ( ray_cart_y + ray_prev_y )
+                 zav = 0.5d0 * ( ray_cart_z + ray_prev_z )
+                 !
+                 ! Find the phi angle of position
+                 !
+                 levent   = sqrt(xav**2+yav**2)
+                 if(abs(xav).gt.1d-8*levent) then
+                    phievent = atan(yav/xav)
+                    if(phievent.lt.0.d0) then
+                       phievent = phievent + pi
+                    endif
+                    if(yav.lt.0.d0) then
+                       phievent = phievent + pi
+                    endif
                  else
-                    src(inu,1) = src(inu,1) + mcscat_scatsrc_iquv(inu,ray_index,1,mcscat_current_dir)
+                    if(yav.gt.0.d0) then
+                       phievent = pihalf
+                    else
+                       phievent = pi+pihalf
+                    endif
+                 endif
+                 !
+                 ! Find the index of this phi-cell 
+                 !
+                 iphievent = floor(dust_2daniso_nphi*phievent/twopi) + 1
+                 if(iphievent.eq.dust_2daniso_nphi+1) then
+                    iphievent = dust_2daniso_nphi
+                 endif
+                 !
+                 ! Now add the scattering source function
+                 !
+                 if(.not.inclstokes) stop 4451
+                 if(camera_mcscat_monochromatic) then
+                    src(inu,1:4) = src(inu,1:4) + 0.5d0 * mcscat_scatsrc_iquv(1,ray_index,1:4,iphievent) + &
+                                                  0.5d0 * mcscat_scatsrc_iquv(1,ray_index,1:4,iphievent+1)
+                 else
+                    src(inu,1:4) = src(inu,1:4) + 0.5d0 * mcscat_scatsrc_iquv(inu,ray_index,1:4,iphievent) + &
+                                                  0.5d0 * mcscat_scatsrc_iquv(inu,ray_index,1:4,iphievent+1)
                  endif
               endif
            endif
