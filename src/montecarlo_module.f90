@@ -322,16 +322,19 @@ subroutine montecarlo_init(params,ierr,mcaction,resetseed)
      stop
   endif
   !
-  ! Currently the small angle scattering mode (including polarization) is
-  ! not compatible with 2-D spherical coordinates.
+  ! Small angle scattering mode (including polarization) for 2-D spherical coordinates
+  ! requires a special treatment. Check basic things, just to be sure.
   !
-  if((scattering_mode.ge.2).and.(igrid_coord.ge.100).and. &
-     (amr_dim.ne.3)) then
-     write(stdo,*) 'ERROR: Non-isotropic scattering is incompatible with'
-     write(stdo,*) '       2-D spherical coordinates. Use 3-D spherical '
-     write(stdo,*) '       coordinates instead (i.e. include, say, 64 or'
-     write(stdo,*) '       more cells in phi-direction).'
-     stop
+  if((scattering_mode.ge.2).and.(igrid_coord.ge.100).and.(amr_dim.ne.3)) then
+     if(amr_dim.eq.1) stop 4096
+     if(scattering_mode.lt.5) stop 4097
+     if(.not.dust_2danisoscat) stop 4099
+     if(mcscat_nrdirs.ne.dust_2daniso_nphi + 1) stop 4098
+  endif
+  if(dust_2danisoscat) then
+     if(scattering_mode.lt.5) stop 3056
+     if(amr_dim.ne.2) stop 3057
+     if(igrid_coord.lt.100) stop 3055
   endif
   !
   ! Polarized scattering and multiple vantage points at the same time 
@@ -339,9 +342,7 @@ subroutine montecarlo_init(params,ierr,mcaction,resetseed)
   ! hard to build in: just a loop over idir=1,mcscat_nrdirs and the
   ! allocation of the scattering source array to a bigger idir dimension. 
   !
-  !  **** TODO 2DSCAT ****
-  !
-  if((scattering_mode.ge.4).and.(mcscat_nrdirs.gt.1)) then
+  if((scattering_mode.ge.4).and.((.not.dust_2danisoscat).and.(mcscat_nrdirs.gt.1))) then
      write(stdo,*) 'ERROR: Polarized scattering is currently incompatible'
      write(stdo,*) '       with multiple vantage points in parallel.'
      stop
@@ -6746,6 +6747,13 @@ subroutine walk_cells_scat(params,taupath,ener,inu,arrived,ispecc,ierror)
                       mcscat_scatsrc_iquv(ray_inu,ray_index,1,1) + scatsrc0
            elseif((scattering_mode.eq.2).or.(scattering_mode.eq.3)) then
               !
+              ! 2D scattering mode only for scattering_mode 5
+              !
+              if(dust_2danisoscat) then
+                 write(stdo,*) 'ERROR: non-isotropic scattering for 2-D axisymmetric models only for scattering_mode.ge.5'
+                 stop
+              endif
+              !
               ! Anisotropic scattering: add only for the given directions
               !
               scatsrc0 = dtauscat * enerav / ( cellvolume(ray_index) * 12.566371d0 )
@@ -6804,6 +6812,13 @@ subroutine walk_cells_scat(params,taupath,ener,inu,arrived,ispecc,ierror)
               endif
            elseif(scattering_mode.eq.4) then
               !
+              ! 2D scattering mode only for scattering_mode 5
+              !
+              if(dust_2danisoscat) then
+                 write(stdo,*) 'ERROR: non-isotropic scattering for 2-D axisymmetric models only for scattering_mode.ge.5'
+                 stop
+              endif
+              !
               ! Polarized scattering, but only for the scattering 
               ! source function (we assume that the current photon is
               ! unpolarized)
@@ -6836,9 +6851,6 @@ subroutine walk_cells_scat(params,taupath,ener,inu,arrived,ispecc,ierror)
               ! Z instead of kappa_scat.
               !
               do ispec=1,dust_nr_species
-                 !
-                 ! **** TODO 2DSCAT ****
-                 !
                  call polarization_randomorient_scatsource(photpkg, &
                       mcscat_dirs(:,1),mcscat_svec(:,1),            &
                       scat_munr,scat_mui_grid(:),                   &
@@ -6849,9 +6861,6 @@ subroutine walk_cells_scat(params,taupath,ener,inu,arrived,ispecc,ierror)
                       zmatrix(:,ray_inu,5,ispec),                   &
                       zmatrix(:,ray_inu,6,ispec),                   &
                       src4)
-                 !
-                 ! **** TODO 2DSCAT ****
-                 !
                  mcscat_scatsrc_iquv(ray_inu,ray_index,1:4,1) =      &
                       mcscat_scatsrc_iquv(ray_inu,ray_index,1:4,1) + &
                       dustdens(ispec,ray_index) * src4(1:4) * dss /  &

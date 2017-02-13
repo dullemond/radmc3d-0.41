@@ -3610,22 +3610,61 @@ subroutine camera_make_rect_image(img,tausurf)
   ! For now allow only one single direction (i.e. one single vantage point)
   !
   if(domc.and.(scattering_mode.gt.1)) then
+     if((igrid_coord.ge.100).and.(amr_dim.ne.3)) then
+        !
+        ! Special case: 2D axisymmetric model in spherical coordinate
+        ! but with full scattering mode (only possible for scattering_mode.ge.5).
+        !
+        if(amr_dim.eq.1) then
+           write(stdo,*) 'ERROR: scattering_mode.ge.2 is incompatible with'
+           write(stdo,*) '       1-D spherical coordinates.'
+           stop
+        endif
+        if(scattering_mode.lt.5) then
+           write(stdo,*) 'ERROR: scattering_mode.lt.5 is incompatible with'
+           write(stdo,*) '       2-D spherical coordinates.'
+           stop
+        endif
+        !
+        ! Switch on the special treatment
+        !
+        dust_2danisoscat = .true.
+        !
+        ! Extend the scattering source array to dust_2daniso_nphi + 1 phi-angle
+        ! points starting with phi=0 and ending with phi=360 degrees
+        !
+        mcscat_nrdirs = dust_2daniso_nphi + 1
+        !
+        ! Message
+        !
+        write(stdo,*) 'Note: Using 2-D full-phase scattering mode. This requires a bit of extra memory.'
+     else
+        !
+        ! Normal case (3-D)
+        !
+        mcscat_nrdirs = 1
+     endif
      !
      ! Make the scattering direction the same as the direction of
      ! viewing. 
      ! For now allow only one single direction (i.e. one single vantage point)
      !
+     ! NOTE: For 2-D axisymmetric models in spherical coordinates, we
+     !       do things in a special way: we reserve mcscat_nrdirs 
+     !       "directions", which are in fact all the same, but for
+     !       the scattering source function we will set the scattering
+     !       event at different positions. 
+     !
      if(allocated(mcscat_dirs)) deallocate(mcscat_dirs)
-     allocate(mcscat_dirs(1:3,1:1),STAT=ierr)
+     allocate(mcscat_dirs(1:3,1:mcscat_nrdirs),STAT=ierr)
      if(ierr.gt.0) then
         write(stdo,*) 'ERROR: Could not allocate mcscat_dirs()'
         stop
      endif
-     mcscat_nrdirs = 1
      mcscat_current_dir = 1
-     mcscat_dirs(1,1:1) = dirx
-     mcscat_dirs(2,1:1) = diry
-     mcscat_dirs(3,1:1) = dirz
+     mcscat_dirs(1,1:mcscat_nrdirs) = dirx
+     mcscat_dirs(2,1:mcscat_nrdirs) = diry
+     mcscat_dirs(3,1:mcscat_nrdirs) = dirz
      !
      ! For convenience, store this also here in the camera module
      ! (works only for a single vantage point)
@@ -3639,14 +3678,14 @@ subroutine camera_make_rect_image(img,tausurf)
      ! vector, and pointing vertically upward in the image plane.
      !
      if(allocated(mcscat_svec)) deallocate(mcscat_svec)
-     allocate(mcscat_svec(1:3,1:1),STAT=ierr)
+     allocate(mcscat_svec(1:3,1:mcscat_nrdirs),STAT=ierr)
      if(ierr.gt.0) then
         write(stdo,*) 'ERROR: Could not allocate mcscat_svec()'
         stop
      endif
-     mcscat_svec(1,1:1) = svcx
-     mcscat_svec(2,1:1) = svcy
-     mcscat_svec(3,1:1) = svcz
+     mcscat_svec(1,1:mcscat_nrdirs) = svcx
+     mcscat_svec(2,1:mcscat_nrdirs) = svcy
+     mcscat_svec(3,1:mcscat_nrdirs) = svcz
      !
      ! For convenience, store this also here in the camera module
      ! (works only for a single vantage point)
@@ -3655,27 +3694,11 @@ subroutine camera_make_rect_image(img,tausurf)
      camera_svec(2) = svcy
      camera_svec(3) = svcz
      !
-     ! For now anisotropic scattering is not available for 2-D axisymmetric
-     ! models or 1-D spherically symmetric models, because those would require 
-     ! many scattering directions in the mcscat_dirs. That should be easiliy
-     ! possible to build in (that is one of the main reasons why I introduced
-     ! the multi-angle mcscat_dirs in the first place), but for now it is not.
-     !
-     ! WILL COME SOON, I HOPE!
+     ! But mirror symmetry is not allowed for anisotropic scattering
      !
      if((igrid_coord.ge.100).and.(igrid_coord.le.199)) then
         if(igrid_mirror.ne.0) then
            write(stdo,*) 'ERROR: Mirror symmetry not compatible with anisotropic scattering.'
-           stop
-        endif
-        if(igrid_type.lt.100) then
-           if((amr_xdim.ne.1).or.(amr_ydim.ne.1).or.(amr_zdim.ne.1)) then
-              write(stdo,*) 'ERROR: For the moment anisotropic scattering in spherical coordinates'
-              write(stdo,*) '       is only allowed in 3-D models.'
-              stop
-           endif
-        else
-           write(stdo,*) 'INTERNAL ERROR: Grid type not known'
            stop
         endif
      endif
