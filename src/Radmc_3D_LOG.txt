@@ -8009,3 +8009,9 @@ finetuning: I noticed during some testing with a supersimple annulus model
             =1.d0 is perfect alignment. Partial alignment is
             treated as a linear sum of fully aligned and not
             aligned. 
+
+14.02.2017  Added possibility of doing full Stokes scattering in 2-D
+            axisymmetric models. The way this is done is to compute,
+            for each time a photon enters a cell, what the source 
+            function is like for all azimuthal angles. Essentially
+            we smear the scattering source function out over phi.
