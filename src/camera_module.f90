@@ -286,6 +286,12 @@ module camera_module
   !
   double precision, allocatable :: camera_srcscat_iquv(:,:)
   !
+  ! For 2-D axisymmetric models it might be important to limit the 
+  ! length of a ray segment to avoid too large changes of the phi
+  ! (azimuthal) angle of the ray between two cellwall crossings.
+  !
+  double precision :: camera_maxdphi = 0.d0
+  !
 contains
 
 
@@ -1433,10 +1439,25 @@ subroutine camera_serial_raytrace(nrfreq,inu0,inu1,x,y,z,dx,dy,dz,distance,   &
            !
            ! We use spherical coordinates
            !
-           call amrray_find_next_location_spher(ray_dsend,           &
-                ray_cart_x,ray_cart_y,ray_cart_z,                    &
-                ray_cart_dirx,ray_cart_diry,ray_cart_dirz,           &
-                ray_index,ray_indexnext,ray_ds,arrived)
+           if(camera_maxdphi.le.0.d0) then
+              !
+              ! Normal case
+              !
+              call amrray_find_next_location_spher(ray_dsend,           &
+                   ray_cart_x,ray_cart_y,ray_cart_z,                    &
+                   ray_cart_dirx,ray_cart_diry,ray_cart_dirz,           &
+                   ray_index,ray_indexnext,ray_ds,arrived)
+           else
+              !
+              ! The case when we want to prevent too strong jumps
+              ! in the angle of the ray wrt the origin
+              !
+              call amrray_find_next_location_spher(ray_dsend,           &
+                   ray_cart_x,ray_cart_y,ray_cart_z,                    &
+                   ray_cart_dirx,ray_cart_diry,ray_cart_dirz,           &
+                   ray_index,ray_indexnext,ray_ds,arrived,              &
+                   maxdeltasina=camera_maxdphi)
+           endif
            !
            ! Check if this cell is the smallest so far. However, this is far
            ! more subtle than for the Cartesian case where all cells are
