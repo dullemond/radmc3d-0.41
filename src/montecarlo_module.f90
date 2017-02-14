@@ -6451,7 +6451,7 @@ subroutine walk_cells_scat(params,taupath,ener,inu,arrived,ispecc,ierror)
   doubleprecision :: axi(1:2,1:3),Ebk,Qbk,Ubk,Vbk
   doubleprecision :: nvec_orig(1:3),svec_orig(1:3),phievent,levent
   doubleprecision :: xbk,ybk,cosphievent,sinphievent
-  doubleprecision :: deltaphi,cosdphi,sindphi,twodeefact
+  doubleprecision :: deltaphi,cosdphi,sindphi
   integer :: idirs
   !$ logical::continue
   !
@@ -6952,16 +6952,6 @@ subroutine walk_cells_scat(params,taupath,ener,inu,arrived,ispecc,ierror)
                  deltaphi = twopi / dust_2daniso_nphi
                  cosdphi  = cos(deltaphi)
                  sindphi  = sin(deltaphi)
-                 !
-                 ! Compute the scale factor for the scattering 
-                 ! source function
-                 !
-                 twodeefact = 1.d0 / dust_2daniso_nphi
-              else
-                 !
-                 ! For normal mode, always set twodeefact = 1
-                 !
-                 twodeefact = 1.d0
               endif
               !
               ! Now add the scattering contribution of each of
@@ -6987,8 +6977,8 @@ subroutine walk_cells_scat(params,taupath,ener,inu,arrived,ispecc,ierror)
                          src4)
                     mcscat_scatsrc_iquv(ray_inu,ray_index,1:4,idirs) =      &
                          mcscat_scatsrc_iquv(ray_inu,ray_index,1:4,idirs) + &
-                         dustdens(ispec,ray_index) * src4(1:4) * dss *      &
-                         twodeefact / cellvolume(ray_index)
+                         dustdens(ispec,ray_index) * src4(1:4) * dss /      &
+                         cellvolume(ray_index)
                  enddo
                  !
                  ! If 2-D axisymmetric anisotropic scattering mode,
