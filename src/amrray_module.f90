@@ -2712,6 +2712,19 @@ end subroutine amrray_find_next_location_cart
 !                      arriving either at the final point or escaping to
 !                      infinity (if ray_dsend=1d99). 
 ! 
+! OPTIONAL:
+!   maxdeltasina       If set, then the next position will not have an
+!                      angle wrt to the current position that is larger
+!                      than this value, or to be more accurate, the sinus
+!                      of that angle will not be larger. This is useful
+!                      when trying to avoid too large doppler shifts 
+!                      within a given cell or when using the 2-D axisymmetric
+!                      full scattering mode. If the next crossing with
+!                      a cell wall would be at a larger delta angle, then
+!                      the routine will instead return a location inside the
+!                      cell (not at the cell wall) and the next cell index
+!                      will be the same as the current cell index.
+!
 ! THIS ROUTINE PRODUCES:
 !   ray_ds        The actual distance travelled (cannot be bigger than dsend)
 !   amrray_nextcell  Pointer to the cell in which the photon will next enter.
@@ -2725,17 +2738,19 @@ subroutine amrray_find_next_location_spher(ray_dsend,                &
                 ray_cart_x,ray_cart_y,ray_cart_z,                    &
                 ray_cart_dirx,ray_cart_diry,ray_cart_dirz,           &
                 ray_indexcurr,ray_indexnext,ray_ds,arrived,          &
-                distmin,levelnext)
+                distmin,levelnext,maxdeltasina)
 implicit none
 doubleprecision :: ray_cart_x,ray_cart_y,ray_cart_z
 doubleprecision :: ray_cart_dirx,ray_cart_diry,ray_cart_dirz
 doubleprecision :: ray_dsend,ray_ds
 doubleprecision, optional :: distmin
 integer,optional :: levelnext
+doubleprecision, optional :: maxdeltasina
 integer :: ray_indexcurr,ray_indexnext
 logical :: arrived
 integer :: ihit
 doubleprecision :: axi(1:2,1:3),bxi(1:2,1:3)
+doubleprecision :: angvec(1:3),sinang
 !
 doubleprecision :: fact,xt,yt,zt,dummy,ds_r1,ds_r2,ds_t1,ds_t2,ds_p1,ds_p2
 integer :: idy,idz,ix,iy,iz,iddr,ilr,idir
@@ -5000,6 +5015,52 @@ else
       if((ds_try.ge.0.d0).and.(ds_try.lt.cross_ds)) then
          amrray_icross   = 6
          cross_ds = ds_try
+      endif
+   endif
+   !
+   ! If a maximum delta angle is set, then we must assure that the
+   ! next point does not have a larger angle (wrt to the origin) with
+   ! the start of this segment than this maximum delta angle. This is
+   ! important for e.g. line transfer where we must assure that the
+   ! line does not doppler shift too much within a single cell, and
+   ! for the 2-D scattering mode.
+   !
+   if(present(maxdeltasina)) then
+      !
+      ! Find the cross product between vec x and vec x + cross_dr * vec dir
+      ! Since the cross product of vec x with itself is zero, we can
+      ! also calculate the cross product between vec x and the 
+      ! vector cross_dr * vec dir. 
+      !
+      angvec(1) = ray_cart_y*ray_cart_dirz - ray_cart_z*ray_cart_diry
+      angvec(2) = ray_cart_z*ray_cart_dirx - ray_cart_x*ray_cart_dirz
+      angvec(3) = ray_cart_x*ray_cart_diry - ray_cart_y*ray_cart_dirx
+      !
+      ! Normalize.
+      !
+      ! Note: actually it should be divided by |r|*|r+dir*cross_ds|
+      ! but this is accurate enough for the present purpose.
+      ! It remains an estimation, though
+      !
+      angvec(:) = angvec(:) * cross_ds / ( r0 * ( r0 + cross_ds ) )
+      !
+      ! Calculate the sin(angle)
+      !
+      sinang = sqrt(angvec(1)**2+angvec(2)**2+angvec(3)**2)
+      !
+      ! Now check
+      !
+      if(sinang.gt.maxdeltasina) then
+         !
+         ! So indeed the angle threatens to become too large, so
+         ! decrease the step
+         !
+         cross_ds = cross_ds * maxdeltasina / sinang
+         !
+         ! And tell the rest of the routine that we are not 
+         ! crossing a cell wall after all
+         !
+         amrray_icross   = 0
       endif
    endif
    !
