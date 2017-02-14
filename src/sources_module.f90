@@ -1077,13 +1077,22 @@ subroutine sources_get_src_alp(inu0,inu1,nf,src,alp,inclstokes)
                  !
                  ! Now add the scattering source function
                  !
-                 if(.not.inclstokes) stop 4451
-                 if(camera_mcscat_monochromatic) then
-                    src(inu,1:4) = src(inu,1:4) + 0.5d0 * mcscat_scatsrc_iquv(1,ray_index,1:4,iphievent) + &
-                                                  0.5d0 * mcscat_scatsrc_iquv(1,ray_index,1:4,iphievent+1)
+                 if(inclstokes) then
+                    if(camera_mcscat_monochromatic) then
+                       src(inu,1:4) = src(inu,1:4) + 0.5d0 * mcscat_scatsrc_iquv(1,ray_index,1:4,iphievent) + &
+                                                     0.5d0 * mcscat_scatsrc_iquv(1,ray_index,1:4,iphievent+1)
+                    else
+                       src(inu,1:4) = src(inu,1:4) + 0.5d0 * mcscat_scatsrc_iquv(inu,ray_index,1:4,iphievent) + &
+                                                     0.5d0 * mcscat_scatsrc_iquv(inu,ray_index,1:4,iphievent+1)
+                    endif
                  else
-                    src(inu,1:4) = src(inu,1:4) + 0.5d0 * mcscat_scatsrc_iquv(inu,ray_index,1:4,iphievent) + &
-                                                  0.5d0 * mcscat_scatsrc_iquv(inu,ray_index,1:4,iphievent+1)
+                    if(camera_mcscat_monochromatic) then
+                       src(inu,1) = src(inu,1) + 0.5d0 * mcscat_scatsrc_iquv(1,ray_index,1,iphievent) + &
+                                                 0.5d0 * mcscat_scatsrc_iquv(1,ray_index,1,iphievent+1)
+                    else
+                       src(inu,1) = src(inu,1) + 0.5d0 * mcscat_scatsrc_iquv(inu,ray_index,1,iphievent) + &
+                                                 0.5d0 * mcscat_scatsrc_iquv(inu,ray_index,1,iphievent+1)
+                    endif
                  endif
               endif
            endif
