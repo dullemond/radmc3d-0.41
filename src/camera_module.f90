@@ -3672,6 +3672,7 @@ subroutine camera_make_rect_image(img,tausurf)
         ! interpolation of the scattering source function.
         !
         camera_maxdphi = twopi / dust_2daniso_nphi
+        if(camera_maxdphi.ge.0.5d0) camera_maxdphi=0.5d0
         !
         ! Message
         !

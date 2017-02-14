@@ -2771,6 +2771,7 @@ logical :: val_r1,val_r2,val_t1,val_t2,val_p1,val_p2
 logical :: topquadrant,crossequator
 logical :: doshift,dummyflag
 doubleprecision :: margin,err,cossindum,pabc
+logical :: hitmaxphi
 !!######################################
 !doubleprecision :: xbk,ybk,zbk
 !!######################################
@@ -2825,6 +2826,7 @@ crossequator = .false.
 ds_sphere0 = 1d99
 amrray_ispherehit = 0
 amrray_icross = 0
+hitmaxphi = .false.
 !
 ! If mirror symmetry required, first check and if necessary, flip
 ! NOTE: Let us simply not accept ray positions that are on the wrong side.
@@ -5061,6 +5063,7 @@ else
          ! crossing a cell wall after all
          !
          amrray_icross   = 0
+         hitmaxphi       = .true.
       endif
    endif
    !
@@ -5194,7 +5197,7 @@ else
       ! If we have amrray_icross==0 without amrray_ispherehit>0, then we have
       ! arrived
       !
-      if(amrray_ispherehit.eq.0) arrived=.true.
+      if((amrray_ispherehit.eq.0).and.(.not.hitmaxphi)) arrived=.true.
       return
    case(1)
       idir = 1
