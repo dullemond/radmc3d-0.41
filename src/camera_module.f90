@@ -3664,6 +3664,15 @@ subroutine camera_make_rect_image(img,tausurf)
         !
         mcscat_nrdirs = dust_2daniso_nphi + 1
         !
+        ! Make sure that the ray tracing cannot make larger steps
+        ! than a maximum angle wrt the origin. Reason: for near edge-on
+        ! views a ray could otherwise pass through a cell (=annulus) 
+        ! almost along the annulus tube, and change phi angle too much,
+        ! thereby skipping intermediate angles. That is bad for the 
+        ! interpolation of the scattering source function.
+        !
+        camera_maxdphi = twopi / dust_2daniso_nphi
+        !
         ! Message
         !
         write(stdo,*) 'Note: Using 2-D full-phase scattering mode. This requires a bit of extra memory.'
