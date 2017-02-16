@@ -1022,7 +1022,7 @@ subroutine sources_get_src_alp(inu0,inu1,nf,src,alp,inclstokes)
            ! Then the scattering part
            !
            if(scattering_mode.ge.1) then
-              if(.not.dust_2danisoscat) then
+              if(.not.dust_2daniso) then
                  !
                  ! Normal 3-D case
                  !

@@ -328,10 +328,10 @@ subroutine montecarlo_init(params,ierr,mcaction,resetseed)
   if((scattering_mode.ge.2).and.(igrid_coord.ge.100).and.(amr_dim.ne.3)) then
      if(amr_dim.eq.1) stop 4096
      if(scattering_mode.lt.5) stop 4097
-     if(.not.dust_2danisoscat) stop 4099
+     if(.not.dust_2daniso) stop 4099
      if(mcscat_nrdirs.ne.dust_2daniso_nphi + 1) stop 4098
   endif
-  if(dust_2danisoscat) then
+  if(dust_2daniso) then
      if(scattering_mode.lt.5) stop 3056
      if(amr_dim.ne.2) stop 3057
      if(igrid_coord.lt.100) stop 3055
@@ -342,7 +342,7 @@ subroutine montecarlo_init(params,ierr,mcaction,resetseed)
   ! hard to build in: just a loop over idir=1,mcscat_nrdirs and the
   ! allocation of the scattering source array to a bigger idir dimension. 
   !
-  if((scattering_mode.ge.4).and.((.not.dust_2danisoscat).and.(mcscat_nrdirs.gt.1))) then
+  if((scattering_mode.ge.4).and.((.not.dust_2daniso).and.(mcscat_nrdirs.gt.1))) then
      write(stdo,*) 'ERROR: Polarized scattering is currently incompatible'
      write(stdo,*) '       with multiple vantage points in parallel.'
      stop
@@ -6749,7 +6749,7 @@ subroutine walk_cells_scat(params,taupath,ener,inu,arrived,ispecc,ierror)
               !
               ! 2D scattering mode only for scattering_mode 5
               !
-              if(dust_2danisoscat) then
+              if(dust_2daniso) then
                  write(stdo,*) 'ERROR: non-isotropic scattering for 2-D axisymmetric models only for scattering_mode.ge.5'
                  stop
               endif
@@ -6814,7 +6814,7 @@ subroutine walk_cells_scat(params,taupath,ener,inu,arrived,ispecc,ierror)
               !
               ! 2D scattering mode only for scattering_mode 5
               !
-              if(dust_2danisoscat) then
+              if(dust_2daniso) then
                  write(stdo,*) 'ERROR: non-isotropic scattering for 2-D axisymmetric models only for scattering_mode.ge.5'
                  stop
               endif
@@ -6899,7 +6899,7 @@ subroutine walk_cells_scat(params,taupath,ener,inu,arrived,ispecc,ierror)
               ! then we must rotate the photpkg%n and photpkg%s
               ! vectors appropriately
               !
-              if(dust_2danisoscat) then
+              if(dust_2daniso) then
                  !
                  ! Safety check. Note: the last phi point is
                  ! 360 degrees == first one. This makes it easier
@@ -6969,7 +6969,7 @@ subroutine walk_cells_scat(params,taupath,ener,inu,arrived,ispecc,ierror)
                  ! then we must rotate the photpkg%n and photpkg%s
                  ! vectors appropriately
                  !
-                 if(dust_2danisoscat) then
+                 if(dust_2daniso) then
                     xbk = photpkg%n(1)
                     ybk = photpkg%n(2)
                     photpkg%n(1) =  cosdphi * xbk - sindphi * ybk
@@ -6988,7 +6988,7 @@ subroutine walk_cells_scat(params,taupath,ener,inu,arrived,ispecc,ierror)
               photpkg%Q = Qbk
               photpkg%U = Ubk
               photpkg%V = Vbk
-              if(dust_2danisoscat) then
+              if(dust_2daniso) then
                  !
                  ! Restore original direction and s-vector
                  !
@@ -7276,7 +7276,7 @@ subroutine walk_cells_scat(params,taupath,ener,inu,arrived,ispecc,ierror)
               ! then we must rotate the photpkg%n and photpkg%s
               ! vectors appropriately
               !
-              if(dust_2danisoscat) then
+              if(dust_2daniso) then
                  !
                  ! Safety check. Note: the last phi point is
                  ! 360 degrees == first one. This makes it easier
@@ -7346,7 +7346,7 @@ subroutine walk_cells_scat(params,taupath,ener,inu,arrived,ispecc,ierror)
                  ! then we must rotate the photpkg%n and photpkg%s
                  ! vectors appropriately
                  !
-                 if(dust_2danisoscat) then
+                 if(dust_2daniso) then
                     xbk = photpkg%n(1)
                     ybk = photpkg%n(2)
                     photpkg%n(1) =  cosdphi * xbk - sindphi * ybk
@@ -7365,7 +7365,7 @@ subroutine walk_cells_scat(params,taupath,ener,inu,arrived,ispecc,ierror)
               photpkg%Q = Qbk
               photpkg%U = Ubk
               photpkg%V = Vbk
-              if(dust_2danisoscat) then
+              if(dust_2daniso) then
                  !
                  ! Restore original direction and s-vector
                  !

@@ -2609,7 +2609,7 @@ subroutine camera_serial_raytrace(nrfreq,inu0,inu1,x,y,z,dx,dy,dz,distance,   &
                  ! because unfortunately the index order of mcscat_scatsrc_iquv
                  ! is unconvenient).
                  !
-                 if(dust_2danisoscat) then
+                 if(dust_2daniso) then
                     write(stdo,*) 'Sorry: for the moment aligned grains are not yet consistent with '
                     write(stdo,*) '       the new 2-D axisymmetric anisotropic scattering mode. Will come in due time.'
                     stop
@@ -3657,7 +3657,7 @@ subroutine camera_make_rect_image(img,tausurf)
         !
         ! Switch on the special treatment
         !
-        dust_2danisoscat = .true.
+        dust_2daniso = .true.
         !
         ! Extend the scattering source array to dust_2daniso_nphi + 1 phi-angle
         ! points starting with phi=0 and ending with phi=360 degrees

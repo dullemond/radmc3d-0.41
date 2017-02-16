@@ -75,7 +75,7 @@ program radmc3d
   rt_incl_gascont_freefree   = .true.
   rt_incl_userdef_srcalp     = .false.
   !
-  dust_2danisoscat           = .false.
+  dust_2daniso               = .false.
   dust_2daniso_nphi          = 360 
   !
   ! Defaults for the camera position and orientation. 
