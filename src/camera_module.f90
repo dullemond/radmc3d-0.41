@@ -2615,10 +2615,10 @@ subroutine camera_serial_raytrace(nrfreq,inu0,inu1,x,y,z,dx,dy,dz,distance,   &
                     stop
                  endif
                  idir = 1    ! For now only one vantage point
-                 camera_srcscat_iquv(:,1) = mcscat_scatsrc_iquv(:,ray_index,1,idir)
-                 camera_srcscat_iquv(:,2) = mcscat_scatsrc_iquv(:,ray_index,2,idir)
-                 camera_srcscat_iquv(:,3) = mcscat_scatsrc_iquv(:,ray_index,3,idir)
-                 camera_srcscat_iquv(:,4) = mcscat_scatsrc_iquv(:,ray_index,4,idir)
+                 camera_srcscat_iquv(inu0:inu1,1) = mcscat_scatsrc_iquv(inu0:inu1,ray_index,1,idir)
+                 camera_srcscat_iquv(inu0:inu1,2) = mcscat_scatsrc_iquv(inu0:inu1,ray_index,2,idir)
+                 camera_srcscat_iquv(inu0:inu1,3) = mcscat_scatsrc_iquv(inu0:inu1,ray_index,3,idir)
+                 camera_srcscat_iquv(inu0:inu1,4) = mcscat_scatsrc_iquv(inu0:inu1,ray_index,4,idir)
                  !
                  ! Now call the first order integration routine that takes
                  ! care of the alignment effects
