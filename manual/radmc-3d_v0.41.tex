@@ -3099,7 +3099,7 @@ factor). RADMC-3D will then internally check that
 Eqs.(\ref{eq-scatmat-selfconsist-kappa}, \ref{eq-scatmat-selfconsist-g}) are
 indeed fulfilled. If not, an error message will result.
 
-One last note: As mentioned in Section \ref{sec-definitions-stokes}, the
+One more note: As mentioned in Section \ref{sec-definitions-stokes}, the
 sign conventions of the Stokes vector components we use (the IAU 1974
 definition) are different from the Bohren \& Huffman and Mishchenko
 books. For randomly oriented particles, however, the sign conventions of the
@@ -3108,6 +3108,52 @@ would be affected are those that are in the upper-right and lower-left
 quadrants of the matrix, and these elements are anyway zero. So we can use,
 for randomly oriented particles, the matrix elements from those books and
 their computer codes without having to adjust the signs.
+
+\subsection{Scattering and axially symmetric models}
+In spherical coordinates it is possible in RADMC-3D to set up axially
+symmetric models. The trick is simply to set the number of $\phi$ coordinate
+points {\small\tt nphi} to 1 and to switch off the $\phi$-dimension in the
+grid (see Section \ref{sec-grid-input}). For isotropic scattering this mode
+has always been implemented. But for anisotropic scattering things become
+more complex. For such a model the scattering remains a fully 3-D problem:
+the scattering source function has to be stored not only as a function of
+$r$ and $\theta$, but also as a function of $\phi$ (for a given observer
+vantage point). The reason is that anisotropic scattering {\em does} care
+about viewing angle (in contrast to isotropic scattering). So even though
+for an axisymmetric model the density and temperature functions only depend
+on $r$ and $\theta$ (and are therefore mathematically 2-D), the scattering
+source function depends on $r$, $\theta$ and $\phi$.
+
+For this reason anisotropic scattering was, until version 0.40, not allowed
+for 2-D axisymmetric models. As of version 0.41 it is now possible to use
+the full polarized scattering mode ({\small\tt scattering\_mode=5}) also for
+2-D axisymmetric models. The intermediate scattering modes ({\small\tt
+  scattering\_mode=2, 3, 4}) remain incompatible with 2-D axisymmetry.
+Isotropic scattering remains, as before, fully compatible with 2-D
+axisymmetry.
+
+One note of explanation: the way the full scattering is now implemented into
+the case of 2-D axisymmetry is the following: internally we compute not just
+the scattering source function for one angle, but for a whole set of $\phi$
+angles (even though the grid has no $\phi$-points). Each time a photon in
+the scattering Monte Carlo simulation enters a cell (which in 2-D
+axisymmetry is an annulus), a loop over 360 $\phi$ angles is performed, and
+the scattering source function is computed for all of these angles.  {\em
+  This makes the code rather slow for each photon package!} But one needs
+fewer photon packages to get sufficiently high signal-to-noise ratio. You
+can experiment with fewer $\phi$ angles by adding, in {\small\tt radmc3d.inp},
+the following line (as an example):
+{\small\begin{verbatim}
+dust_2daniso_nphi = 60
+\end{verbatim}}
+in which case instead of 360 the model will only use 60 $\phi$ points. That
+will speed up the code significantly, but of course will treat the
+$\phi$-dependence of the scattering source function with lower precision.
+
+For now the 2-D axisymmetric version of full scattering is only possible 
+with first-order integration. 
+
+
 
 \section{More about photon packages in the Monte Carlo simulations}
 \label{sec-photon-packages-mc}
@@ -12688,6 +12734,16 @@ modus of polarization is implemented.
     \item Implemented a first testing version of the aligned grains:
       only polarized thermal emission so far. Still very much a testing
       version.
+    \item Implemented a method to also allow full Stokes vector polarized
+      scattering in the 2-D axisymmetric mode in spherical
+      coordinates. Until now the full scattering mode (scattering mode 5)
+      was only possible in full 3-D. Note however that anisotropic
+      scattering in 2-D axisymmetric models requires scattering mode 5,
+      which is the full scattering mode.  It is still not possible to use
+      intermediate scattering modes (like henyey-greenstein or any
+      scattering mode between 2 and 4) in 2-D axisymmetry. But those
+      intermediate modes are anyway more for testing than for real models,
+      so that should be ok.
   \end{itemize}
 \end{itemize}
 

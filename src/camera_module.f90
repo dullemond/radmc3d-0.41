@@ -286,6 +286,12 @@ module camera_module
   !
   double precision, allocatable :: camera_srcscat_iquv(:,:)
   !
+  ! For 2-D axisymmetric models it might be important to limit the 
+  ! length of a ray segment to avoid too large changes of the phi
+  ! (azimuthal) angle of the ray between two cellwall crossings.
+  !
+  double precision :: camera_maxdphi = 0.d0
+  !
 contains
 
 
@@ -326,11 +332,9 @@ subroutine camera_init()
   ! not compatible with 2-D spherical coordinates.
   !
   if((scattering_mode.ge.2).and.(igrid_coord.ge.100).and. &
-     (amr_dim.ne.3)) then
+     (amr_dim.eq.1)) then
      write(stdo,*) 'ERROR: Non-isotropic scattering is incompatible with'
-     write(stdo,*) '       2-D spherical coordinates. Use 3-D spherical '
-     write(stdo,*) '       coordinates instead (i.e. include, say, 64 or'
-     write(stdo,*) '       more cells in phi-direction).'
+     write(stdo,*) '       1-D spherical coordinates.'
      stop
   endif
   !
@@ -1139,10 +1143,10 @@ subroutine camera_serial_raytrace(nrfreq,inu0,inu1,x,y,z,dx,dy,dz,distance,   &
            write(stdo,*) '       available.'
            stop
         endif
-        if(amr_dim.lt.3) then
+        if(amr_dim.eq.1) then
            if((igrid_coord.ge.100).and.(igrid_coord.lt.200)) then
               write(stdo,*) 'ERROR: Non-isotropic scattering in spherical coordinates'
-              write(stdo,*) '       is (for now) only available in full 3-D.'
+              write(stdo,*) '       is (for now) only available in 2-D or 3-D.'
               stop
            endif
         endif
@@ -1435,10 +1439,25 @@ subroutine camera_serial_raytrace(nrfreq,inu0,inu1,x,y,z,dx,dy,dz,distance,   &
            !
            ! We use spherical coordinates
            !
-           call amrray_find_next_location_spher(ray_dsend,           &
-                ray_cart_x,ray_cart_y,ray_cart_z,                    &
-                ray_cart_dirx,ray_cart_diry,ray_cart_dirz,           &
-                ray_index,ray_indexnext,ray_ds,arrived)
+           if(camera_maxdphi.le.0.d0) then
+              !
+              ! Normal case
+              !
+              call amrray_find_next_location_spher(ray_dsend,           &
+                   ray_cart_x,ray_cart_y,ray_cart_z,                    &
+                   ray_cart_dirx,ray_cart_diry,ray_cart_dirz,           &
+                   ray_index,ray_indexnext,ray_ds,arrived)
+           else
+              !
+              ! The case when we want to prevent too strong jumps
+              ! in the angle of the ray wrt the origin
+              !
+              call amrray_find_next_location_spher(ray_dsend,           &
+                   ray_cart_x,ray_cart_y,ray_cart_z,                    &
+                   ray_cart_dirx,ray_cart_diry,ray_cart_dirz,           &
+                   ray_index,ray_indexnext,ray_ds,arrived,              &
+                   maxdeltasina=camera_maxdphi)
+           endif
            !
            ! Check if this cell is the smallest so far. However, this is far
            ! more subtle than for the Cartesian case where all cells are
@@ -2590,6 +2609,11 @@ subroutine camera_serial_raytrace(nrfreq,inu0,inu1,x,y,z,dx,dy,dz,distance,   &
                  ! because unfortunately the index order of mcscat_scatsrc_iquv
                  ! is unconvenient).
                  !
+                 if(dust_2daniso) then
+                    write(stdo,*) 'Sorry: for the moment aligned grains are not yet consistent with '
+                    write(stdo,*) '       the new 2-D axisymmetric anisotropic scattering mode. Will come in due time.'
+                    stop
+                 endif
                  idir = 1    ! For now only one vantage point
                  camera_srcscat_iquv(:,1) = mcscat_scatsrc_iquv(:,ray_index,1,idir)
                  camera_srcscat_iquv(:,2) = mcscat_scatsrc_iquv(:,ray_index,2,idir)
@@ -3610,22 +3634,76 @@ subroutine camera_make_rect_image(img,tausurf)
   ! For now allow only one single direction (i.e. one single vantage point)
   !
   if(domc.and.(scattering_mode.gt.1)) then
+     if((igrid_coord.ge.100).and.(amr_dim.ne.3)) then
+        !
+        ! Special case: 2D axisymmetric model in spherical coordinate
+        ! but with full scattering mode (only possible for scattering_mode.ge.5).
+        !
+        if(amr_dim.eq.1) then
+           write(stdo,*) 'ERROR: scattering_mode.ge.2 is incompatible with'
+           write(stdo,*) '       1-D spherical coordinates.'
+           stop
+        endif
+        if(scattering_mode.lt.5) then
+           write(stdo,*) 'ERROR: scattering_mode.lt.5 is incompatible with'
+           write(stdo,*) '       2-D spherical coordinates.'
+           stop
+        endif
+        if(camera_secondorder) then
+           write(stdo,*) 'ERROR: At the moment the 2-D axisymmetric full-scattering mode is not yet'
+           write(stdo,*) '       compatible with second order ray-tracing... :-('
+           stop
+        endif
+        !
+        ! Switch on the special treatment
+        !
+        dust_2daniso = .true.
+        !
+        ! Extend the scattering source array to dust_2daniso_nphi + 1 phi-angle
+        ! points starting with phi=0 and ending with phi=360 degrees
+        !
+        mcscat_nrdirs = dust_2daniso_nphi + 1
+        !
+        ! Make sure that the ray tracing cannot make larger steps
+        ! than a maximum angle wrt the origin. Reason: for near edge-on
+        ! views a ray could otherwise pass through a cell (=annulus) 
+        ! almost along the annulus tube, and change phi angle too much,
+        ! thereby skipping intermediate angles. That is bad for the 
+        ! interpolation of the scattering source function.
+        !
+        camera_maxdphi = twopi / dust_2daniso_nphi
+        if(camera_maxdphi.ge.0.5d0) camera_maxdphi=0.5d0
+        !
+        ! Message
+        !
+        write(stdo,*) 'Note: Using 2-D full-phase scattering mode. This requires a bit of extra memory.'
+     else
+        !
+        ! Normal case (3-D)
+        !
+        mcscat_nrdirs = 1
+     endif
      !
      ! Make the scattering direction the same as the direction of
      ! viewing. 
      ! For now allow only one single direction (i.e. one single vantage point)
      !
+     ! NOTE: For 2-D axisymmetric models in spherical coordinates, we
+     !       do things in a special way: we reserve mcscat_nrdirs 
+     !       "directions", which are in fact all the same, but for
+     !       the scattering source function we will set the scattering
+     !       event at different positions. 
+     !
      if(allocated(mcscat_dirs)) deallocate(mcscat_dirs)
-     allocate(mcscat_dirs(1:3,1:1),STAT=ierr)
+     allocate(mcscat_dirs(1:3,1:mcscat_nrdirs),STAT=ierr)
      if(ierr.gt.0) then
         write(stdo,*) 'ERROR: Could not allocate mcscat_dirs()'
         stop
      endif
-     mcscat_nrdirs = 1
      mcscat_current_dir = 1
-     mcscat_dirs(1,1:1) = dirx
-     mcscat_dirs(2,1:1) = diry
-     mcscat_dirs(3,1:1) = dirz
+     mcscat_dirs(1,1:mcscat_nrdirs) = dirx
+     mcscat_dirs(2,1:mcscat_nrdirs) = diry
+     mcscat_dirs(3,1:mcscat_nrdirs) = dirz
      !
      ! For convenience, store this also here in the camera module
      ! (works only for a single vantage point)
@@ -3639,14 +3717,14 @@ subroutine camera_make_rect_image(img,tausurf)
      ! vector, and pointing vertically upward in the image plane.
      !
      if(allocated(mcscat_svec)) deallocate(mcscat_svec)
-     allocate(mcscat_svec(1:3,1:1),STAT=ierr)
+     allocate(mcscat_svec(1:3,1:mcscat_nrdirs),STAT=ierr)
      if(ierr.gt.0) then
         write(stdo,*) 'ERROR: Could not allocate mcscat_svec()'
         stop
      endif
-     mcscat_svec(1,1:1) = svcx
-     mcscat_svec(2,1:1) = svcy
-     mcscat_svec(3,1:1) = svcz
+     mcscat_svec(1,1:mcscat_nrdirs) = svcx
+     mcscat_svec(2,1:mcscat_nrdirs) = svcy
+     mcscat_svec(3,1:mcscat_nrdirs) = svcz
      !
      ! For convenience, store this also here in the camera module
      ! (works only for a single vantage point)
@@ -3655,27 +3733,11 @@ subroutine camera_make_rect_image(img,tausurf)
      camera_svec(2) = svcy
      camera_svec(3) = svcz
      !
-     ! For now anisotropic scattering is not available for 2-D axisymmetric
-     ! models or 1-D spherically symmetric models, because those would require 
-     ! many scattering directions in the mcscat_dirs. That should be easiliy
-     ! possible to build in (that is one of the main reasons why I introduced
-     ! the multi-angle mcscat_dirs in the first place), but for now it is not.
-     !
-     ! WILL COME SOON, I HOPE!
+     ! But mirror symmetry is not allowed for anisotropic scattering
      !
      if((igrid_coord.ge.100).and.(igrid_coord.le.199)) then
         if(igrid_mirror.ne.0) then
            write(stdo,*) 'ERROR: Mirror symmetry not compatible with anisotropic scattering.'
-           stop
-        endif
-        if(igrid_type.lt.100) then
-           if((amr_xdim.ne.1).or.(amr_ydim.ne.1).or.(amr_zdim.ne.1)) then
-              write(stdo,*) 'ERROR: For the moment anisotropic scattering in spherical coordinates'
-              write(stdo,*) '       is only allowed in 3-D models.'
-              stop
-           endif
-        else
-           write(stdo,*) 'INTERNAL ERROR: Grid type not known'
            stop
         endif
      endif

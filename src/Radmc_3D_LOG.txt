@@ -8009,3 +8009,27 @@ finetuning: I noticed during some testing with a supersimple annulus model
             =1.d0 is perfect alignment. Partial alignment is
             treated as a linear sum of fully aligned and not
             aligned. 
+
+14.02.2017  Added possibility of doing full Stokes scattering in 2-D
+            axisymmetric models. The way this is done is to compute,
+            for each time a photon enters a cell, what the source 
+            function is like for all azimuthal angles. Essentially
+            we smear the scattering source function out over phi.
+
+16.02.2017  Fixed some bugs. One of them was that I implemented it
+            only in one place in the montecarlo_module.f90, but 
+            forgot to also implement it in another place. Now that
+            is fixed and it seems to work. Note that for multiple
+            scattering at low number of photons the images are not
+            exactly left-right symmetric. That has a simple 
+            explanation: for a single photon entering an annular
+            cell at some non-radial angle, the left case could be
+            forward scattering while the right case would then be
+            backward scattering. For single scattering the images
+            are always exactly left-right symmetric. For large
+            number of photons the images should also become 
+            approximately symmetric for multiple-scattering.
+
+            ---> So now the full scattering mode is also implemented
+                 in 2-D axisymmetric models!
+
