@@ -7248,9 +7248,6 @@ subroutine walk_cells_scat(params,taupath,ener,inu,arrived,ispecc,ierror)
               ! Z instead of kappa_scat.
               !
               do ispec=1,dust_nr_species
-                 !
-                 ! **** TODO 2DSCAT ****
-                 !
                  call polarization_randomorient_scatsource(photpkg, &
                       mcscat_dirs(:,1),mcscat_svec(:,1),            &
                       scat_munr,scat_mui_grid(:),                   &
@@ -7261,9 +7258,6 @@ subroutine walk_cells_scat(params,taupath,ener,inu,arrived,ispecc,ierror)
                       zmatrix(:,ray_inu,5,ispec),                   &
                       zmatrix(:,ray_inu,6,ispec),                   &
                       src4)
-                 !
-                 ! **** TODO 2DSCAT ****
-                 !
                  mcscat_scatsrc_iquv(ray_inu,ray_index,1:4,1) =      &
                       mcscat_scatsrc_iquv(ray_inu,ray_index,1:4,1) + &
                       dustdens(ispec,ray_index) * src4(1:4) * ds /   &
@@ -7294,32 +7288,107 @@ subroutine walk_cells_scat(params,taupath,ener,inu,arrived,ispecc,ierror)
               photpkg%U = photpkg%U * xxtauabs
               photpkg%V = photpkg%V * xxtauabs              
               !
+              ! If 2-D axisymmetric anisotropic scattering mode,
+              ! then we must rotate the photpkg%n and photpkg%s
+              ! vectors appropriately
+              !
+              if(dust_2danisoscat) then
+                 !
+                 ! Safety check. Note: the last phi point is
+                 ! 360 degrees == first one. This makes it easier
+                 ! lateron to interpolate, even though it costs
+                 ! a tiny bit more memory and is a tiny bit slower.
+                 !
+                 if(mcscat_nrdirs.ne.dust_2daniso_nphi+1) stop 2067
+                 !
+                 ! Backup original direction and s-vector
+                 !
+                 nvec_orig(:) = photpkg%n(:)
+                 svec_orig(:) = photpkg%s(:)
+                 !
+                 ! Rotate this event to the x-z-plane (positive x)
+                 !
+                 levent   = sqrt(ray_cart_x**2+ray_cart_y**2)
+                 if(abs(ray_cart_x).gt.1d-8*levent) then
+                    phievent = atan(ray_cart_y/ray_cart_x)
+                    if(phievent.lt.0.d0) then
+                       phievent = phievent + pi
+                    endif
+                    if(ray_cart_y.lt.0.d0) then
+                       phievent = phievent + pi
+                    endif
+                 else
+                    if(ray_cart_y.gt.0.d0) then
+                       phievent = pihalf
+                    else
+                       phievent = pi+pihalf
+                    endif
+                 endif
+                 !
+                 ! ...Rotate n and s vector such that the event lies
+                 !    in the x-z-plane (positive x)
+                 !
+                 cosphievent = cos(phievent)
+                 sinphievent = sin(phievent)
+                 xbk = photpkg%n(1)
+                 ybk = photpkg%n(2)
+                 photpkg%n(1) =  cosphievent * xbk + sinphievent * ybk
+                 photpkg%n(2) = -sinphievent * xbk + cosphievent * ybk
+                 xbk = photpkg%s(1)
+                 ybk = photpkg%s(2)
+                 photpkg%s(1) =  cosphievent * xbk + sinphievent * ybk
+                 photpkg%s(2) = -sinphievent * xbk + cosphievent * ybk
+                 !
+                 ! Pre-compute the cos and sin of the small incremental
+                 ! rotations
+                 !
+                 deltaphi = twopi / dust_2daniso_nphi
+                 cosdphi  = cos(deltaphi)
+                 sindphi  = sin(deltaphi)
+              endif
+              !
               ! Now add the scattering contribution of each of
               ! the dust species. Note that since src4 is proportional
               ! to Z11*enerav, no division by 4*pi is necessary, since
               ! <Z11> = kappa_scat/(4*pi).
               !
-              do ispec=1,dust_nr_species
+              ! Loop over all viewing directions (important
+              ! for multi-vantage-point images = movies, and
+              ! for 2-D full-phase scattering).
+              !
+              do idirs=1,mcscat_nrdirs
+                 do ispec=1,dust_nr_species
+                    call polarization_randomorient_scatsource(photpkg, &
+                         mcscat_dirs(:,idirs),mcscat_svec(:,idirs),    &
+                         scat_munr,scat_mui_grid(:),                   &
+                         zmatrix(:,ray_inu,1,ispec),                   &
+                         zmatrix(:,ray_inu,2,ispec),                   &
+                         zmatrix(:,ray_inu,3,ispec),                   &
+                         zmatrix(:,ray_inu,4,ispec),                   &
+                         zmatrix(:,ray_inu,5,ispec),                   &
+                         zmatrix(:,ray_inu,6,ispec),                   &
+                         src4)
+                    mcscat_scatsrc_iquv(ray_inu,ray_index,1:4,idirs) =      &
+                         mcscat_scatsrc_iquv(ray_inu,ray_index,1:4,idirs) + &
+                         dustdens(ispec,ray_index) * src4(1:4) * ds /       &
+                         cellvolume(ray_index)
+                 enddo
                  !
-                 ! **** TODO 2DSCAT ****
+                 ! If 2-D axisymmetric anisotropic scattering mode,
+                 ! then we must rotate the photpkg%n and photpkg%s
+                 ! vectors appropriately
                  !
-                 call polarization_randomorient_scatsource(photpkg, &
-                      mcscat_dirs(:,1),mcscat_svec(:,1),            &
-                      scat_munr,scat_mui_grid(:),                   &
-                      zmatrix(:,ray_inu,1,ispec),                   &
-                      zmatrix(:,ray_inu,2,ispec),                   &
-                      zmatrix(:,ray_inu,3,ispec),                   &
-                      zmatrix(:,ray_inu,4,ispec),                   &
-                      zmatrix(:,ray_inu,5,ispec),                   &
-                      zmatrix(:,ray_inu,6,ispec),                   &
-                      src4)
+                 if(dust_2danisoscat) then
+                    xbk = photpkg%n(1)
+                    ybk = photpkg%n(2)
+                    photpkg%n(1) =  cosdphi * xbk - sindphi * ybk
+                    photpkg%n(2) =  sindphi * xbk + cosdphi * ybk
+                    xbk = photpkg%s(1)
+                    ybk = photpkg%s(2)
+                    photpkg%s(1) =  cosdphi * xbk - sindphi * ybk
+                    photpkg%s(2) =  sindphi * xbk + cosdphi * ybk
+                 endif
                  !
-                 ! **** TODO 2DSCAT ****
-                 !
-                 mcscat_scatsrc_iquv(ray_inu,ray_index,1:4,1) =      &
-                      mcscat_scatsrc_iquv(ray_inu,ray_index,1:4,1) + &
-                      dustdens(ispec,ray_index) * src4(1:4) * ds /   &
-                      cellvolume(ray_index)
               enddo
               !
               ! Restore the original values
@@ -7328,7 +7397,14 @@ subroutine walk_cells_scat(params,taupath,ener,inu,arrived,ispecc,ierror)
               photpkg%Q = Qbk
               photpkg%U = Ubk
               photpkg%V = Vbk
-              !
+              if(dust_2danisoscat) then
+                 !
+                 ! Restore original direction and s-vector
+                 !
+                 photpkg%n(:) = nvec_orig(:)
+                 photpkg%s(:) = svec_orig(:)
+                 !
+              endif
            endif
         endif
         !
