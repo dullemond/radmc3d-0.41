@@ -6449,7 +6449,7 @@ subroutine walk_cells_scat(params,taupath,ener,inu,arrived,ispecc,ierror)
   doubleprecision :: prev_x,prev_y,prev_z
   doubleprecision :: costheta,g,phasefunc,dummy,src4(1:4)
   doubleprecision :: axi(1:2,1:3),Ebk,Qbk,Ubk,Vbk
-  doubleprecision :: nvec_orig(1:3),svec_orig(1:3),phievent,levent
+  doubleprecision :: nvec_orig(1:3),svec_orig(1:3),levent
   doubleprecision :: xbk,ybk,cosphievent,sinphievent
   doubleprecision :: deltaphi,cosdphi,sindphi
   integer :: idirs
@@ -6913,38 +6913,22 @@ subroutine walk_cells_scat(params,taupath,ener,inu,arrived,ispecc,ierror)
                  nvec_orig(:) = photpkg%n(:)
                  svec_orig(:) = photpkg%s(:)
                  !
-                 ! Rotate this event to the x-z-plane (positive x)
+                 ! Rotate n and s vector such that the event lies
+                 ! in the x-z-plane (positive x)
                  !
-                 levent   = sqrt(ray_cart_x**2+ray_cart_y**2)
-                 if(abs(ray_cart_x).gt.1d-8*levent) then
-                    phievent = atan(ray_cart_y/ray_cart_x)
-                    if(phievent.lt.0.d0) then
-                       phievent = phievent + pi
-                    endif
-                    if(ray_cart_y.lt.0.d0) then
-                       phievent = phievent + pi
-                    endif
-                 else
-                    if(ray_cart_y.gt.0.d0) then
-                       phievent = pihalf
-                    else
-                       phievent = pi+pihalf
-                    endif
+                 levent      = sqrt(ray_cart_x**2+ray_cart_y**2)
+                 if(levent.gt.0.d0) then
+                    cosphievent  = ray_cart_x/levent
+                    sinphievent  = ray_cart_y/levent
+                    xbk          = photpkg%n(1)
+                    ybk          = photpkg%n(2)
+                    photpkg%n(1) =  cosphievent * xbk + sinphievent * ybk
+                    photpkg%n(2) = -sinphievent * xbk + cosphievent * ybk
+                    xbk          = photpkg%s(1)
+                    ybk          = photpkg%s(2)
+                    photpkg%s(1) =  cosphievent * xbk + sinphievent * ybk
+                    photpkg%s(2) = -sinphievent * xbk + cosphievent * ybk
                  endif
-                 !
-                 ! ...Rotate n and s vector such that the event lies
-                 !    in the x-z-plane (positive x)
-                 !
-                 cosphievent = cos(phievent)
-                 sinphievent = sin(phievent)
-                 xbk = photpkg%n(1)
-                 ybk = photpkg%n(2)
-                 photpkg%n(1) =  cosphievent * xbk + sinphievent * ybk
-                 photpkg%n(2) = -sinphievent * xbk + cosphievent * ybk
-                 xbk = photpkg%s(1)
-                 ybk = photpkg%s(2)
-                 photpkg%s(1) =  cosphievent * xbk + sinphievent * ybk
-                 photpkg%s(2) = -sinphievent * xbk + cosphievent * ybk
                  !
                  ! Pre-compute the cos and sin of the small incremental
                  ! rotations
@@ -7306,38 +7290,22 @@ subroutine walk_cells_scat(params,taupath,ener,inu,arrived,ispecc,ierror)
                  nvec_orig(:) = photpkg%n(:)
                  svec_orig(:) = photpkg%s(:)
                  !
-                 ! Rotate this event to the x-z-plane (positive x)
+                 ! Rotate n and s vector such that the event lies
+                 ! in the x-z-plane (positive x)
                  !
-                 levent   = sqrt(ray_cart_x**2+ray_cart_y**2)
-                 if(abs(ray_cart_x).gt.1d-8*levent) then
-                    phievent = atan(ray_cart_y/ray_cart_x)
-                    if(phievent.lt.0.d0) then
-                       phievent = phievent + pi
-                    endif
-                    if(ray_cart_y.lt.0.d0) then
-                       phievent = phievent + pi
-                    endif
-                 else
-                    if(ray_cart_y.gt.0.d0) then
-                       phievent = pihalf
-                    else
-                       phievent = pi+pihalf
-                    endif
+                 levent      = sqrt(ray_cart_x**2+ray_cart_y**2)
+                 if(levent.gt.0.d0) then
+                    cosphievent  = ray_cart_x/levent
+                    sinphievent  = ray_cart_y/levent
+                    xbk          = photpkg%n(1)
+                    ybk          = photpkg%n(2)
+                    photpkg%n(1) =  cosphievent * xbk + sinphievent * ybk
+                    photpkg%n(2) = -sinphievent * xbk + cosphievent * ybk
+                    xbk          = photpkg%s(1)
+                    ybk          = photpkg%s(2)
+                    photpkg%s(1) =  cosphievent * xbk + sinphievent * ybk
+                    photpkg%s(2) = -sinphievent * xbk + cosphievent * ybk
                  endif
-                 !
-                 ! ...Rotate n and s vector such that the event lies
-                 !    in the x-z-plane (positive x)
-                 !
-                 cosphievent = cos(phievent)
-                 sinphievent = sin(phievent)
-                 xbk = photpkg%n(1)
-                 ybk = photpkg%n(2)
-                 photpkg%n(1) =  cosphievent * xbk + sinphievent * ybk
-                 photpkg%n(2) = -sinphievent * xbk + cosphievent * ybk
-                 xbk = photpkg%s(1)
-                 ybk = photpkg%s(2)
-                 photpkg%s(1) =  cosphievent * xbk + sinphievent * ybk
-                 photpkg%s(2) = -sinphievent * xbk + cosphievent * ybk
                  !
                  ! Pre-compute the cos and sin of the small incremental
                  ! rotations
