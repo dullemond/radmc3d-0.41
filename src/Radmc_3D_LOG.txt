@@ -8049,3 +8049,6 @@ finetuning: I noticed during some testing with a supersimple annulus model
             Now I still have a difference between the versions
             git:c69aa50 and git:45f77d2, even though this should
             not be the case... Weird...
+
+  Bugfix:   Found the bug: if I add alpha_scat in the get_src_alp, then I
+            should not add it again in the pol_integrate_rt_aligned().

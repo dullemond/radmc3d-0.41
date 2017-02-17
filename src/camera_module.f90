@@ -6904,6 +6904,22 @@ subroutine pol_integrate_rt_aligned(int_iquv,dir,svec,aligndir,aligneff,inu0,inu
      aligned_jnu_opuv(4)  =  aligned_jnu_iquv(4) 
      !
      ! Now add to the absorption coefficient the non-dust isotropic absorption
+     ! and the angle-averaged scattering opacity
+     !
+     ! NOTE: Here we still assume that the scattering extinction is
+     !       angle-independent! In the future, when also scattering 
+     !       off aligned grains is included, this must also be
+     !       split into orth and para. That would mean that we would
+     !       have to subtract again the angle-averaged scattering
+     !       opacity and add the orientation-dependent version. That
+     !       is rather "ugly" (it would have been cleaner if the
+     !       alp0 would not contain the scattering opacity at all),
+     !       but since we decided (ages ago!) that sources_get_src_alp()
+     !       returns the source function src=S_nu instead of the 
+     !       emissivity src=j_nu, and since there are code-technical
+     !       reasons to keep the scattering source function in the
+     !       sources_get_src_alp() routine, there is no other way than
+     !       this ugly way. 
      !
      aligned_alpha_opuv(:) = alp0(inu)
      !
@@ -6911,17 +6927,7 @@ subroutine pol_integrate_rt_aligned(int_iquv,dir,svec,aligndir,aligneff,inu0,inu
      ! 
      do ispec=1,dust_nr_species
         !
-        ! Add the scattering opacity
-        !
-        ! NOTE: Here we still assume that the scattering extinction is
-        !       angle-independent! In the future, when also scattering 
-        !       off aligned grains is included, this must also be
-        !       split into orth and para
-        !
-        aligned_alpha_opuv(:) = aligned_alpha_opuv(:) + &
-             dustdens(ispec) * sources_dustkappa_s(inu,ispec)
-        !
-        ! Now for the absorption opacity
+        ! Now the absorption opacity
         !
         ! ...First get the angle-averaged absorption opacity
         !
