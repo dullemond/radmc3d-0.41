@@ -1002,8 +1002,8 @@ subroutine sources_get_src_alp(inu0,inu1,nf,src,alp,inclstokes)
      !    with properly in the other parts of the code. 
      !
      if(rt_incl_dust) then
-        if(alignment_mode.eq.0) then
-           do inu=inu0,inu1
+        do inu=inu0,inu1
+           if(alignment_mode.eq.0) then
               !
               ! Find the the dust continuum extinction coefficients
               !
@@ -1019,12 +1019,18 @@ subroutine sources_get_src_alp(inu0,inu1,nf,src,alp,inclstokes)
                  src(inu,1) = src(inu,1) + sources_alpha_a(ispec) *                       &
                       bplanck(sources_dusttemp(ispec),sources_frequencies(inu))
               enddo
-           enddo
-        endif
-        !
-        ! Then the scattering part; this part also should be done for aligned grains
-        !
-        do inu=inu0,inu1
+           else
+              !
+              ! For alignment mode: only do scattering part of angle-averaged opacity
+              !
+              do ispec=1,dust_nr_species
+                 sources_alpha_s(ispec) = sources_dustdens(ispec) * sources_dustkappa_s(inu,ispec)
+                 alp(inu) = alp(inu) + sources_alpha_s(ispec)
+              enddo
+           endif
+           !
+           ! Then the scattering part; this part also should be done for aligned grains
+           !
            if(scattering_mode.ge.1) then
               if(.not.dust_2daniso) then
                  !
