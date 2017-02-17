@@ -8033,3 +8033,19 @@ finetuning: I noticed during some testing with a supersimple annulus model
             ---> So now the full scattering mode is also implemented
                  in 2-D axisymmetric models!
 
+17.02.2017  Trying to get the alignment and the scattering correct.
+            Between git:c69aa50 and git:45f77d2 I tried to bring
+            the scattering source addition back into the subroutine
+            sources_get_src_alp(), but I keep getting problems.
+            One problem was: if I add the scattering source, then
+            I must add also the scattering opacity, otherwise the
+            j_nu/alpha_nu goes wrong. Another bug was that the 
+            src0 obtained from sources_get_src_alp() should be
+            used in pol_integrate_rt_aligned() as source function,
+            not as emissivity. In git:c69aa50 this was not problematic
+            since src0 was anyway 0. But in git:45f77d2 the 
+            scattering was included using the src0. 
+
+            Now I still have a difference between the versions
+            git:c69aa50 and git:45f77d2, even though this should
+            not be the case... Weird...
