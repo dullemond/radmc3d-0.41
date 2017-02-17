@@ -1001,26 +1001,30 @@ subroutine sources_get_src_alp(inu0,inu1,nf,src,alp,inclstokes)
      !    opacity and emissivity here; assuming they are dealt
      !    with properly in the other parts of the code. 
      !
-     if(rt_incl_dust.and.(alignment_mode.eq.0)) then
+     if(rt_incl_dust) then
+        if(alignment_mode.eq.0) then
+           do inu=inu0,inu1
+              !
+              ! Find the the dust continuum extinction coefficients
+              !
+              do ispec=1,dust_nr_species
+                 sources_alpha_a(ispec) = sources_dustdens(ispec) * sources_dustkappa_a(inu,ispec)
+                 sources_alpha_s(ispec) = sources_dustdens(ispec) * sources_dustkappa_s(inu,ispec)
+                 alp(inu) = alp(inu) + sources_alpha_a(ispec) + sources_alpha_s(ispec)
+              enddo
+              ! 
+              ! The source function. First the thermal part.
+              !
+              do ispec=1,dust_nr_species
+                 src(inu,1) = src(inu,1) + sources_alpha_a(ispec) *                       &
+                      bplanck(sources_dusttemp(ispec),sources_frequencies(inu))
+              enddo
+           enddo
+        endif
+        !
+        ! Then the scattering part; this part also should be done for aligned grains
+        !
         do inu=inu0,inu1
-           !
-           ! Find the the dust continuum extinction coefficients
-           !
-           do ispec=1,dust_nr_species
-              sources_alpha_a(ispec) = sources_dustdens(ispec) * sources_dustkappa_a(inu,ispec)
-              sources_alpha_s(ispec) = sources_dustdens(ispec) * sources_dustkappa_s(inu,ispec)
-              alp(inu) = alp(inu) + sources_alpha_a(ispec) + sources_alpha_s(ispec)
-           enddo
-           ! 
-           ! The source function. First the thermal part.
-           !
-           do ispec=1,dust_nr_species
-              src(inu,1) = src(inu,1) + sources_alpha_a(ispec) *                       &
-                   bplanck(sources_dusttemp(ispec),sources_frequencies(inu))
-           enddo
-           !
-           ! Then the scattering part
-           !
            if(scattering_mode.ge.1) then
               if(.not.dust_2daniso) then
                  !

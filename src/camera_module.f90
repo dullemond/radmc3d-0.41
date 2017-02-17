@@ -281,11 +281,6 @@ module camera_module
   !
   double precision :: camera_dir(1:3),camera_svec(1:3)
   !
-  ! For the aligned grain stuff we need a temporary array for the
-  ! scattering source function
-  !
-  double precision, allocatable :: camera_srcscat_iquv(:,:)
-  !
   ! For 2-D axisymmetric models it might be important to limit the 
   ! length of a ray segment to avoid too large changes of the phi
   ! (azimuthal) angle of the ray between two cellwall crossings.
@@ -464,11 +459,6 @@ subroutine camera_init()
      write(stdo,*) 'ERROR in camera module: Could not allocate camera_intensity_iquv() array'
      stop
   endif
-  allocate(camera_srcscat_iquv(1:camera_nrfreq,1:4),STAT=ierr)
-  if(ierr.ne.0) then
-     write(stdo,*) 'ERROR in camera module: Could not allocate camera_srcscat_iquv() array'
-     stop
-  endif
   !
 end subroutine camera_init
 
@@ -532,7 +522,6 @@ subroutine camera_partial_cleanup()
   if(allocated(camera_rect_image_iquv)) deallocate(camera_rect_image_iquv)
   if(allocated(camera_spectrum_iquv)) deallocate(camera_spectrum_iquv)
   if(allocated(camera_intensity_iquv)) deallocate(camera_intensity_iquv)
-  if(allocated(camera_srcscat_iquv)) deallocate(camera_srcscat_iquv)
   if(allocated(camera_xstop)) deallocate(camera_xstop)
   if(allocated(camera_ystop)) deallocate(camera_ystop)
   if(allocated(camera_zstop)) deallocate(camera_zstop)
@@ -2598,35 +2587,19 @@ subroutine camera_serial_raytrace(nrfreq,inu0,inu1,x,y,z,dx,dy,dz,distance,   &
               !
               if(ray_index.gt.0) then
                  !
-                 ! Get the src and alp values for all process other than
-                 ! dust. Note that sources_get_src_alp() knows itself
-                 ! that dust has to be skipped because it checks the
+                 ! Get the src and alp values. Note that sources_get_src_alp() 
+                 ! knows itself that thermal dust emission as well as 
+                 ! all dust opacities have to be skipped because it checks the
                  ! alignment_mode flag.
                  !
                  call sources_get_src_alp(inu0,inu1,nrfreq,src,alp,camera_stokesvector)
-                 !
-                 ! Copy the scattering source terms to the local array (necessary
-                 ! because unfortunately the index order of mcscat_scatsrc_iquv
-                 ! is unconvenient).
-                 !
-                 if(dust_2daniso) then
-                    write(stdo,*) 'Sorry: for the moment aligned grains are not yet consistent with '
-                    write(stdo,*) '       the new 2-D axisymmetric anisotropic scattering mode. Will come in due time.'
-                    stop
-                 endif
-                 idir = 1    ! For now only one vantage point
-                 camera_srcscat_iquv(inu0:inu1,1) = mcscat_scatsrc_iquv(inu0:inu1,ray_index,1,idir)
-                 camera_srcscat_iquv(inu0:inu1,2) = mcscat_scatsrc_iquv(inu0:inu1,ray_index,2,idir)
-                 camera_srcscat_iquv(inu0:inu1,3) = mcscat_scatsrc_iquv(inu0:inu1,ray_index,3,idir)
-                 camera_srcscat_iquv(inu0:inu1,4) = mcscat_scatsrc_iquv(inu0:inu1,ray_index,4,idir)
                  !
                  ! Now call the first order integration routine that takes
                  ! care of the alignment effects
                  !
                  call pol_integrate_rt_aligned(intensity,camera_dir,camera_svec,  &
                                      grainalign_dir(:,ray_index),                 &
-                                     grainalign_eff(ray_index),inu0,inu1,         &
-                                     src,alp,camera_srcscat_iquv,                 &
+                                     grainalign_eff(ray_index),inu0,inu1,src,alp, &
                                      dustdens(:,ray_index),dusttemp(:,ray_index), &
                                      ray_ds)
               endif
@@ -6764,21 +6737,20 @@ end subroutine camera_make_circ_image
 !      FIRST ORDER INTEGRATION OF RT EQUATION WITH ALIGNED GRAINS
 !-----------------------------------------------------------------------
 subroutine pol_integrate_rt_aligned(int_iquv,dir,svec,aligndir,aligneff,inu0,inu1,  &
-                                    src0,alp0,srcscat_iquv,dustdens,dusttemp,ds)
+                                    src0,alp0,dustdens,dusttemp,ds)
   implicit none
   integer :: iop,inu0,inu1,inu,ispec
   double precision :: int_iquv(1:sources_nrfreq,1:4)
-  double precision :: src0(1:sources_nrfreq),alp0(1:sources_nrfreq)
-  double precision :: srcscat_iquv(1:sources_nrfreq,1:4)
+  double precision :: src0(1:sources_nrfreq,1:4),alp0(1:sources_nrfreq)
   double precision :: dustdens(1:dust_nr_species),dusttemp(1:dust_nr_species)
   double precision :: dir(1:3),svec(1:3),aligndir(1:3),aligneff,aligneff1,ds,freq
   double precision :: salign(1:3),dum
   double precision :: aligned_iquv(1:4),aligned_opuv(1:4)
-  double precision :: aligned_scat_iquv(1:4),aligned_scat_opuv(1:4)
+  double precision :: aligned_jnu_iquv(1:4),aligned_jnu_opuv(1:4)
   double precision :: cosa,sina,cos2a,sin2a,cosb
   double precision :: alpabs,para_alpabs,orth_alpabs,epspo,bpl
   double precision :: para_alpabs_eff,orth_alpabs_eff
-  double precision :: aligned_alpha_opuv(1:4),aligned_jnu_opuv(1:4),xp(1:4)
+  double precision :: aligned_alpha_opuv(1:4),xp(1:4)
   double precision :: aligned_snu_opuv(1:4),exptau_opuv(1:4),exptau1_opuv(1:4)
   !
   !################################
@@ -6909,40 +6881,26 @@ subroutine pol_integrate_rt_aligned(int_iquv,dir,svec,aligndir,aligneff,inu0,inu
      aligned_opuv(3) =  aligned_iquv(3) 
      aligned_opuv(4) =  aligned_iquv(4) 
      !
-     ! Now rotate the Stokes vector of the scattering source to the new S-vector
+     ! Now rotate the Stokes vector of the scattering and non-dust 
+     ! source to the new S-vector
      !
-     aligned_scat_iquv(1) =  srcscat_iquv(inu,1)
-     aligned_scat_iquv(2) =  srcscat_iquv(inu,2)*cos2a + srcscat_iquv(inu,3)*sin2a
-     aligned_scat_iquv(3) = -srcscat_iquv(inu,2)*sin2a + srcscat_iquv(inu,3)*cos2a
-     aligned_scat_iquv(4) =  srcscat_iquv(inu,4)
+     aligned_jnu_iquv(1) =  src0(inu,1)
+     aligned_jnu_iquv(2) =  src0(inu,2)*cos2a + src0(inu,3)*sin2a
+     aligned_jnu_iquv(3) = -src0(inu,2)*sin2a + src0(inu,3)*cos2a
+     aligned_jnu_iquv(4) =  src0(inu,4)
      !
      ! Now change from Stokes IQUV to OPUV with O being orthogonal
      ! to the alignment direction salign, and P being parallel
      ! to the alignment direction salign.
      !
-     aligned_scat_opuv(1) =  0.5d0 * ( aligned_scat_iquv(1) + aligned_scat_iquv(2) )
-     aligned_scat_opuv(2) =  0.5d0 * ( aligned_scat_iquv(1) - aligned_scat_iquv(2) )
-     aligned_scat_opuv(3) =  aligned_scat_iquv(3) 
-     aligned_scat_opuv(4) =  aligned_scat_iquv(4) 
+     aligned_jnu_opuv(1)  =  0.5d0 * ( aligned_jnu_iquv(1) + aligned_jnu_iquv(2) )
+     aligned_jnu_opuv(2)  =  0.5d0 * ( aligned_jnu_iquv(1) - aligned_jnu_iquv(2) )
+     aligned_jnu_opuv(3)  =  aligned_jnu_iquv(3) 
+     aligned_jnu_opuv(4)  =  aligned_jnu_iquv(4) 
      !
      ! Now add to the absorption coefficient the non-dust isotropic absorption
      !
      aligned_alpha_opuv(:) = alp0(inu)
-     !
-     ! Now add to the emissivity the non-dust isotropic emissivity
-     !
-     ! NOTE: The factor 0.5d0*src0 is because I_orth = 0.5*(I+Q)
-     !       and I_para = 0.5*(I-Q), so both take care of 50% of
-     !       the "normal" unpolarized source term
-     !
-     aligned_jnu_opuv(1)   = 0.5d0*src0(inu)
-     aligned_jnu_opuv(2)   = 0.5d0*src0(inu)
-     aligned_jnu_opuv(3)   = 0.d0
-     aligned_jnu_opuv(4)   = 0.d0
-     !
-     ! Now add the dust scattering emissivity
-     !
-     aligned_jnu_opuv(:)   = aligned_jnu_opuv(:) + aligned_scat_opuv(:)
      !
      ! Now we must do a loop over the dust species
      ! 
