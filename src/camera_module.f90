@@ -6889,6 +6889,11 @@ subroutine pol_integrate_rt_aligned(int_iquv,dir,svec,aligndir,aligneff,inu0,inu
      aligned_jnu_iquv(3) = -src0(inu,2)*sin2a + src0(inu,3)*cos2a
      aligned_jnu_iquv(4) =  src0(inu,4)
      !
+     ! Note, however, that src0 is the source function, not the 
+     ! emissivity. So multiply by alpha.
+     !
+     aligned_jnu_iquv(:)  = aligned_jnu_iquv(:) * alp0(inu)
+     !
      ! Now change from Stokes IQUV to OPUV with O being orthogonal
      ! to the alignment direction salign, and P being parallel
      ! to the alignment direction salign.
