@@ -254,6 +254,7 @@ program bhmakeopac
         write(*,*) '    kappa_scat                     = ',kappa_sca(ilam)
         write(*,*) '    2*pi*int_{-1}^{+1} Z_11(mu)dmu = ',sum
         write(*,*) '    Please use a larger number of angle points or take a weaker error limit (5th line in param.inp).'
+        write(*,*) '    Note: This problem usually happens for large ratio of a/lambda.'
         close(2)
         stop
      else
