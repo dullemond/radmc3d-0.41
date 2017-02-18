@@ -385,6 +385,14 @@ subroutine camera_init()
      stop
   endif
   !
+  ! For now, alignment does not yet work with 2-D axisymmetric
+  ! models
+  !
+  if((alignment_mode.ne.0).and.(igrid_coord.ge.100).and.(amr_dim.ne.3)) then
+     write(stdo,*) 'ERROR: Grain alignment does not yet work in 2-D axisymmetry.'
+     stop
+  endif
+  !
   ! Check that the camera frequency array or choice of frequencies from the
   ! global frequency array is made.
   !
