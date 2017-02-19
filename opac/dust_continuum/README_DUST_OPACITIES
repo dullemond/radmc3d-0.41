@@ -10,4 +10,15 @@ usually the web databases give merely the "optical constants" of the
 material. To convert these into opacity tables requires some more software.
 Things are explained more deeply in the sub-directories.
 
-23.03.11
+Currently the recommended method of computing your own opacities is by
+using the Mie code of Bohren & Huffman. The python version of that code,
+including the necessary "wrappers", is in the directory:
+
+  bohrenhuffman_python/
+
+Older fortran versions can be found in:
+
+  bohrenhuffman_fortran/
+
+23.03.2011
+19.02.2017
