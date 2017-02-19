@@ -8062,3 +8062,15 @@ finetuning: I noticed during some testing with a supersimple annulus model
             with slight noise at the 1e-14 relative level. So that
             means that the move of the scattering source back to 
             get_src_alp for aligned grains is now finally successful.
+
+19.02.2017  
+   +++      I now created my own Mie code in Python. I started from 
+            the bhmie.f code of Bruce Draine (from the original code
+            from Bohren & Huffman), and converted it systematically
+            into Python, but with more flexibility than the original
+            code. For instance, it is no longer necessary to have
+            the same angular grid between 0-90 degrees as between 
+            90-180 degrees. 
+
+            git:3910924
+
