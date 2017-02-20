@@ -2380,7 +2380,18 @@ escape to infinity or until they are extincted by many orders of magnitude
 which by default is set to 30, meaning a photon package is considered
 extincted when it has travelled an absorption optical depth of 30).
 
-It can be useful, however, to figure out how important the effect of
+{\bf Important note:} {\em In many (most?) cases this default value of
+{\small\tt mc\_scat\_maxtauabs=30} is overly conservative. Especially
+when the scattering Monte Carlo is very time-consuming, you may want
+to experiment with a lower value. Try adding a line to the
+{\small\tt radmc3d.inp} with:}
+{\small\begin{verbatim}
+mc_scat_maxtauabs = 5
+\end{verbatim}}
+{\em This may speed up the scattering Monte Carlo by up to a factor
+of 6, while still yielding reasonable results.}
+
+It can be useful to figure out how important the effect of
 multiple scattering in an image is compared to single scattering. For
 instance: a protoplanetary disk with a ``self-shadowed'' geometry will
 show some scattering even in the shadowed region because some photon
