@@ -534,7 +534,7 @@
 ! xi (the angle of the grain symmetry axis with the y'-axis) and
 ! frequencies nu. 
 !
-! FOR NOW WE DO NOT INCLUDE THIS POSSIBILITY IN RADMC-3D
+! As of version 0.41 this is now included (see below).
 !
 !------------------------------------------------------------------------
 !
