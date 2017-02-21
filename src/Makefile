@@ -2,8 +2,8 @@ SRC = .
 #SRC = /Users/cornelisdullemond/science/prog/radmc-3d/version_0.41/src
 
 # Optimize
-# OPTIM = -O2 -fopenmp
-OPTIM = -O2 
+OPTIM = -O2 -fopenmp
+# OPTIM = -O2 
 
 # The system defines used in executing make
 # FF = /Users/dullemon/libraries/g95-install/bin/powerpc-apple-darwin6.8-g95
