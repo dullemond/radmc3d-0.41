@@ -6538,7 +6538,7 @@ subroutine walk_cells_scat(params,taupath,ener,inu,arrived,ispecc,ierror)
      !!$ continue=.false.
      !!$ end if
      !$ end do
-     !$ endif
+     !$ end if
      !
      ! Do some safety checks
      !
