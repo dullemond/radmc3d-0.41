@@ -3169,29 +3169,26 @@ subroutine do_monte_carlo_scattering(params,ierror,resetseed,scatsrc,meanint)
      !       This is now done in the main.f90
      !       Bugfix Jon Ramsey 22.03.2016
      !
-     !$OMP PARALLEL default(none) &
-     !$OMP &   shared(countwrite,stdo,nphot,count,nthreads,lock) & 
-     !$OMP &   shared(mc_emergency_break,cntdump,cnt,phnr,mc_openmp_parallel,inu,iseed_start,params)    &   
+     !$OMP PARALLEL PRIVATE(id) &
+     !!!!!$OMP shared(countwrite,stdo,nphot,count,nthreads,lock)
+     !!!!!$OMP shared(mc_emergency_break,cntdump,cnt,phnr,mc_openmp_parallel,inu,iseed_start,params)
+     !
+     !$OMP PRIVATE(iphot,ierror) &
      !
      !!$ Global variables from 'montecarlo_module.f90' used in the subroutine 'do_monte_carlo_scattering'
      !
-     !$OMP & PRIVATE(id) &
-     !
      !!$ Local variables from 'do_monte_carlo_scattering'
-     !$OMP REDUCTION(+:ieventcounttot,mc_integerspec,mc_visitcell,mc_revisitcell) &
-     !
-     !$OMP & PRIVATE(iphot,ierror)
+     !$OMP REDUCTION(+:mc_integerspec,mc_visitcell,mc_revisitcell,ieventcounttot)
      !
      !$ id=OMP_get_thread_num()
      !$ nthreads=OMP_get_num_threads()
      !$ write(stdo,*) 'Thread Nr',id,'of',nthreads,'threads in total'
      !$ phnr=1
      !$ iseed=-abs(iseed_start+id)
-     !
      !$ do i=1,size(lock)
      !$    call omp_init_lock(lock(i))  
      !$ enddo
-     !$OMP  DO  SCHEDULE(dynamic)
+     !$OMP DO SCHEDULE(dynamic)
      !
      ! Launch all the photons for this wavelength
      !
