@@ -271,6 +271,7 @@ logical :: mc_photon_destroyed
 !$OMP THREADPRIVATE(alpha_t_rm,alpha_a_pm_tot)
 !$OMP THREADPRIVATE(alpha_a_pm,mrw_dcumen)
 !$OMP THREADPRIVATE(mc_photon_destroyed)
+!$OMP THREADPRIVATE(mcscat_phasefunc)
 
 contains
 
@@ -788,7 +789,9 @@ subroutine montecarlo_init(params,ierr,mcaction,resetseed)
   ! For anisotropic scattering, allocate phasefunction array
   !
   if(mcscat_nrdirs.ge.1) then
+     !$OMP PARALLEL
      allocate(mcscat_phasefunc(1:mcscat_nrdirs,1:dust_nr_species),STAT=ierr)
+     !$OMP END PARALLEL
      if(ierr.ne.0) then
         write(stdo,*) 'ERROR in camera module: Could not allocate phasefunction.'
         stop
@@ -1178,7 +1181,6 @@ subroutine montecarlo_partial_cleanup()
   if(allocated(mcscat_meanint)) deallocate(mcscat_meanint)
   if(allocated(mc_cumulthermemis)) deallocate(mc_cumulthermemis)
   if(allocated(mc_stellarsrc_templates)) deallocate(mc_stellarsrc_templates)
-  if(allocated(mcscat_phasefunc)) deallocate(mcscat_phasefunc)
   if(allocated(mc_energy_stars)) deallocate(mc_energy_stars)
   if(allocated(mc_energy_illum)) deallocate(mc_energy_illum)
   if(allocated(mc_bc_cumspec)) deallocate(mc_bc_cumspec)
@@ -1201,6 +1203,7 @@ subroutine montecarlo_partial_cleanup()
   if(allocated(mrw_alpha_tot_ross)) deallocate(mrw_alpha_tot_ross)
   if(allocated(zcumul)) deallocate(zcumul)
   if(allocated(zmatrix)) deallocate(zmatrix)
+  if(allocated(mcscat_phasefunc)) deallocate(mcscat_phasefunc)
   !$OMP END PARALLEL
   !
   !$ if(allocated(lock)) deallocate(lock)
