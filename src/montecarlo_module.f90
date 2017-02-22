@@ -685,6 +685,14 @@ subroutine montecarlo_init(params,ierr,mcaction,resetseed)
      !
      ! The frequency-by-frequency scattering Monte Carlo simulation
      !
+     ! OpenMP Parallellization: Allocate the lock array
+     !
+     !$ if(allocated(lock)) deallocate(lock)
+     !$ allocate(lock(1:nrcells),STAT=ierr)
+     !$ if(ierr.ne.0) then
+     !$    write(stdo,*) 'ERROR in Montecarlo Module: Could not allocate lock array.'
+     !$    stop
+     !$ endif
      !
      ! Check that the dust temperatures are there
      !
@@ -3160,14 +3168,7 @@ subroutine do_monte_carlo_scattering(params,ierror,resetseed,scatsrc,meanint)
      ! OpenMP Parallellization:
      !
      !$ seconds = omp_get_wtime()
-     !$
-     !$ if(allocated(lock)) deallocate(lock)
-     !$ allocate(lock(1:nrcells),STAT=ierr)
-     !$ if(ierr.ne.0) then
-     !$    write(stdo,*) 'ERROR in Montecarlo Module: Could not allocate lock array.'
-     !$    stop
-     !$ endif
-     !$
+     !
      ! Note: Here the nr of threads was set in a previous version. 
      !       This is now done in the main.f90
      !       Bugfix Jon Ramsey 22.03.2016
