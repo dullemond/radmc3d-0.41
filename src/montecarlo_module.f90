@@ -259,6 +259,7 @@ logical :: mc_photon_destroyed
 ! OpenMP Parallellization:
 ! Global variables used in subroutine calls within the parallel region which are threadprivate
 !
+!$OMP THREADPRIVATE(id)
 !$OMP THREADPRIVATE(photpkg,energy)
 !$OMP THREADPRIVATE(mc_enerpart)
 !$OMP THREADPRIVATE(alpha_a,alpha_s)
@@ -2579,7 +2580,7 @@ subroutine do_monte_carlo_bjorkmanwood(params,ierror,resetseed)
    !
    !!$ Global variables from 'montecarlo_module.f90' used in the subroutine 'do_monte_carlo_bjorkmanwood'
    !
-   !$OMP PARALLEL PRIVATE(id) &
+   !$OMP PARALLEL &
    !
    !!$ Local variables from 'do_monte_carlo_bjorkmanwood'
    !
@@ -3173,7 +3174,7 @@ subroutine do_monte_carlo_scattering(params,ierror,resetseed,scatsrc,meanint)
      !       This is now done in the main.f90
      !       Bugfix Jon Ramsey 22.03.2016
      !
-     !$OMP PARALLEL PRIVATE(id) &
+     !$OMP PARALLEL &
      !!!!!$OMP shared(countwrite,stdo,nphot,count,nthreads,lock)
      !!!!!$OMP shared(mc_emergency_break,cntdump,cnt,phnr,mc_openmp_parallel,inu,iseed_start,params)
      !
@@ -5891,7 +5892,8 @@ subroutine walk_cells_thermal(params,taupath,iqactive,arrived, &
      ! OpenMP Parallellization: Lock this cell (and only continue when succesfully locked)
      !
      !$ if(.not.continue) then
-     !$    write(stdo,*) '.....restart thread ',id,' conflict nr ',conflict_counter
+     !$    iddd=OMP_get_thread_num()
+     !$    write(stdo,*) '.....restart thread ',id,iddd,' conflict nr ',conflict_counter
      !$    call flush(stdo)
      !$ endif
      !$ continue=.true.
@@ -5904,6 +5906,10 @@ subroutine walk_cells_thermal(params,taupath,iqactive,arrived, &
      !$          dummycount=dummycount+1
      !$          write(stdo,*) 'Conflict... thread ',id,iddd,', conflict nr ',conflict_counter,' dc = ',dummycount
      !$          call flush(stdo)
+     !$          if(id.ne.iddd) then
+     !$             write(stdo,*) 'INDICES NOT MATCHING!'
+     !$             call flush(stdo)
+     !$          endif
      !$          continue=.false.
      !$       end if
      !$    end do
@@ -6240,6 +6246,10 @@ subroutine walk_cells_thermal(params,taupath,iqactive,arrived, &
         !$    iddd=OMP_get_thread_num()
         !$    write(stdo,*) '...end conflict (A) ithread ',id,iddd,' conflict nr ',conflict_counter,' dc = ',dummycount
         !$    call flush(stdo)
+        !$    if(id.ne.iddd) then
+        !$       write(stdo,*) 'INDICES NOT MATCHING (A)!'
+        !$       call flush(stdo)
+        !$    endif
         !$ endif
         !
         !$ if(ray_index .ge. 1 )then
@@ -6399,6 +6409,10 @@ subroutine walk_cells_thermal(params,taupath,iqactive,arrived, &
      !$    iddd=OMP_get_thread_num()
      !$    write(stdo,*) '...end conflict (B) ithread ',id,iddd,' conflict nr ',conflict_counter,' dc = ',dummycount
      !$    call flush(stdo)
+     !$    if(id.ne.iddd) then
+     !$       write(stdo,*) 'INDICES NOT MATCHING (B)!'
+     !$       call flush(stdo)
+     !$    endif
      !$ endif
      !$ if(ray_index .ge. 1 )then
      !$    call omp_unset_lock(lock(ray_index));
@@ -6449,6 +6463,10 @@ subroutine walk_cells_thermal(params,taupath,iqactive,arrived, &
         !$    iddd=OMP_get_thread_num()
         !$    write(stdo,*) '...end conflict (C) ithread ',id,iddd,' conflict nr ',conflict_counter,' dc = ',dummycount
         !$    call flush(stdo)
+        !$    if(id.ne.iddd) then
+        !$       write(stdo,*) 'INDICES NOT MATCHING (C)!'
+        !$       call flush(stdo)
+        !$    endif
         !$ endif
         !
         !$ if(ray_index .ge. 1 )then
@@ -6462,6 +6480,10 @@ subroutine walk_cells_thermal(params,taupath,iqactive,arrived, &
      !$    iddd=OMP_get_thread_num()
      !$    write(stdo,*) '...end conflict (D) ithread ',id,iddd,' conflict nr ',conflict_counter,' dc = ',dummycount
      !$    call flush(stdo)
+     !$    if(id.ne.iddd) then
+     !$       write(stdo,*) 'INDICES NOT MATCHING (D)!'
+     !$       call flush(stdo)
+     !$    endif
      !$ endif
   enddo
   !
