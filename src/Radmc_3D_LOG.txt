@@ -8091,5 +8091,10 @@ finetuning: I noticed during some testing with a supersimple annulus model
             for the scattering monte carlo it caused a crash 
             about 70% of the time. 
 
+            --> BUGFIX 23.02.2017
 
-            
+            git:4034560
+
+            I also made several changes and bugfixes to the OpenMP stuff, in
+            particular in the scattering MC part. I also cleaned that stuff
+            a bit up.
