@@ -259,6 +259,7 @@ logical :: mc_photon_destroyed
 ! OpenMP Parallellization:
 ! Global variables used in subroutine calls within the parallel region which are threadprivate
 !
+!$OMP THREADPRIVATE(id)
 !$OMP THREADPRIVATE(photpkg,energy)
 !$OMP THREADPRIVATE(mc_enerpart)
 !$OMP THREADPRIVATE(alpha_a,alpha_s)
@@ -2579,7 +2580,7 @@ subroutine do_monte_carlo_bjorkmanwood(params,ierror,resetseed)
    !
    !!$ Global variables from 'montecarlo_module.f90' used in the subroutine 'do_monte_carlo_bjorkmanwood'
    !
-   !$OMP PARALLEL PRIVATE(id) &
+   !$OMP PARALLEL PRI &
    !
    !!$ Local variables from 'do_monte_carlo_bjorkmanwood'
    !
