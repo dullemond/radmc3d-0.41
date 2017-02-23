@@ -3776,6 +3776,7 @@ subroutine walk_full_path_bjorkmanwood(params,ierror)
   integer :: index_prev,count_samecell,iddr,idim,icoord
   logical :: ok,arrived,therm,usesphere,nospheres,incell
   type(amr_branch), pointer :: acell
+  !$ logical::continue
   !
   ! Do checks
   !
@@ -4742,6 +4743,17 @@ subroutine walk_full_path_bjorkmanwood(params,ierror)
            if((count_samecell.ge.params%mrw_count_trigger).or. &
                 mrw_cell_uses_mrw(ray_index)) then
               !
+              ! OpenMP: Lock this cell
+              !
+              !$ continue=.true.
+              !$ do while(.NOT. omp_test_lock(lock(ray_index)))
+              !$    if(continue)then
+              !$omp atomic
+              !$       conflict_counter=conflict_counter+1
+              !$       continue=.false.
+              !$    end if
+              !$ end do
+              !
               ! Set the dust temperature to -1, so that we can see if
               ! we have already calculated it or not (because we don't
               ! want to calculate it if not necessary)
@@ -4953,8 +4965,6 @@ subroutine walk_full_path_bjorkmanwood(params,ierror)
                     !
                     ! We redistribute the energy over the dust species
                     !
-                    !   OPENMP BUG?? MAY NEED TO INTRODUCE LOCK AROUND ENTIRE MRW PROCEDURE
-                    !
                     mrw_dcumen(:) = mc_cumulener(:,ray_index)
                     do ispec=1,dust_nr_species
                             !$OMP CRITICAL
@@ -5021,6 +5031,11 @@ subroutine walk_full_path_bjorkmanwood(params,ierror)
                  ray_cart_diry = dir(2)
                  ray_cart_dirz = dir(3)
               endif
+              !
+              ! OpenMP unlock
+              !
+              !$ call omp_unset_lock(lock(ray_index));
+              !
            endif
         endif
      endif
