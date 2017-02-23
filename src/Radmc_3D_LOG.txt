@@ -8084,7 +8084,8 @@ finetuning: I noticed during some testing with a supersimple annulus model
 
             NOT YET FIXED...
 
- BUGFIX     I finally found where the scattering monte carlo in
+ BUGFIX     OpenMP in scattering Monte Carlo:
+            I finally found where the scattering monte carlo in
             OpenMP mode goes astray. The lock was released twice!
             Interestingly this was no problem for the thermal
             monte carlo (where it was also released twice). But
@@ -8098,3 +8099,21 @@ finetuning: I noticed during some testing with a supersimple annulus model
             I also made several changes and bugfixes to the OpenMP stuff, in
             particular in the scattering MC part. I also cleaned that stuff
             a bit up.
+
+            Note: I made several modifications to the OpenMP stuff:
+             - Moved the init of the lock outside of the parallel
+               region.
+             - Removed the PRIVATE(id), added THREADPRIVATE(id)
+             - Made mcscat_phasefunc, zmatrix and zcumul threadprivate
+             - Introduced ierrpriv to replace ierror in places where
+               the ierror should be private.
+             - Initialized conflict_counter to 0
+             - Removed iphot from PRIVATE
+             - Fixed the bug of double lock release...
+             - Removed the shared(....) stuff, because that is automatic
+             - Made the REDUCTION() statement for scat MC identical to 
+               that of therm MC.
+             - Moved the continue=.true. out of the if() statement
+             - Reformatted the OpenMP stuff to include proper indentations
+             - Added omp atomic to the conflict_counter update
+

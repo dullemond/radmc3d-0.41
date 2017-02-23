@@ -2576,8 +2576,8 @@ subroutine do_monte_carlo_bjorkmanwood(params,ierror,resetseed)
    !$ seconds = omp_get_wtime()
    !
    !$ do i=1,size(lock)
-   !$    call omp_init_lock(lock(i))  
-   !$ enddo       
+   !$    call omp_init_lock(lock(i))
+   !$ enddo
    !
    ! Note: Here the nr of threads was set in a previous version. 
    !       This is now done in the main.f90
@@ -3174,7 +3174,7 @@ subroutine do_monte_carlo_scattering(params,ierror,resetseed,scatsrc,meanint)
      !$ seconds = omp_get_wtime()
      !
      !$ do i=1,size(lock)
-     !$    call omp_init_lock(lock(i))  
+     !$    call omp_init_lock(lock(i))
      !$ enddo
      !
      ! Note: Here the nr of threads was set in a previous version. 
