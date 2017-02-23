@@ -8082,8 +8082,6 @@ finetuning: I noticed during some testing with a supersimple annulus model
             But it is not entirely impossible, especially if one
             uses many threads.
 
-            NOT YET FIXED...
-
  BUGFIX     OpenMP in scattering Monte Carlo:
             I finally found where the scattering monte carlo in
             OpenMP mode goes astray. The lock was released twice!
@@ -8116,4 +8114,7 @@ finetuning: I noticed during some testing with a supersimple annulus model
              - Moved the continue=.true. out of the if() statement
              - Reformatted the OpenMP stuff to include proper indentations
              - Added omp atomic to the conflict_counter update
+
+ BUGFIX    Now also fixed the OpenMP Modified Random Walk issue: I now put
+           a lock around this part of the code.
 
