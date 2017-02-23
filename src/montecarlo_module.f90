@@ -7584,9 +7584,9 @@ subroutine walk_cells_scat(params,taupath,ener,inu,arrived,ispecc,ierror)
         !$          ' conflict nr ',conflict_counter,conflict_private,' dc = ',dummycount
         !$    call flush(stdo)
         !$ endif
-        !$ if(ray_index .ge. 1 )then
-        !$    call omp_unset_lock(lock(ray_index));
-        !$ endif
+        !!$ if(ray_index .ge. 1 )then
+        !!$    call omp_unset_lock(lock(ray_index));
+        !!$ endif
         return
      endif
      !
