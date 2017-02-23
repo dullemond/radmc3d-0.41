@@ -8074,3 +8074,12 @@ finetuning: I noticed during some testing with a supersimple annulus model
 
             git:3910924
 
+23.02.2017  
+ BUG?       Does the Modified Random Walk work for OpenMP? I do not
+            see a lock... What if two threads do a MRW in the same
+            cell at the same time? The result will simply be one of 
+            the two results. I don't expect this to happen often.
+            But it is not entirely impossible, especially if one
+            uses many threads.
+
+            NOT YET FIXED...
