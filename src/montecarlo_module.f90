@@ -254,12 +254,12 @@ logical :: mc_photon_destroyed
 ! nthreads gives the number of threads used for the parallelization
 ! nprocs gives the number of processor cores which are available
 !
-!$ integer :: id,nthreads,nprocs,conflict_counter
+!$ integer :: id,nthreads,nprocs,conflict_counter,conflict_private
 !
 ! OpenMP Parallellization:
 ! Global variables used in subroutine calls within the parallel region which are threadprivate
 !
-!$OMP THREADPRIVATE(id)
+!$OMP THREADPRIVATE(id,conflict_private)
 !$OMP THREADPRIVATE(photpkg,energy)
 !$OMP THREADPRIVATE(mc_enerpart)
 !$OMP THREADPRIVATE(alpha_a,alpha_s)
@@ -2202,7 +2202,7 @@ subroutine do_monte_carlo_bjorkmanwood(params,ierror,resetseed)
   doubleprecision :: ener,lumtotinv,entotal
   logical :: ievenodd
   logical,optional :: resetseed
-  integer :: ierror,countwrite,cntdump,nphot,index,illum
+  integer :: ierror,ierrpriv,countwrite,cntdump,nphot,index,illum
   integer :: inu,iphot,count,ispec,istar,icell,nsrc,nstarsrc
   integer :: iseeddum,cnt,isd,ipstart,itemplate
   logical :: mc_emergency_break
@@ -2210,6 +2210,8 @@ subroutine do_monte_carlo_bjorkmanwood(params,ierror,resetseed)
   !$ integer OMP_get_num_threads
   !$ integer OMP_get_thread_num
   !$ integer OMP_get_num_procs
+  !$ conflict_counter = 0
+  !$ conflict_private = 0
   !
   ! Some consistency checks
   ! 
@@ -2574,6 +2576,10 @@ subroutine do_monte_carlo_bjorkmanwood(params,ierror,resetseed)
    !
    !$ seconds = omp_get_wtime()
    !
+   !$ do i=1,size(lock)
+   !$    call omp_init_lock(lock(i))  
+   !$ enddo       
+   !
    ! Note: Here the nr of threads was set in a previous version. 
    !       This is now done in the main.f90
    !       Bugfix Jon Ramsey 22.03.2016
@@ -2584,7 +2590,7 @@ subroutine do_monte_carlo_bjorkmanwood(params,ierror,resetseed)
    !
    !!$ Local variables from 'do_monte_carlo_bjorkmanwood'
    !
-   !$OMP PRIVATE(iphot,ierror) &
+   !$OMP PRIVATE(ierrpriv) &
    !
    !!$ Global variables from other modules used in the subroutine 'do_monte_carlo_bjorkmanwood'
    !!$ or in other subroutine calls within the parallel section
@@ -2600,9 +2606,6 @@ subroutine do_monte_carlo_bjorkmanwood(params,ierror,resetseed)
    !$ write(stdo,*) 'Thread Nr',id,'of',nthreads,'threads in total'
    !$ phnr=1
    !$ iseed=-abs(iseed_start+id)
-   !$ do i=1,size(lock)
-   !$    call omp_init_lock(lock(i))  
-   !$ enddo       
    !$OMP DO SCHEDULE(dynamic)
    !
    ! Launch all the photons
@@ -2642,11 +2645,11 @@ subroutine do_monte_carlo_bjorkmanwood(params,ierror,resetseed)
          ! Call the walk routine
          !
          !!$ Some critical sections are hidden within this subroutine call
-         call walk_full_path_bjorkmanwood(params,ierror)
+         call walk_full_path_bjorkmanwood(params,ierrpriv)
          !       
-         ! If ierror.ne.0 then an error occurred, return with non-zero error code
+         ! If ierrpriv.ne.0 then an error occurred, return with non-zero error code
          !
-         if(ierror.ne.0) then
+         if(ierrpriv.ne.0) then
             !$OMP CRITICAL
             mc_emergency_break = .true.
             !$OMP END CRITICAL
@@ -2800,7 +2803,7 @@ end subroutine do_monte_carlo_bjorkmanwood
 subroutine do_monte_carlo_scattering(params,ierror,resetseed,scatsrc,meanint)
   implicit none
   type(mc_params) :: params
-  integer :: ierror,inu
+  integer :: ierror,ierrpriv,inu
   doubleprecision :: ener,lumtotinv,temp,freq,fact
   logical :: ievenodd
   logical,optional :: resetseed
@@ -2815,6 +2818,8 @@ subroutine do_monte_carlo_scattering(params,ierror,resetseed,scatsrc,meanint)
   !$ integer OMP_get_num_threads
   !$ integer OMP_get_thread_num
   !$ integer OMP_get_num_procs
+  !$ conflict_counter = 0
+  !$ conflict_private = 0
   !
   ! Some consistency checks
   ! 
@@ -3170,6 +3175,10 @@ subroutine do_monte_carlo_scattering(params,ierror,resetseed,scatsrc,meanint)
      !
      !$ seconds = omp_get_wtime()
      !
+     !$ do i=1,size(lock)
+     !$    call omp_init_lock(lock(i))  
+     !$ enddo
+     !
      ! Note: Here the nr of threads was set in a previous version. 
      !       This is now done in the main.f90
      !       Bugfix Jon Ramsey 22.03.2016
@@ -3178,7 +3187,7 @@ subroutine do_monte_carlo_scattering(params,ierror,resetseed,scatsrc,meanint)
      !!!!!$OMP shared(countwrite,stdo,nphot,count,nthreads,lock)
      !!!!!$OMP shared(mc_emergency_break,cntdump,cnt,phnr,mc_openmp_parallel,inu,iseed_start,params)
      !
-     !$OMP PRIVATE(iphot,ierror) &
+     !$OMP PRIVATE(ierrpriv) &
      !
      !!$ Global variables from 'montecarlo_module.f90' used in the subroutine 'do_monte_carlo_scattering'
      !
@@ -3190,9 +3199,6 @@ subroutine do_monte_carlo_scattering(params,ierror,resetseed,scatsrc,meanint)
      !$ write(stdo,*) 'Thread Nr',id,'of',nthreads,'threads in total'
      !$ phnr=1
      !$ iseed=-abs(iseed_start+id)
-     !$ do i=1,size(lock)
-     !$    call omp_init_lock(lock(i))  
-     !$ enddo
      !$OMP DO SCHEDULE(dynamic)
      !
      ! Launch all the photons for this wavelength
@@ -3230,11 +3236,11 @@ subroutine do_monte_carlo_scattering(params,ierror,resetseed,scatsrc,meanint)
         !
         ! Call the walk routine
         !
-        call walk_full_path_scat(params,inu,ierror)
+        call walk_full_path_scat(params,inu,ierrpriv)
         !       
-        ! If ierror.ne.0 then an error occurred, return with non-zero error code
+        ! If ierrpriv.ne.0 then an error occurred, return with non-zero error code
         !
-        if(ierror.ne.0) then
+        if(ierrpriv.ne.0) then
            !$OMP CRITICAL
            mc_emergency_break = .true.
            !$OMP END CRITICAL
@@ -5893,7 +5899,7 @@ subroutine walk_cells_thermal(params,taupath,iqactive,arrived, &
      !
      !$ if(.not.continue) then
      !$    iddd=OMP_get_thread_num()
-     !$    write(stdo,*) '.....restart thread ',id,iddd,' conflict nr ',conflict_counter
+     !$    write(stdo,*) '.....restart thread ',id,iddd,' conflict nr ',conflict_counter,conflict_private
      !$    call flush(stdo)
      !$ endif
      !$ continue=.true.
@@ -5902,9 +5908,12 @@ subroutine walk_cells_thermal(params,taupath,iqactive,arrived, &
      !$       if(continue)then
      !$omp atomic
      !$          conflict_counter=conflict_counter+1
+     !$          conflict_private=conflict_private+1
      !$          iddd=OMP_get_thread_num()
      !$          dummycount=dummycount+1
-     !$          write(stdo,*) 'Conflict... thread ',id,iddd,', conflict nr ',conflict_counter,' dc = ',dummycount
+     !$          write(stdo,*) 'Conflict... thread ',id,iddd,', conflict nr ', &
+     !$                    conflict_counter,conflict_private,' dc = ',dummycount, &
+     !$                    'cell index = ',ray_index
      !$          call flush(stdo)
      !$          if(id.ne.iddd) then
      !$             write(stdo,*) 'INDICES NOT MATCHING!'
@@ -5913,6 +5922,11 @@ subroutine walk_cells_thermal(params,taupath,iqactive,arrived, &
      !$          continue=.false.
      !$       end if
      !$    end do
+     !$    if(.not.continue) then
+     !$       write(stdo,*) '...end conflict, thread ',id,iddd,', conflict nr ', &
+     !$                    conflict_counter,conflict_private
+     !$       call flush(stdo)
+     !$    endif
      !$ end if
      !
      ! For cell photon statistics, increase the counter
@@ -6244,7 +6258,8 @@ subroutine walk_cells_thermal(params,taupath,iqactive,arrived, &
         !$ if(.not.continue) then
         !$    dummycount=dummycount+2
         !$    iddd=OMP_get_thread_num()
-        !$    write(stdo,*) '...end conflict (A) ithread ',id,iddd,' conflict nr ',conflict_counter,' dc = ',dummycount
+        !$    write(stdo,*) '...end lock after conflict (A) ithread ',id,iddd, &
+        !$        ' conflict nr ',conflict_counter,conflict_private,' dc = ',dummycount
         !$    call flush(stdo)
         !$    if(id.ne.iddd) then
         !$       write(stdo,*) 'INDICES NOT MATCHING (A)!'
@@ -6407,7 +6422,8 @@ subroutine walk_cells_thermal(params,taupath,iqactive,arrived, &
      !$ if(.not.continue) then
      !$    dummycount=dummycount+4
      !$    iddd=OMP_get_thread_num()
-     !$    write(stdo,*) '...end conflict (B) ithread ',id,iddd,' conflict nr ',conflict_counter,' dc = ',dummycount
+     !$    write(stdo,*) '...end lock after conflict (B) ithread ',id,iddd, &
+     !$        ' conflict nr ',conflict_counter,conflict_private,' dc = ',dummycount
      !$    call flush(stdo)
      !$    if(id.ne.iddd) then
      !$       write(stdo,*) 'INDICES NOT MATCHING (B)!'
@@ -6461,7 +6477,8 @@ subroutine walk_cells_thermal(params,taupath,iqactive,arrived, &
         !$ if(.not.continue) then
         !$    dummycount=dummycount+8
         !$    iddd=OMP_get_thread_num()
-        !$    write(stdo,*) '...end conflict (C) ithread ',id,iddd,' conflict nr ',conflict_counter,' dc = ',dummycount
+        !$    write(stdo,*) '...end lock after conflict (C) ithread ',id,iddd, &
+        !$         ' conflict nr ',conflict_counter,conflict_private,' dc = ',dummycount
         !$    call flush(stdo)
         !$    if(id.ne.iddd) then
         !$       write(stdo,*) 'INDICES NOT MATCHING (C)!'
@@ -6478,7 +6495,8 @@ subroutine walk_cells_thermal(params,taupath,iqactive,arrived, &
      !$ if(.not.continue) then
      !$    dummycount=dummycount+16
      !$    iddd=OMP_get_thread_num()
-     !$    write(stdo,*) '...end conflict (D) ithread ',id,iddd,' conflict nr ',conflict_counter,' dc = ',dummycount
+     !$    write(stdo,*) '...end lock after conflict (D) ithread ',id,iddd, &
+     !$           ' conflict nr ',conflict_counter,conflict_private,' dc = ',dummycount
      !$    call flush(stdo)
      !$    if(id.ne.iddd) then
      !$       write(stdo,*) 'INDICES NOT MATCHING (D)!'
@@ -6517,7 +6535,7 @@ subroutine walk_cells_scat(params,taupath,ener,inu,arrived,ispecc,ierror)
   doubleprecision :: deltaphi,cosdphi,sindphi
   integer :: idirs
   !$ logical::continue
-  !$ integer::dummycount
+  !$ integer::dummycount,iddd
   !$ dummycount=0
   !
   ! Reset
@@ -6592,7 +6610,7 @@ subroutine walk_cells_scat(params,taupath,ener,inu,arrived,ispecc,ierror)
      ! OpenMP Parallellization: Lock this cell (and only continue when succesfully locked)
      !
      !$ if(.not.continue) then
-     !$    write(stdo,*) '.....restart thread ',id,' conflict nr ',conflict_counter
+     !$    write(stdo,*) '.....restart thread ',id,' conflict nr ',conflict_counter,conflict_private
      !$    call flush(stdo)
      !$ endif
      !$ continue=.true.
@@ -6601,13 +6619,21 @@ subroutine walk_cells_scat(params,taupath,ener,inu,arrived,ispecc,ierror)
      !$       if(continue)then
      !$omp atomic
      !$          conflict_counter=conflict_counter+1
-     !$          id=OMP_get_thread_num()
+     !$          conflict_private=conflict_private+1
+     !$          iddd=OMP_get_thread_num()
      !$          dummycount=dummycount+1
-     !$          write(stdo,*) 'Conflict... thread ',id,' conflict nr ',conflict_counter,' dc = ',dummycount
+     !$          write(stdo,*) 'Conflict... thread ',id,iddd, &
+     !$                ' conflict nr ',conflict_counter,conflict_private,' dc = ',dummycount, &
+     !$                'cell index = ',ray_index
      !$          call flush(stdo)
      !$          continue=.false.
      !$       end if
      !$    end do
+     !$    if(.not.continue) then
+     !$       write(stdo,*) '...end conflict, thread ',id,iddd,', conflict nr ', &
+     !$                    conflict_counter,conflict_private
+     !$       call flush(stdo)
+     !$    endif
      !$ end if
      !
      ! Do some safety checks
@@ -7167,7 +7193,8 @@ subroutine walk_cells_scat(params,taupath,ener,inu,arrived,ispecc,ierror)
         !
         !$ if(.not.continue) then
         !$    dummycount=dummycount+2
-        !$    write(stdo,*) '...end conflict (A) ithread ',id,' conflict nr ',conflict_counter,' dc = ',dummycount
+        !$    write(stdo,*) '...end lock after conflict (A) ithread ',id,iddd, &
+        !$           ' conflict nr ',conflict_counter,conflict_private,' dc = ',dummycount
         !$    call flush(stdo)
         !$ endif
         !$ if(ray_index .ge. 1 )then
@@ -7499,7 +7526,8 @@ subroutine walk_cells_scat(params,taupath,ener,inu,arrived,ispecc,ierror)
      !
      !$ if(.not.continue) then
      !$    dummycount=dummycount+4
-     !$    write(stdo,*) '...end conflict (B) ithread ',id,' conflict nr ',conflict_counter,' dc = ',dummycount
+     !$    write(stdo,*) '...end lock after conflict (B) ithread ',id,iddd, &
+     !$           ' conflict nr ',conflict_counter,conflict_private,' dc = ',dummycount
      !$    call flush(stdo)
      !$ endif
      !$ if(ray_index .ge. 1 )then
@@ -7550,7 +7578,8 @@ subroutine walk_cells_scat(params,taupath,ener,inu,arrived,ispecc,ierror)
         !
         !$ if(.not.continue) then
         !$    dummycount=dummycount+8
-        !$    write(stdo,*) '...end conflict (C) ithread ',id,' conflict nr ',conflict_counter,' dc = ',dummycount
+        !$    write(stdo,*) '...end lock after conflict (C) ithread ',id,iddd, &
+        !$          ' conflict nr ',conflict_counter,conflict_private,' dc = ',dummycount
         !$    call flush(stdo)
         !$ endif
         !$ if(ray_index .ge. 1 )then
@@ -7561,7 +7590,8 @@ subroutine walk_cells_scat(params,taupath,ener,inu,arrived,ispecc,ierror)
      !
      !$ if(.not.continue) then
      !$    dummycount=dummycount+16
-     !$    write(stdo,*) '...end conflict (D) ithread ',id,' conflict nr ',conflict_counter,' dc = ',dummycount
+     !$    write(stdo,*) '...end lock after conflict (D) ithread ',id,iddd, &
+     !$          ' conflict nr ',conflict_counter,conflict_private,' dc = ',dummycount
      !$    call flush(stdo)
      !$ endif
   enddo
@@ -8036,6 +8066,7 @@ subroutine do_absorption_event(params,iqactive,ierror)
      !$ do while(.NOT. omp_test_lock(lock(ray_index)))
      !!$ if(continue)then
      !!$ conflict_counter=conflict_counter+1
+     !!$ conflict_private=conflict_private+1
      !!$ continue=.false.
      !!$ end if
      !$ end do
