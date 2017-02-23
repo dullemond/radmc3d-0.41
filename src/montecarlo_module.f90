@@ -5888,17 +5888,17 @@ subroutine walk_cells_thermal(params,taupath,iqactive,arrived, &
      !
      ! OpenMP Parallellization: Lock this cell (and only continue when succesfully locked)
      !
-     !$ if(ray_index .gt. 0)then
      !$ continue=.true.
-     !$ do while(.NOT. omp_test_lock(lock(ray_index)))
-     !$ if(continue)then
-     !$ conflict_counter=conflict_counter+1
-     !$ id=OMP_get_thread_num()
-     !$ write(stdo,*) 'Conflict... thread ',id
-     !$ call flush(stdo)
-     !$ continue=.false.
-     !$ end if
-     !$ end do
+     !$ if(ray_index .gt. 0)then
+     !$    do while(.NOT. omp_test_lock(lock(ray_index)))
+     !$       if(continue)then
+     !$          conflict_counter=conflict_counter+1
+     !$          id=OMP_get_thread_num()
+     !$          write(stdo,*) 'Conflict... thread ',id,', conflict nr ',conflict_counter
+     !$          call flush(stdo)
+     !$          continue=.false.
+     !$       end if
+     !$    end do
      !$ end if
      !
      ! For cell photon statistics, increase the counter
@@ -6227,6 +6227,11 @@ subroutine walk_cells_thermal(params,taupath,iqactive,arrived, &
         !
         ! OpenMP Parallellization: Release lock on this cell
         !
+        !$ if(.not.continue) then
+        !$    write(stdo,*) '...end conflict (A) ithread ',id,' conflict nr ',conflict_counter
+        !$    call flush(stdo)
+        !$ endif
+        !
         !$ if(ray_index .ge. 1 )then
         !$ call omp_unset_lock(lock(ray_index));
         !$ endif
@@ -6379,6 +6384,10 @@ subroutine walk_cells_thermal(params,taupath,iqactive,arrived, &
      !
      ! OpenMP Parallellization: Release lock on this cell
      !
+     !$ if(.not.continue) then
+     !$    write(stdo,*) '...end conflict (B) ithread ',id,' conflict nr ',conflict_counter
+     !$    call flush(stdo)
+     !$ endif
      !$ if(ray_index .ge. 1 )then
      !$ call omp_unset_lock(lock(ray_index));
      !$ endif
@@ -6423,6 +6432,11 @@ subroutine walk_cells_thermal(params,taupath,iqactive,arrived, &
         !
         ! OpenMP Parallellization: Release lock on this cell
         !
+        !$ if(.not.continue) then
+        !$    write(stdo,*) '...end conflict (C) ithread ',id,' conflict nr ',conflict_counter
+        !$    call flush(stdo)
+        !$ endif
+        !
         !$ if(ray_index .ge. 1 )then
         !$ call omp_unset_lock(lock(ray_index));
         !$ endif
@@ -6430,8 +6444,8 @@ subroutine walk_cells_thermal(params,taupath,iqactive,arrived, &
      endif
      !
      !$ if(.not.continue) then
-     !$    write(stdo,*) '...end conflict ithread ',id
-     !$ call flush(stdo)
+     !$    write(stdo,*) '...end conflict (D) ithread ',id,' conflict nr ',conflict_counter
+     !$    call flush(stdo)
      !$ endif
   enddo
   !
@@ -6537,17 +6551,17 @@ subroutine walk_cells_scat(params,taupath,ener,inu,arrived,ispecc,ierror)
      !
      ! OpenMP Parallellization: Lock this cell (and only continue when succesfully locked)
      !
-     !$ if(ray_index .gt. 0)then
      !$ continue=.true.
-     !$ do while(.NOT. omp_test_lock(lock(ray_index)))
-     !$ if(continue)then
-     !!$ conflict_counter=conflict_counter+1
-     !$ id=OMP_get_thread_num()
-     !$ write(stdo,*) 'Conflict... thread ',id
-     !$ call flush(stdo)
-     !$ continue=.false.
-     !$ end if
-     !$ end do
+     !$ if(ray_index .gt. 0)then
+     !$    do while(.NOT. omp_test_lock(lock(ray_index)))
+     !$       if(continue)then
+     !$          conflict_counter=conflict_counter+1
+     !$          id=OMP_get_thread_num()
+     !$          write(stdo,*) 'Conflict... thread ',id,' conflict nr ',conflict_counter
+     !$          call flush(stdo)
+     !$          continue=.false.
+     !$       end if
+     !$    end do
      !$ end if
      !
      ! Do some safety checks
@@ -7105,6 +7119,10 @@ subroutine walk_cells_scat(params,taupath,ener,inu,arrived,ispecc,ierror)
         !
         ! OpenMP Parallellization: Release lock on this cell
         !
+        !$ if(.not.continue) then
+        !$    write(stdo,*) '...end conflict (A) ithread ',id,' conflict nr ',conflict_counter
+        !$    call flush(stdo)
+        !$ endif
         !$ if(ray_index .ge. 1 )then
         !$ call omp_unset_lock(lock(ray_index));
         !$ endif
@@ -7432,6 +7450,10 @@ subroutine walk_cells_scat(params,taupath,ener,inu,arrived,ispecc,ierror)
      !
      ! OpenMP Parallellization: Release lock on this cell
      !
+     !$ if(.not.continue) then
+     !$    write(stdo,*) '...end conflict (B) ithread ',id,' conflict nr ',conflict_counter
+     !$    call flush(stdo)
+     !$ endif
      !$ if(ray_index .ge. 1 )then
      !$ call omp_unset_lock(lock(ray_index));
      !$ endif
@@ -7478,6 +7500,10 @@ subroutine walk_cells_scat(params,taupath,ener,inu,arrived,ispecc,ierror)
         !
         ! OpenMP Parallellization: Release lock on this cell
         !
+        !$ if(.not.continue) then
+        !$    write(stdo,*) '...end conflict (C) ithread ',id,' conflict nr ',conflict_counter
+        !$    call flush(stdo)
+        !$ endif
         !$ if(ray_index .ge. 1 )then
         !$ call omp_unset_lock(lock(ray_index));
         !$ endif
@@ -7485,7 +7511,7 @@ subroutine walk_cells_scat(params,taupath,ener,inu,arrived,ispecc,ierror)
      endif
      !
      !$ if(.not.continue) then
-     !$    write(stdo,*) '...end conflict ithread ',id
+     !$    write(stdo,*) '...end conflict (D) ithread ',id,' conflict nr ',conflict_counter
      !$ call flush(stdo)
      !$ endif
   enddo
