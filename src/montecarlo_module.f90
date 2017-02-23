@@ -5837,8 +5837,8 @@ subroutine walk_cells_thermal(params,taupath,iqactive,arrived, &
   logical :: ok,arrived,therm
   doubleprecision :: prev_x,prev_y,prev_z
   !$ logical::continue
-  !$ integer::dummycount,iddd
-  !$ dummycount=0
+  !!$ integer::dummycount,iddd
+  !!$ dummycount=0
   !
   ! Reset
   !
@@ -5899,11 +5899,11 @@ subroutine walk_cells_thermal(params,taupath,iqactive,arrived, &
      !
      ! OpenMP Parallellization: Lock this cell (and only continue when succesfully locked)
      !
-     !$ if(.not.continue) then
-     !$    iddd=OMP_get_thread_num()
-     !$    write(stdo,*) '.....restart thread ',id,iddd,' conflict nr ',conflict_counter,conflict_private
-     !$    call flush(stdo)
-     !$ endif
+     !!$ if(.not.continue) then
+     !!$    iddd=OMP_get_thread_num()
+     !!$    write(stdo,*) '.....restart thread ',id,iddd,' conflict nr ',conflict_counter,conflict_private
+     !!$    call flush(stdo)
+     !!$ endif
      !$ continue=.true.
      !$ if(ray_index .gt. 0)then
      !$    do while(.NOT. omp_test_lock(lock(ray_index)))
@@ -5911,24 +5911,24 @@ subroutine walk_cells_thermal(params,taupath,iqactive,arrived, &
      !$omp atomic
      !$          conflict_counter=conflict_counter+1
      !$          conflict_private=conflict_private+1
-     !$          iddd=OMP_get_thread_num()
-     !$          dummycount=dummycount+1
-     !$          write(stdo,*) 'Conflict... thread ',id,iddd,', conflict nr ', &
-     !$                    conflict_counter,conflict_private,' dc = ',dummycount, &
-     !$                    'cell index = ',ray_index
-     !$          call flush(stdo)
-     !$          if(id.ne.iddd) then
-     !$             write(stdo,*) 'INDICES NOT MATCHING!'
-     !$             call flush(stdo)
-     !$          endif
+     !!$          iddd=OMP_get_thread_num()
+     !!$          dummycount=dummycount+1
+     !!$          write(stdo,*) 'Conflict... thread ',id,iddd,', conflict nr ', &
+     !!$                    conflict_counter,conflict_private,' dc = ',dummycount, &
+     !!$                    'cell index = ',ray_index
+     !!$          call flush(stdo)
+     !!$          if(id.ne.iddd) then
+     !!$             write(stdo,*) 'INDICES NOT MATCHING!'
+     !!$             call flush(stdo)
+     !!$          endif
      !$          continue=.false.
      !$       end if
      !$    end do
-     !$    if(.not.continue) then
-     !$       write(stdo,*) '...end conflict, thread ',id,iddd,', conflict nr ', &
-     !$                    conflict_counter,conflict_private
-     !$       call flush(stdo)
-     !$    endif
+     !!$    if(.not.continue) then
+     !!$       write(stdo,*) '...end conflict, thread ',id,iddd,', conflict nr ', &
+     !!$                    conflict_counter,conflict_private
+     !!$       call flush(stdo)
+     !!$    endif
      !$ end if
      !
      ! For cell photon statistics, increase the counter
@@ -6257,17 +6257,17 @@ subroutine walk_cells_thermal(params,taupath,iqactive,arrived, &
         !
         ! OpenMP Parallellization: Release lock on this cell
         !
-        !$ if(.not.continue) then
-        !$    dummycount=dummycount+2
-        !$    iddd=OMP_get_thread_num()
-        !$    write(stdo,*) '...end lock after conflict (A) ithread ',id,iddd, &
-        !$        ' conflict nr ',conflict_counter,conflict_private,' dc = ',dummycount
-        !$    call flush(stdo)
-        !$    if(id.ne.iddd) then
-        !$       write(stdo,*) 'INDICES NOT MATCHING (A)!'
-        !$       call flush(stdo)
-        !$    endif
-        !$ endif
+        !!$ if(.not.continue) then
+        !!$    dummycount=dummycount+2
+        !!$    iddd=OMP_get_thread_num()
+        !!$    write(stdo,*) '...end lock after conflict (A) ithread ',id,iddd, &
+        !!$        ' conflict nr ',conflict_counter,conflict_private,' dc = ',dummycount
+        !!$    call flush(stdo)
+        !!$    if(id.ne.iddd) then
+        !!$       write(stdo,*) 'INDICES NOT MATCHING (A)!'
+        !!$       call flush(stdo)
+        !!$    endif
+        !!$ endif
         !
         !$ if(ray_index .ge. 1 )then
         !$    call omp_unset_lock(lock(ray_index));
@@ -6421,17 +6421,17 @@ subroutine walk_cells_thermal(params,taupath,iqactive,arrived, &
      !
      ! OpenMP Parallellization: Release lock on this cell
      !
-     !$ if(.not.continue) then
-     !$    dummycount=dummycount+4
-     !$    iddd=OMP_get_thread_num()
-     !$    write(stdo,*) '...end lock after conflict (B) ithread ',id,iddd, &
-     !$        ' conflict nr ',conflict_counter,conflict_private,' dc = ',dummycount
-     !$    call flush(stdo)
-     !$    if(id.ne.iddd) then
-     !$       write(stdo,*) 'INDICES NOT MATCHING (B)!'
-     !$       call flush(stdo)
-     !$    endif
-     !$ endif
+     !!$ if(.not.continue) then
+     !!$    dummycount=dummycount+4
+     !!$    iddd=OMP_get_thread_num()
+     !!$    write(stdo,*) '...end lock after conflict (B) ithread ',id,iddd, &
+     !!$        ' conflict nr ',conflict_counter,conflict_private,' dc = ',dummycount
+     !!$    call flush(stdo)
+     !!$    if(id.ne.iddd) then
+     !!$       write(stdo,*) 'INDICES NOT MATCHING (B)!'
+     !!$       call flush(stdo)
+     !!$    endif
+     !!$ endif
      !$ if(ray_index .ge. 1 )then
      !$    call omp_unset_lock(lock(ray_index));
      !$ endif
@@ -6476,17 +6476,17 @@ subroutine walk_cells_thermal(params,taupath,iqactive,arrived, &
         !
         ! OpenMP Parallellization: Release lock on this cell
         !
-        !$ if(.not.continue) then
-        !$    dummycount=dummycount+8
-        !$    iddd=OMP_get_thread_num()
-        !$    write(stdo,*) '...end lock after conflict (C) ithread ',id,iddd, &
-        !$         ' conflict nr ',conflict_counter,conflict_private,' dc = ',dummycount
-        !$    call flush(stdo)
-        !$    if(id.ne.iddd) then
-        !$       write(stdo,*) 'INDICES NOT MATCHING (C)!'
-        !$       call flush(stdo)
-        !$    endif
-        !$ endif
+        !!$ if(.not.continue) then
+        !!$    dummycount=dummycount+8
+        !!$    iddd=OMP_get_thread_num()
+        !!$    write(stdo,*) '...end lock after conflict (C) ithread ',id,iddd, &
+        !!$         ' conflict nr ',conflict_counter,conflict_private,' dc = ',dummycount
+        !!$    call flush(stdo)
+        !!$    if(id.ne.iddd) then
+        !!$       write(stdo,*) 'INDICES NOT MATCHING (C)!'
+        !!$       call flush(stdo)
+        !!$    endif
+        !!$ endif
         !
         !$ if(ray_index .ge. 1 )then
         !$    call omp_unset_lock(lock(ray_index));
@@ -6494,17 +6494,17 @@ subroutine walk_cells_thermal(params,taupath,iqactive,arrived, &
         return
      endif
      !
-     !$ if(.not.continue) then
-     !$    dummycount=dummycount+16
-     !$    iddd=OMP_get_thread_num()
-     !$    write(stdo,*) '...end lock after conflict (D) ithread ',id,iddd, &
-     !$           ' conflict nr ',conflict_counter,conflict_private,' dc = ',dummycount
-     !$    call flush(stdo)
-     !$    if(id.ne.iddd) then
-     !$       write(stdo,*) 'INDICES NOT MATCHING (D)!'
-     !$       call flush(stdo)
-     !$    endif
-     !$ endif
+     !!$ if(.not.continue) then
+     !!$    dummycount=dummycount+16
+     !!$    iddd=OMP_get_thread_num()
+     !!$    write(stdo,*) '...end lock after conflict (D) ithread ',id,iddd, &
+     !!$           ' conflict nr ',conflict_counter,conflict_private,' dc = ',dummycount
+     !!$    call flush(stdo)
+     !!$    if(id.ne.iddd) then
+     !!$       write(stdo,*) 'INDICES NOT MATCHING (D)!'
+     !!$       call flush(stdo)
+     !!$    endif
+     !!$ endif
   enddo
   !
 end subroutine walk_cells_thermal
