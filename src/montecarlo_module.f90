@@ -254,12 +254,12 @@ logical :: mc_photon_destroyed
 ! nthreads gives the number of threads used for the parallelization
 ! nprocs gives the number of processor cores which are available
 !
-!$ integer :: id,nthreads,nprocs,conflict_counter,conflict_private
+!$ integer :: id,nthreads,nprocs,conflict_counter
 !
 ! OpenMP Parallellization:
 ! Global variables used in subroutine calls within the parallel region which are threadprivate
 !
-!$OMP THREADPRIVATE(id,conflict_private)
+!$OMP THREADPRIVATE(id)
 !$OMP THREADPRIVATE(photpkg,energy)
 !$OMP THREADPRIVATE(mc_enerpart)
 !$OMP THREADPRIVATE(alpha_a,alpha_s)
@@ -2211,7 +2211,6 @@ subroutine do_monte_carlo_bjorkmanwood(params,ierror,resetseed)
   !$ integer OMP_get_thread_num
   !$ integer OMP_get_num_procs
   !$ conflict_counter = 0
-  !$ conflict_private = 0
   !
   ! Some consistency checks
   ! 
@@ -2819,7 +2818,6 @@ subroutine do_monte_carlo_scattering(params,ierror,resetseed,scatsrc,meanint)
   !$ integer OMP_get_thread_num
   !$ integer OMP_get_num_procs
   !$ conflict_counter = 0
-  !$ conflict_private = 0
   !
   ! Some consistency checks
   ! 
@@ -5837,8 +5835,6 @@ subroutine walk_cells_thermal(params,taupath,iqactive,arrived, &
   logical :: ok,arrived,therm
   doubleprecision :: prev_x,prev_y,prev_z
   !$ logical::continue
-  !!$ integer::dummycount,iddd
-  !!$ dummycount=0
   !
   ! Reset
   !
@@ -5905,7 +5901,6 @@ subroutine walk_cells_thermal(params,taupath,iqactive,arrived, &
      !$       if(continue)then
      !$omp atomic
      !$          conflict_counter=conflict_counter+1
-     !$          conflict_private=conflict_private+1
      !$          continue=.false.
      !$       end if
      !$    end do
@@ -6469,8 +6464,6 @@ subroutine walk_cells_scat(params,taupath,ener,inu,arrived,ispecc,ierror)
   doubleprecision :: deltaphi,cosdphi,sindphi
   integer :: idirs
   !$ logical::continue
-  !!$ integer::dummycount,iddd
-  !!$ dummycount=0
   !
   ! Reset
   !
@@ -6549,7 +6542,6 @@ subroutine walk_cells_scat(params,taupath,ener,inu,arrived,ispecc,ierror)
      !$       if(continue)then
      !$omp atomic
      !$          conflict_counter=conflict_counter+1
-     !$          conflict_private=conflict_private+1
      !$          continue=.false.
      !$       end if
      !$    end do
@@ -7959,7 +7951,6 @@ subroutine do_absorption_event(params,iqactive,ierror)
      !$ do while(.NOT. omp_test_lock(lock(ray_index)))
      !!$ if(continue)then
      !!$ conflict_counter=conflict_counter+1
-     !!$ conflict_private=conflict_private+1
      !!$ continue=.false.
      !!$ end if
      !$ end do
