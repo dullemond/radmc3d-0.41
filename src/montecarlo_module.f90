@@ -4955,6 +4955,8 @@ subroutine walk_full_path_bjorkmanwood(params,ierror)
                     !
                     ! We redistribute the energy over the dust species
                     !
+                    !   OPENMP BUG?? MAY NEED TO INTRODUCE LOCK AROUND ENTIRE MRW PROCEDURE
+                    !
                     mrw_dcumen(:) = mc_cumulener(:,ray_index)
                     do ispec=1,dust_nr_species
                             !$OMP CRITICAL
