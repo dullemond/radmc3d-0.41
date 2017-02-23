@@ -8083,3 +8083,13 @@ finetuning: I noticed during some testing with a supersimple annulus model
             uses many threads.
 
             NOT YET FIXED...
+
+ BUGFIX     I finally found where the scattering monte carlo in
+            OpenMP mode goes astray. The lock was released twice!
+            Interestingly this was no problem for the thermal
+            monte carlo (where it was also released twice). But
+            for the scattering monte carlo it caused a crash 
+            about 70% of the time. 
+
+
+            

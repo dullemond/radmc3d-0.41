@@ -6489,9 +6489,9 @@ subroutine walk_cells_thermal(params,taupath,iqactive,arrived, &
         !!$    endif
         !!$ endif
         !
-        !$ if(ray_index .ge. 1 )then
-        !$    call omp_unset_lock(lock(ray_index));
-        !$ endif
+        !!$ if(ray_index .ge. 1 )then
+        !!$    call omp_unset_lock(lock(ray_index));
+        !!$ endif
         return
      endif
      !
