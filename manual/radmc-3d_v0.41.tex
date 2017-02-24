@@ -1684,57 +1684,6 @@ iseed = -5415
 (where -5415 is to be replaced by the value you want) to the {\small\tt
   radmc3d.inp} file.
 
-\subsection{OpenMP parallelized thermal Monte Carlo version}
-\label{sec-omp-thermalmc}
-%
-Depending on the model properties and the number of photon packages used in
-the simulation the thermal Monte Carlo part can be a time-consuming
-computation when executed only in a serial mode. Since version 0.38 the
-parallelization of the dust thermal Monte Carlo simulation is implemented in
-the code using the OpenMP interface for parallel computing. The main routine
-responsible for the Monte Carlo code from Bjorkman \& Wood is executed in
-parallel mode, i.e. the task is distributed amongst the different threads,
-where each thread adopts a specific number of loop iterations following the
-order of the thread identification number. To this end the random number
-generator was modified. The important point for the parallel version is that
-different threads must not share the same random seed initially. To be
-certain that each thread is assigned a different seed at the beginning, the
-thread identity number is added to the initial seed.
-
-The default value for the number of threads in the parallel version is set
-to one, so that the program is identical with the serial version, except for
-the random generator's initial seed. The user can change the value by either
-typing `setthreads’ and a number of threads (integer value) in the command
-line or by adding a corresponding line to the {\small\tt radmc3d.inp}
-file. If the chosen number of threads is larger than the available number of
-processor cores, the user is asked to reduce it.
-
-For example, you can ask {\small\tt radmc3d} to do the parallelized Monte
-Carlo run for you by typing in a shell:
-{\small\begin{verbatim}
-radmc3d mctherm setthreads 4
-\end{verbatim}}
-
-or by adding the following keyword to the {\small\tt radmc3d.inp} file:
-{\small\begin{verbatim}
-setthreads = 4
-\end{verbatim}}
-
-which means that four threads are used for the thermal Monte Carlo
-computation.
-
-Make sure that you have included the {\small\tt -fopenmp} keyword in the
-{\small\tt Makefile} and have compiled the whole {\small\tt radmc3d} source
-code with this additional command before using the OpenMP parallelized
-thermal Monte Carlo version (cf. Sect. \ref{sec-makeing}).
-
-{\em NOTE:} The OpenMP parallelization mode has only been added in version
-0.38, so for now you have to beware that it is still in the testing phase!
-
-{\em NOTE:} In version 0.39 the OpenMP parallellization method for the dust
-continuum Monte Carlo has been revised a bit. Also it has been extended
-to the scattering Monte Carlo (for the images and SEDS). 
-
 \subsection{Modified Random Walk method for high optical depths}
 \label{sec-modrandwalk}
 %
@@ -1844,6 +1793,51 @@ run is usually {\em much} faster than the thermal Monte Carlo run, but must
 be done at each wavelength. It can lead, however, to slight spectral noise,
 because the random photon paths are different for each wavelength. 
 See Section \ref{sec-scattering} for details.
+
+\section{OpenMP parallelized Monte Carlo}
+\label{sec-omp-mc}
+%
+Depending on the model properties and the number of photon packages used in
+the simulation the Monte Carlo calculation (in particular the thermal Monte
+Carlo, but under some conditions also the scattering Monte Carlo) can be a
+time-consuming computation when executed only in a serial mode. To improve
+this, these Monte Carlo calculations can be done in OpenMP parallel mode.
+The loop over photon packages is then distributed amongst the different
+threads, where each thread adopts a specific number of loop iterations
+following the order of the thread identification number. To this end the
+random number generator was modified. The important point for the parallel
+version is that different threads must not share the same random seed
+initially. To be certain that each thread is assigned a different seed at
+the beginning, the thread identity number is added to the initial seed.
+
+The default value for the number of threads in the parallel version is set
+to one, so that the program is identical with the serial version, except for
+the random generator's initial seed. The user can change the value by either
+typing `setthreads’ and a number of threads (integer value) in the command
+line or by adding a corresponding line to the {\small\tt radmc3d.inp}
+file. If the chosen number of threads is larger than the available number of
+processor cores, the user is asked to reduce it.
+
+For example, you can ask {\small\tt radmc3d} to do the parallelized Monte
+Carlo run for you by typing in a shell:
+{\small\begin{verbatim}
+radmc3d mctherm setthreads 4
+\end{verbatim}}
+or by adding the following keyword to the {\small\tt radmc3d.inp} file:
+{\small\begin{verbatim}
+setthreads = 4
+\end{verbatim}}
+which means that four threads are used for the thermal Monte Carlo
+computation.
+
+For the image or spectrum you can do the same: just add {\small\tt 
+setthreads 4} or so on the command line or put {\small\tt 
+setthreads = 4} into the {\small\tt radmc3d.inp} file.
+
+Make sure that you have included the {\small\tt -fopenmp} keyword in the
+{\small\tt Makefile} and have compiled the whole {\small\tt radmc3d} source
+code with this additional command before using the OpenMP parallelized
+thermal Monte Carlo version (cf.\ Sect.\ \ref{sec-makeing}).
 
 
 \section{Overview of input data for dust radiative transfer}
@@ -12755,6 +12749,9 @@ modus of polarization is implemented.
       scattering mode between 2 and 4) in 2-D axisymmetry. But those
       intermediate modes are anyway more for testing than for real models,
       so that should be ok.
+    \item Bugfixes to the OpenMP stuff. In particular the OpenMP 
+      parallellization of the scattering MC crashed. This is now fixed.
+      In general the OpenMP stuff was a bit cleaned up.
   \end{itemize}
 \end{itemize}
 
