@@ -8118,3 +8118,6 @@ finetuning: I noticed during some testing with a supersimple annulus model
  BUGFIX    Now also fixed the OpenMP Modified Random Walk issue: I now put
            a lock around this part of the code.
 
+           git:85bea1b
+
+           Merged back to master
