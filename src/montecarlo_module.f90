@@ -265,7 +265,6 @@ logical :: mc_photon_destroyed
 !$OMP THREADPRIVATE(alpha_a,alpha_s)
 !$OMP THREADPRIVATE(alphacum)
 !$OMP THREADPRIVATE(alpha_a_tot, alpha_s_tot)
-!$OMP THREADPRIVATE(zmatrix, zcumul)
 !$OMP THREADPRIVATE(mc_iphotcurr)
 !$OMP THREADPRIVATE(enercum)
 !$OMP THREADPRIVATE(mrw_alpha_tot_ross)
@@ -951,7 +950,6 @@ subroutine montecarlo_init(params,ierr,mcaction,resetseed)
      !
      ! Now allocate the global Z scattering matrix arrays
      !
-     !$OMP PARALLEL
      allocate(zmatrix(1:scat_munr,1:mc_nrfreq,1:6,1:dust_nr_species),STAT=ierr)
      if(ierr.ne.0) then
         write(stdo,*) 'ERROR in Montecarlo Module: Could not allocate zmatrix()'
@@ -964,7 +962,6 @@ subroutine montecarlo_init(params,ierr,mcaction,resetseed)
         stop 
      endif
      zcumul(:,:,:,:) = 0.d0
-     !$OMP END PARALLEL
   endif
   !
   ! If grain alignment mode > 0, then we have to allocate and
@@ -1210,8 +1207,6 @@ subroutine montecarlo_partial_cleanup()
   if(allocated(alpha_a_pm)) deallocate(alpha_a_pm)
   if(allocated(mrw_dcumen)) deallocate(mrw_dcumen)
   if(allocated(mrw_alpha_tot_ross)) deallocate(mrw_alpha_tot_ross)
-  if(allocated(zcumul)) deallocate(zcumul)
-  if(allocated(zmatrix)) deallocate(zmatrix)
   if(allocated(mcscat_phasefunc)) deallocate(mcscat_phasefunc)
   !$OMP END PARALLEL
   !

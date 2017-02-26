@@ -8121,3 +8121,6 @@ finetuning: I noticed during some testing with a supersimple annulus model
            git:85bea1b
 
            Merged back to master
+
+26.02.2017 Bug fixed: zmatrix and zcumul should *not* be private in OpenMP.
+
