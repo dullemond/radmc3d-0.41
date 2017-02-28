@@ -3812,6 +3812,17 @@ subroutine camera_make_rect_image(img,tausurf)
                                           scatsrc=.true.)
            write(stdo,*) 'Average number of scattering events per photon package = ', &
                       ieventcounttot/(1.d0*rt_mcparams%nphot_scat)
+           !
+           ! If the Monte Carlo settings are very conservative, then give a warning
+           ! that you may want to change this (but at your own risk). 
+           !
+           if(mc_scat_maxtauabs.gt.5.d0) then
+              write(stdo,*) 'Tip for speed-up: By default the settings of RADMC-3D are conservative (i.e. safe but slow).'
+              write(stdo,*) '   A photon package in monochromatic Monte Carlo is only destroyed after tau_abs = ',mc_scat_maxtauabs
+              write(stdo,*) '   In most cases, however, an optical depth limit of 5 is enough.'
+              write(stdo,*) '   You can (though at your own risk) speed this up by adding the following line to radmc3d.inp:'
+              write(stdo,*) '   mc_scat_maxtauabs = 5.d0'
+           endif
         elseif(camera_lambda_starlight_single_scat_mode.eq.1) then
            call do_lambda_starlight_single_scattering(rt_mcparams,ierror,scatsrc=.true.)
         else
@@ -3916,6 +3927,28 @@ subroutine camera_make_rect_image(img,tausurf)
                                              scatsrc=.true.)
               write(stdo,*) 'Average number of scattering events per photon package = ', &
                       ieventcounttot/(1.d0*rt_mcparams%nphot_scat)
+              !
+              ! If the Monte Carlo settings are very conservative, then give a warning
+              ! that you may want to change this (but at your own risk). 
+              !
+              if(mc_scat_maxtauabs.gt.5.d0) then
+                 write(stdo,*) 'Tip for speed-up: By default the settings of RADMC-3D are conservative ', &
+                      '(i.e. safe but slow).'
+                 write(stdo,'(A68,A16,F6.2)') '   A photon package in monochromatic Monte Carlo is only destroyed ', &
+                      'after tau_abs = ',mc_scat_maxtauabs
+                 write(stdo,*) '   In most cases, however, an optical depth limit of 5 is enough.'
+                 write(stdo,*) '   You can (though at your own risk) speed this up by adding the following ', &
+                      'line to radmc3d.inp:'
+                 write(stdo,*) '   mc_scat_maxtauabs = 5.d0'
+              else
+                 if(mc_scat_maxtauabs.gt.2.d0) then
+                    write(stdo,'(A36,F6.2,A36)') ' Warning: Using mc_scat_maxtauabs = ',mc_scat_maxtauabs, &
+                         ' (this is fine, but be aware of it).'
+                 else
+                    write(stdo,'(A36,F6.2,A34)') ' ERROR: Using mc_scat_maxtauabs = ',mc_scat_maxtauabs, &
+                         ': This is too low...'
+                 endif
+              endif
            elseif(camera_lambda_starlight_single_scat_mode.eq.1) then
               call do_lambda_starlight_single_scattering(rt_mcparams,ierror,scatsrc=.true.)
            else

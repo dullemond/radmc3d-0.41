@@ -337,6 +337,29 @@ subroutine montecarlo_init(params,ierr,mcaction,resetseed)
      if(scattering_mode.lt.5) stop 3056
      if(amr_dim.ne.2) stop 3057
      if(igrid_coord.lt.100) stop 3055
+     !
+     ! If dust_2daniso_nphi is very large, then give a tip for speed up
+     !
+     if(dust_2daniso_nphi.gt.60) then
+        write(stdo,*) 'Tip for speed-up: You using full polarized scattering in 2-D axisymmetry, '
+        write(stdo,*) '   meaning that RADMC-3D has to internally store the scattering source function'
+        write(stdo,*) '   in 3-D (i.e. also on a phi-grid). The default is to use 360', &
+             ' phi-grid points for this (accurate but slow).'
+        if(dust_2daniso_nphi.ne.360) then
+           write(stdo,'(A28,I4)') '    The current setting is: ',dust_2daniso_nphi
+        endif
+        write(stdo,*) '   You can speed this up (though at your own risk) by adding ', &
+             'the following line to radmc3d.inp'
+        write(stdo,*) '   dust_2daniso_nphi = 60'
+     else
+        if(dust_2daniso_nphi.gt.16) then
+           write(stdo,'(A36,I4,A62)') ' Warning: using dust_2daniso_nphi = ',dust_2daniso_nphi, &
+                ' (this is fine, but may make the phase function less accurate)'
+        else
+           write(stdo,'(A36,I4,A62)') ' Warning: using dust_2daniso_nphi = ',dust_2daniso_nphi, &
+                ': This can be dangerous!!'
+        endif
+     endif
   endif
   !
   ! Polarized scattering and multiple vantage points at the same time 
@@ -924,7 +947,7 @@ subroutine montecarlo_init(params,ierr,mcaction,resetseed)
            write(stdo,*) '       grid points in mu=cos(theta) is <5.'
            stop
         endif
-        write(stdo,*) 'In Monte Carlo we will use a linear-spaced scattering angle grid of ', &
+        write(stdo,'(A69,I4,A38)') ' In Monte Carlo we will use a linear-spaced scattering angle grid of ', &
                        scat_munr,' gridpoints between 0 and 180 degrees.'
         !
         ! Make the angular grid in mu
