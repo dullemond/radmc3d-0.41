@@ -8124,3 +8124,10 @@ finetuning: I noticed during some testing with a supersimple annulus model
 
 26.02.2017 Bug fixed: zmatrix and zcumul should *not* be private in OpenMP.
 
+28.02.2017 I attempted to make the 2-D axisymmetric scattering mode faster
+           by putting the loop over angles inside a single routine in the
+           polarization_module.f90.  I made everything with 1-D arrays
+           (:). But the result was that the code became somewhat slower
+           rather than faster. So I reset to the original version (leaving
+           this experiment in a branch called "axisymmscat_specialroutine").
+
