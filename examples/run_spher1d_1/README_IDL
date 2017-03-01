@@ -6,7 +6,6 @@ This directory should contain the following files:
   Makefile                       (Only for convenient cleanmodel and cleanall)
   dustkappa_silicate.inp         (some dust opacity file)
   problem_setup.pro              (an IDL script for setting up some input files)
-  plot_session.pro               (an IDL script for making some plots)
 
 This is what the model does:
 
