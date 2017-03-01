@@ -8115,19 +8115,44 @@ finetuning: I noticed during some testing with a supersimple annulus model
              - Reformatted the OpenMP stuff to include proper indentations
              - Added omp atomic to the conflict_counter update
 
- BUGFIX    Now also fixed the OpenMP Modified Random Walk issue: I now put
-           a lock around this part of the code.
+ BUGFIX     Now also fixed the OpenMP Modified Random Walk issue: I now put
+            a lock around this part of the code.
 
-           git:85bea1b
+            git:85bea1b
+ 
+            Merged back to master
 
-           Merged back to master
+26.02.2017  Bug fixed: zmatrix and zcumul should *not* be private in OpenMP.
 
-26.02.2017 Bug fixed: zmatrix and zcumul should *not* be private in OpenMP.
+28.02.2017  I attempted to make the 2-D axisymmetric scattering mode faster
+            by putting the loop over angles inside a single routine in the
+            polarization_module.f90.  I made everything with 1-D arrays
+            (:). But the result was that the code became somewhat slower
+            rather than faster. So I reset to the original version (leaving
+            this experiment in a branch called "axisymmscat_specialroutine").
 
-28.02.2017 I attempted to make the 2-D axisymmetric scattering mode faster
-           by putting the loop over angles inside a single routine in the
-           polarization_module.f90.  I made everything with 1-D arrays
-           (:). But the result was that the code became somewhat slower
-           rather than faster. So I reset to the original version (leaving
-           this experiment in a branch called "axisymmscat_specialroutine").
+01.03.2017  Testing a bit more the OpenMP parallellization. 
+            I did the run_simple_1 with various combinations of seeds
+  check     and setthread numbers (1, 2, 4 and 8 threads). The good news
+            is that the noise level for 8 threads is the same as the
+            noise level for 1 thread. This shows that indeed each thread
+            uses its own random seed, as it should. Also good news is that
+            all results are (almost) the same. The bad news is that there
+            appears to be a slight (few percent) difference in the dust
+            temperatures very near to the star for 1 thread vs 8 threads.
+            This difference is really minor, but it is a slight bit puzzling.
+            What I THINK is going on is that in the serial mode (setthread 1)
+            the first few photon packages increase the dust temperature from
+            0 to some initial value. During this time the typical wavelength
+            of re-emission changes dramatically, and so does the opacity.
+            The first photon packages might even leave the central cells
+            nearly unperturbed because the temperature is extremely low,
+            so that the Rosseland mean is extremely low, too. Only once the
+            first few packages have gone through that cell this will change
+            and the opacity increases drastically. With the parallel mode
+            up to 8 photon packages do that work together, so even within 
+            the first photon 8 packages the opacity might have already 
+            increased a lot. Why that *reduces* the temperature, I do not
+            know. The differences are small, and they become smaller for
+            larger nphot, so for now I will not worry too much.
 
