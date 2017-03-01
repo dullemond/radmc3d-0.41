@@ -1,0 +1,33 @@
+Here I test RADMC-3D for dust without scattering against the TRANSPHERE 
+code I wrote many years ago. The TRANSPHERE code is in src_transphere/
+which is copied from 
+
+  ~/science/prog/transphere/PUBLICDOMAIN/playdirectory/src
+
+The original setup of this 1-D model was made in
+
+  ~/science/prog/transphere/PUBLICDOMAIN/playdirectory/radmc3d_run_spher1d_1
+
+---------------------------------------------------------------------------
+
+Manual:
+
+cd src_transphere
+make
+cd ../
+cd run_1
+ipython --matplotlib
+%run problem_session
+
+This should produce two plots:
+
+ figure 1: The dust temperature of TRANSPHERE and of RADMC-3D overplotted
+
+ figure 2: The SED of TRANSPHERE and of RADMC-3D overplotted
+
+The match is good. Only at the very inner edge the two temperatures 
+deviate a bit. And only between 3 and 8 micron the two SEDs deviate
+a bit. But these differences are relatively small and are presumably
+related to the slight differences in the temperature at the inner
+edge.
+
