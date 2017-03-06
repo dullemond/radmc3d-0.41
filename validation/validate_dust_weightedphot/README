@@ -5,17 +5,17 @@ packages than the less bright ones. In the weighted photon mode, each
 source emits an equal number of photon packages, but these photon
 packages have then different energies to compensate this.
 
-  run_1:  Two-star setup
-  run_2:  One star and a gaussian "stellar source" cloud
-  run_3:  One star and an external radiation field
-  run_4:  A dark cloud with external diluted blackbody
-  run_5:  A dark cloud with external non-diluted blackbody
+  run_therm_1:  Two-star setup
+  run_therm_2:  One star and a gaussian "stellar source" cloud
+  run_therm_3:  One star and an external radiation field
+  run_therm_4:  A dark cloud with external diluted blackbody
+  run_therm_5:  A dark cloud with external non-diluted blackbody
 
 ---------------------------------------------------------------------------
 
 Manual:
 
-cd run_1
+cd run_therm_1
 ipython --matplotlib
 %run problem_session
 
