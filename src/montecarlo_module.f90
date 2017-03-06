@@ -2337,8 +2337,10 @@ subroutine do_monte_carlo_bjorkmanwood(params,ierror,resetseed)
      !
      ! The energy per photon package is Ltot divided by nr of photons.
      !
+     !$OMP PARALLEL
      energy = ( heatsourcelumtot + stellarsrclumtot + emisquanttot + &
                 starlumtot + extlumtot + mc_bc_lumall ) / nphot
+     !$OMP END PARALLEL
      !
      ! Check 
      !
@@ -2353,9 +2355,11 @@ subroutine do_monte_carlo_bjorkmanwood(params,ierror,resetseed)
      ! coordinates) then divide this by 2 as we only follow the upper
      ! half
      !
+     !$OMP PARALLEL
      if(igrid_mirror.eq.1) then
         energy = energy * 0.5d0
      endif
+     !$OMP END PARALLEL
      !
      ! Compute the cumulative luminosities of the various different kinds of
      ! sources of photons
@@ -3008,8 +3012,10 @@ subroutine do_monte_carlo_scattering(params,ierror,resetseed,scatsrc,meanint)
         !
         ! The energy per photon package is Lnu divided by nr of photons.
         !
+        !$OMP PARALLEL
         energy = ( mc_thermemistot + stellarsrclumtot + emisquanttot +           &
                    starlumtot + extlumtot + mc_bc_lumall ) / nphot
+        !$OMP END PARALLEL
         !
         ! Check 
         !
@@ -3030,9 +3036,11 @@ subroutine do_monte_carlo_scattering(params,ierror,resetseed,scatsrc,meanint)
         ! coordinates) then divide this by 2 as we only follow the upper
         ! half
         !
+        !$OMP PARALLEL
         if(igrid_mirror.eq.1) then
            energy = energy * 0.5d0
         endif
+        !$OMP END PARALLEL
         !
         ! Compute the cumulative luminosities of the various different kinds of
         ! sources of photons

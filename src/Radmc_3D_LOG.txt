@@ -8156,3 +8156,14 @@ finetuning: I noticed during some testing with a supersimple annulus model
             know. The differences are small, and they become smaller for
             larger nphot, so for now I will not worry too much.
 
+06.03.2017  montecarlo_module.f90
+  bugfix    If you use unweighted photons (i.e. if you explicitly set
+            mc_weighted_photons = 0 in the radmc3d.inp file) AND if you
+            use OpenMP parallel mode with setthreads 2 or so, then there
+            was a bug. The "energy" variable is a local variable, and it
+            was precomputed outside of the parallel loop. That meant that
+            the energy was ok for thread 0, but for all other threads, the
+            energy was 0.0. I now fixed this by adding !$OMP PARALLEL 
+            statements there where energy is calculated (and also where
+            it is put to 0.5*energy for mirror mode).
+
