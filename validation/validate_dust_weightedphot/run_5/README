@@ -1,0 +1,8 @@
+Here I test a simple dark cloud irradiated from outside by a NON-DILUTED
+blackbody. This must show that the middle of the cloud has the same
+temperature as the outside, in spite of non-trivial optical depth. 
+
+The result is as expected: The temperature is everywhere the same as
+the optically thin temperature.
+
+06.03.2017

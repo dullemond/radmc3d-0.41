@@ -1,0 +1,9 @@
+Here I test a simple dark cloud irradiated from outside by a diluted
+blackbody. I compare the temperature against the optically thin
+temperature. I do not run both the weighted and unweighted photons, because
+they produce the same (we now have only one source: the external source).
+
+The result is as expected: on the outside it matches the optically thin
+temperature, but at the inside the temperature is cooler. 
+
+06.03.2017

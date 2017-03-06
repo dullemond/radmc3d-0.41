@@ -5,6 +5,12 @@ packages than the less bright ones. In the weighted photon mode, each
 source emits an equal number of photon packages, but these photon
 packages have then different energies to compensate this.
 
+  run_1:  Two-star setup
+  run_2:  One star and a gaussian "stellar source" cloud
+  run_3:  One star and an external radiation field
+  run_4:  A dark cloud with external diluted blackbody
+  run_5:  A dark cloud with external non-diluted blackbody
+
 ---------------------------------------------------------------------------
 
 Manual:
@@ -13,7 +19,7 @@ cd run_1
 ipython --matplotlib
 %run problem_session
 
-Same for run_2
+Same for the other runs
 
 You can speed things up by adding setthreads 4 to the radmc3d command
 in the problem_session.py (just uncomment the appropriate line).
