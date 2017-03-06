@@ -8167,3 +8167,7 @@ finetuning: I noticed during some testing with a supersimple annulus model
             statements there where energy is calculated (and also where
             it is put to 0.5*energy for mirror mode).
 
+  bugfix    stars_module.f90:
+            stellarsrc_templates(1,itempl) = dummy
+            was replaced by:
+            stellarsrc_templates(1,itempl) = dummy / fourpi

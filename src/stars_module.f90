@@ -968,7 +968,7 @@ subroutine read_stellarsource(action)
            ! stellar source function in units of erg / src / Hz / cm^3 /
            ! steradian.
            !
-           stellarsrc_templates(1,itempl) = dummy
+           stellarsrc_templates(1,itempl) = dummy / fourpi
            do inu=2,freq_nr
               read(1,*) dummy
               stellarsrc_templates(inu,itempl) = dummy / fourpi
