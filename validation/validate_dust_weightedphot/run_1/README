@@ -1,0 +1,9 @@
+Here we make a simple model with two stars: one bright one and one less
+bright. The model is optically thin. We test both the weighted photon
+method and the unweighted photon method.  Both results appear to be
+correct. Also overplotted are the optically thin dust temperatures as
+calculated directly from python using the subroutines in the file
+solvetdust.py. These temperatures are for each star individually. 
+
+06.03.2017
+

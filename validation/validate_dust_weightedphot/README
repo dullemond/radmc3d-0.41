@@ -1,0 +1,23 @@
+Here I test RADMC-3D dust continuum thermal Monte Carlo with weighted
+photons mode and compare it against the unweighted photons mode. In 
+the unweighted photon mode the brighter sources will launch more photon
+packages than the less bright ones. In the weighted photon mode, each
+source emits an equal number of photon packages, but these photon
+packages have then different energies to compensate this.
+
+---------------------------------------------------------------------------
+
+Manual:
+
+cd run_1
+ipython --matplotlib
+%run problem_session
+
+Same for run_2
+
+You can speed things up by adding setthreads 4 to the radmc3d command
+in the problem_session.py (just uncomment the appropriate line).
+
+Note that the results that I got are shown in the plot 
+dust_temperature_comparison.png in each of these directories.
+

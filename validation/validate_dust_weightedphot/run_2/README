@@ -1,0 +1,9 @@
+Here the second star is smoothed out using the stellar source function
+method (which is useful for modeling Galaxies for instance). Also here the
+weighted and unweighted cases are the same. And if you make the width of the
+"smoothed out star" very narrow, then it converges to the result for a point
+source star (as in run_1). So that suggests that the results for the stellar
+source function are ok.
+
+06.03.2017
+
