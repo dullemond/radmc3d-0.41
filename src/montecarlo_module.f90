@@ -2959,16 +2959,18 @@ subroutine do_monte_carlo_scattering(params,ierror,resetseed,scatsrc,meanint)
   endif
   !
   ! Get the opacities (assume global opacities for the moment)
+  ! ---> COMMENTED OUT 06.03.2017: Opacities are already installed since
+  !      montecarlo_init().
   !
-  temp    = 100.d0     ! Arbitrary temperature...
-  do inu=1,mc_nrfreq
-     freq = mc_frequencies(inu)
-     do ispec=1,dust_nr_species
-        kappa_a(inu,ispec) = find_dust_kappa_interpol(freq,ispec,temp,1,0,0)
-        kappa_s(inu,ispec) = find_dust_kappa_interpol(freq,ispec,temp,0,1,0)
-        kappa_g(inu,ispec) = find_dust_kappa_interpol(freq,ispec,temp,0,0,1)
-     enddo
-  enddo
+  ! temp    = 100.d0     ! Arbitrary temperature...
+  ! do inu=1,mc_nrfreq
+  !    freq = mc_frequencies(inu)
+  !    do ispec=1,dust_nr_species
+  !       kappa_a(inu,ispec) = find_dust_kappa_interpol(freq,ispec,temp,1,0,0)
+  !       kappa_s(inu,ispec) = find_dust_kappa_interpol(freq,ispec,temp,0,1,0)
+  !       kappa_g(inu,ispec) = find_dust_kappa_interpol(freq,ispec,temp,0,0,1)
+  !    enddo
+  ! enddo
   !   
   ! Open the path file
   ! For debugging only!
@@ -3442,16 +3444,18 @@ subroutine do_lambda_starlight_single_scattering(params,ierror,scatsrc,meanint)
   endif
   !
   ! Get the opacities (assume global opacities for the moment)
+  ! ---> COMMENTED OUT 06.03.2017: Opacities are already installed since
+  !      montecarlo_init().
   !
-  temp    = 100.d0     ! Arbitrary temperature...
-  do inu=1,mc_nrfreq
-     freq = mc_frequencies(inu)
-     do ispec=1,dust_nr_species
-        kappa_a(inu,ispec) = find_dust_kappa_interpol(freq,ispec,temp,1,0,0)
-        kappa_s(inu,ispec) = find_dust_kappa_interpol(freq,ispec,temp,0,1,0)
-        kappa_g(inu,ispec) = find_dust_kappa_interpol(freq,ispec,temp,0,0,1)
-     enddo
-  enddo
+  ! temp    = 100.d0     ! Arbitrary temperature...
+  ! do inu=1,mc_nrfreq
+  !    freq = mc_frequencies(inu)
+  !    do ispec=1,dust_nr_species
+  !       kappa_a(inu,ispec) = find_dust_kappa_interpol(freq,ispec,temp,1,0,0)
+  !       kappa_s(inu,ispec) = find_dust_kappa_interpol(freq,ispec,temp,0,1,0)
+  !       kappa_g(inu,ispec) = find_dust_kappa_interpol(freq,ispec,temp,0,0,1)
+  !    enddo
+  ! enddo
   !
   ! Warning
   !

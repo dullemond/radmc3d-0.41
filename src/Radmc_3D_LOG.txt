@@ -8171,3 +8171,17 @@ finetuning: I noticed during some testing with a supersimple annulus model
             stellarsrc_templates(1,itempl) = dummy
             was replaced by:
             stellarsrc_templates(1,itempl) = dummy / fourpi
+
+06.03.2017  montecarlo_module.f90
+   why?     It seems that I install the opacities twice for the scattering
+            and/or mcmono Monte Carlo. The find_dust_kappa_interpol() is
+            called in the montecarlo_init() and again in the 
+            do_monte_carlo_scattering(). This caused a problem with the
+            mcmono in scattering_mode=0. But it is also useless and thus
+            potentially confusing. 
+
+  remove    I comment out these seemingly useless double lines of code.
+            I redo the selftest to check if this did not break anything.
+            ---> The self-test (incl scattering) has been passed, so 
+            this was indeed useless code.
+
