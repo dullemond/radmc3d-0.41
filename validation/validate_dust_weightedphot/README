@@ -1,15 +1,31 @@
 Here I test RADMC-3D dust continuum thermal Monte Carlo with weighted
-photons mode and compare it against the unweighted photons mode. In 
-the unweighted photon mode the brighter sources will launch more photon
-packages than the less bright ones. In the weighted photon mode, each
-source emits an equal number of photon packages, but these photon
-packages have then different energies to compensate this.
+photons mode and compare it against the unweighted photons mode. Also the
+results are compared to analytic calculations as much as possible.  So this
+validation directory also validates the various emission sources in the
+Monte Carlo model, both for the thermal Monte Carlo and for the monochromatic
+Monte Carlo. The latter is the MC used for the scattering (and thus for
+the images and spectra), but here we test the mean intensity field directly
+using the "mcmono" command. 
+
+In the unweighted photon mode the brighter sources will launch more photon
+packages than the less bright ones. In the weighted photon mode, each source
+emits an equal number of photon packages, but these photon packages have
+then different energies to compensate this.
+
+First the thermal Monte Carlo runs:
 
   run_therm_1:  Two-star setup
   run_therm_2:  One star and a gaussian "stellar source" cloud
   run_therm_3:  One star and an external radiation field
   run_therm_4:  A dark cloud with external diluted blackbody
   run_therm_5:  A dark cloud with external non-diluted blackbody
+
+Then the monochromatic Monte Carlo runs:
+
+  run_mcmono_1: Two-star setup
+  run_mcmono_2: One star and a gaussian "stellar source" cloud
+  run_mcmono_3: One star and an external radiation field
+  run_mcmono_4: One star and thermal dust emission: high optical depth
 
 ---------------------------------------------------------------------------
 

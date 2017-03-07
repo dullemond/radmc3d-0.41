@@ -1,0 +1,11 @@
+Here we test the thermal dust emission. I put the optical depth
+to a high value.
+
+Here you clearly see the importance of the weighted photons. The 
+unweighted photon result is completely noisy. That is because the
+total luminosity is dominated by the star by a vast amount. The 
+dust luminosity is small, but the radiation dominates nonetheless,
+because of the optical depth.
+
+07.03.2017
+

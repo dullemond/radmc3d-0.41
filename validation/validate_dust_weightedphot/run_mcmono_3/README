@@ -1,0 +1,13 @@
+Here we test the external source. 
+
+NOTE: I stumbled over a phenomenon that at first sight looks strange: the
+mean intensity due to the external source sometimes appears to be
+overestimated by RADMC-3D. The reason (I found out) is that if the
+wavelength is not exactly one of the values in wavelength_micron.inp the
+background intensity is interpolated linearly. If you are, however, deep in
+the Wien tail of the Planck function, then this linear interpolation can
+overestimate the flux by quite some amount (I found a factor of 2
+sometimes). However, in the current example it is not a problem.
+
+07.03.2017
+
