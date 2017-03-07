@@ -2221,10 +2221,10 @@ subroutine do_monte_carlo_bjorkmanwood(params,ierror,resetseed)
   logical :: ievenodd
   logical,optional :: resetseed
   integer :: ierror,ierrpriv,countwrite,cntdump,nphot,index,illum
-  integer :: inu,iphot,count,ispec,istar,icell,nsrc,nstarsrc
+  integer :: inu,iphot,ispec,istar,icell,nsrc,nstarsrc
   integer :: iseeddum,cnt,isd,ipstart,itemplate
   logical :: mc_emergency_break
-  !$ integer :: phnr,i
+  !$ integer :: i
   !$ integer OMP_get_num_threads
   !$ integer OMP_get_thread_num
   !$ integer OMP_get_num_procs
@@ -2516,7 +2516,6 @@ subroutine do_monte_carlo_bjorkmanwood(params,ierror,resetseed)
   !
   ! Count set to 1
   !
-  count = 1
   cnt = 1
   if(params%mod_random_walk) then
      write(stdo,*) 'Modified Random Walk mode is switched ON'
@@ -2625,7 +2624,6 @@ subroutine do_monte_carlo_bjorkmanwood(params,ierror,resetseed)
    !$ id=OMP_get_thread_num()
    !$ nthreads=OMP_get_num_threads()
    !$ write(stdo,*) 'Thread Nr',id,'of',nthreads,'threads in total'
-   !$ phnr=1
    !$ iseed=-abs(iseed_start+id)
    !$OMP DO SCHEDULE(dynamic)
    !
@@ -2640,17 +2638,14 @@ subroutine do_monte_carlo_bjorkmanwood(params,ierror,resetseed)
          !
          ! Message
          !
-         if(count.ge.countwrite) then
-            !$OMP CRITICAL
-            !$ if((phnr*1000).le.nphot) then
-            !$   write(stdo,*) 'Thread:',id,'Photon nr:',phnr*1000
-            !$   phnr=phnr+1
-            !$ endif
-            !$OMP END CRITICAL
+         !$OMP CRITICAL
+         cnt   = cnt + 1
+         if(mod(cnt,countwrite).eq.0) then
+            !$   write(stdo,*) 'Thread:',id,'Photon nr:',cnt
             if(.not.mc_openmp_parallel) write(stdo,*) 'Photon nr ',iphot
             call flush(stdo)
-            count=0
          endif
+         !$OMP END CRITICAL
          !
          ! Safety dump? [DISABLED]
          !
@@ -2683,13 +2678,6 @@ subroutine do_monte_carlo_bjorkmanwood(params,ierror,resetseed)
             if(.not.mc_photon_destroyed) then 
                mc_integerspec(ray_inu) = mc_integerspec(ray_inu) + 1
             endif
-            !
-            ! Update count
-            !
-            !$omp atomic
-            count = count + 1
-  	    !$omp atomic
-            cnt   = cnt + 1
             !
             ! Write debugging stuff
             !
@@ -2831,11 +2819,11 @@ subroutine do_monte_carlo_scattering(params,ierror,resetseed,scatsrc,meanint)
   logical,optional :: scatsrc,meanint
   logical :: compute_scatsrc,compute_meanint
   integer :: countwrite,cntdump,nphot,index
-  integer :: iphot,count,ispec,istar,icell,illum
+  integer :: iphot,ispec,istar,icell,illum
   integer :: iseeddum,cnt,isd,itemplate,nsrc,nstarsrc
   logical :: mc_emergency_break
   doubleprecision:: seconds
-  !$ integer :: phnr,ierr,i
+  !$ integer :: ierr,i
   !$ integer OMP_get_num_threads
   !$ integer OMP_get_thread_num
   !$ integer OMP_get_num_procs
@@ -2981,7 +2969,6 @@ subroutine do_monte_carlo_scattering(params,ierror,resetseed,scatsrc,meanint)
   !
   ! Count set to 1
   !
-  count = 1
   cnt = 1
   !
   ! Message
@@ -3210,8 +3197,8 @@ subroutine do_monte_carlo_scattering(params,ierror,resetseed,scatsrc,meanint)
      !       Bugfix Jon Ramsey 22.03.2016
      !
      !$OMP PARALLEL &
-     !!!!!$OMP shared(countwrite,stdo,nphot,count,nthreads,lock)
-     !!!!!$OMP shared(mc_emergency_break,cntdump,cnt,phnr,mc_openmp_parallel,inu,iseed_start,params)
+     !!!!!$OMP shared(countwrite,stdo,nphot,nthreads,lock)
+     !!!!!$OMP shared(mc_emergency_break,cntdump,cnt,mc_openmp_parallel,inu,iseed_start,params)
      !
      !$OMP PRIVATE(ierrpriv) &
      !
@@ -3223,7 +3210,6 @@ subroutine do_monte_carlo_scattering(params,ierror,resetseed,scatsrc,meanint)
      !$ id=OMP_get_thread_num()
      !$ nthreads=OMP_get_num_threads()
      !$ write(stdo,*) 'Thread Nr',id,'of',nthreads,'threads in total'
-     !$ phnr=1
      !$ iseed=-abs(iseed_start+id)
      !$OMP DO SCHEDULE(dynamic)
      !
@@ -3238,17 +3224,14 @@ subroutine do_monte_carlo_scattering(params,ierror,resetseed,scatsrc,meanint)
         !
         ! Message
         !
-        if(count.ge.countwrite) then
-           !$OMP CRITICAL
-           !$ if((phnr*1000).le.nphot) then
-           !$   write(stdo,*) 'Thread:',id,'Photon nr:',phnr*1000
-           !$   phnr=phnr+1
-           !$ endif
-           !$OMP END CRITICAL
+        !$OMP CRITICAL
+        cnt   = cnt + 1
+        if(mod(cnt,countwrite).eq.0) then
+           !$   write(stdo,*) 'Thread:',id,'Photon nr:',cnt
            if(.not.mc_openmp_parallel) write(stdo,*) 'Photon nr ',iphot
            call flush(stdo)
-           count=0
         endif
+        !$OMP END CRITICAL
         !
         ! Safety dump? [DISABLED]
         !
@@ -3272,14 +3255,6 @@ subroutine do_monte_carlo_scattering(params,ierror,resetseed,scatsrc,meanint)
            !$OMP END CRITICAL
            write(stdo,*) '!!!!!!!!!!!!!!!!!!! MC_EMERGENCY_BREAK !!!!!!!!!!!!!!!!!!!!!!'
         endif
-        !
-        ! Update count
-        !
-
-        !$omp atomic
-        count = count + 1
-        !$omp atomic
-        cnt   = cnt + 1
         !
         ! Write debugging stuff
         !

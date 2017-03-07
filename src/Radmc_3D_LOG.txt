@@ -8185,3 +8185,7 @@ finetuning: I noticed during some testing with a supersimple annulus model
             ---> The self-test (incl scattering) has been passed, so 
             this was indeed useless code.
 
+07.03.2017  montecarlo_module.f90
+  bufix     The count messages (e.g. Thread: 2 Photon nr: 997000) did not work
+            correctly in OpenMP mode. Now I use if(mod(cnt,countwrite).eq.0)
+            to decide when to write a message. Works better.
