@@ -34,6 +34,14 @@ def heatcool(temp,nu,kabs,jnu):
     tot  = (fav*dnu).sum()
     return tot
 
+def heatcool_qheat(temp,nu,kabs,qheat):
+    bnu  = bplanck(nu,temp)
+    f    = kabs*bnu
+    dnu  = np.abs(nu[1:]-nu[0:-1])
+    fav  = 0.5*(f[1:]+f[0:-1])
+    tot  = qheat/(4*math.pi)-(fav*dnu).sum()
+    return tot
+
 def solvetdust_bbstar(nu,kabs,rstar,tstar,dist):
     bpl  = bplanck(nu,tstar)
     lnu  = math.pi*bpl * 4*math.pi * rstar**2
@@ -45,6 +53,11 @@ def solvetdust_bbstar(nu,kabs,rstar,tstar,dist):
 def solvetdust_jnu(nu,kabs,jnu):
     temp = op.brentq(heatcool,1e-2,1e4,args=(nu,kabs,jnu))
     return temp
+
+def solvetdust_qheat(nu,kabs,qheat):
+    temp = op.brentq(heatcool_qheat,1e-2,1e4,args=(nu,kabs,qheat))
+    return temp
+
 
 # def test():
 #     cc   = 2.9979245800000e10      # Light speed             [cm/s]

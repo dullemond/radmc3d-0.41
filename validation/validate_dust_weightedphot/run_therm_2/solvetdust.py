@@ -29,7 +29,7 @@ def bplanck(nu,t):
 def heatcool(temp,nu,kabs,jnu):
     bnu  = bplanck(nu,temp)
     f    = kabs*(jnu-bnu)
-    dnu  = nu[1:]-nu[0:-1]
+    dnu  = np.abs(nu[1:]-nu[0:-1])
     fav  = 0.5*(f[1:]+f[0:-1])
     tot  = (fav*dnu).sum()
     return tot

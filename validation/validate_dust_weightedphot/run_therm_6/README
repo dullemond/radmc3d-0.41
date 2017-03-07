@@ -1,0 +1,9 @@
+Here I test the internal heat source (i.e. viscous heating or something
+like that). The energy is inserted directly into the dust, before anything
+is absorbed or emitted.
+
+For optically thin emission the temperature can then be calculated 
+locally, so we compute this again with python (T2) and compare. 
+
+07.03.2017
+

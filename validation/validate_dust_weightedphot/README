@@ -19,6 +19,7 @@ First the thermal Monte Carlo runs:
   run_therm_3:  One star and an external radiation field
   run_therm_4:  A dark cloud with external diluted blackbody
   run_therm_5:  A dark cloud with external non-diluted blackbody
+  run_therm_6:  Internal heat source (e.g. viscous heating)
 
 Then the monochromatic Monte Carlo runs:
 
