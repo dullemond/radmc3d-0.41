@@ -4620,6 +4620,19 @@ subroutine walk_full_path_bjorkmanwood(params,ierror)
         call do_absorption_event(params,iqactive,ierror)
         call montecarlo_randomdir(ray_cart_dirx,ray_cart_diry,ray_cart_dirz)
         !
+        ! Reset photpkg
+        !
+        if(scattering_mode.ge.5) then
+           photpkg%E    = energy
+           photpkg%Q    = 0.d0
+           photpkg%U    = 0.d0
+           photpkg%V    = 0.d0
+           photpkg%n(1) = ray_cart_dirx
+           photpkg%n(2) = ray_cart_diry
+           photpkg%n(3) = ray_cart_dirz
+           call polarization_make_s_vector(photpkg%n,photpkg%s)
+        endif
+        !
         ! If photon destroyed (by e.g. quantum heated grains which are
         ! dealt with elsewhere), then also return
         !
