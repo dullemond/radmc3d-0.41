@@ -8189,3 +8189,10 @@ finetuning: I noticed during some testing with a supersimple annulus model
   bufix     The count messages (e.g. Thread: 2 Photon nr: 997000) did not work
             correctly in OpenMP mode. Now I use if(mod(cnt,countwrite).eq.0)
             to decide when to write a message. Works better.
+
+11.03.2017  montecarlo_module.f90
+  BUGFIX!   In the thermal monte carlo, after a thermal absorption / 
+            re-emission event, the photpgk must be updated: the Q=U=V=0
+            and the n(1:3) set to the new direction. Is now fixed!
+
+
