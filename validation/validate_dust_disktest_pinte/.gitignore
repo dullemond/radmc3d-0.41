@@ -1,0 +1,11 @@
+IDEAS
+bughunting
+nphot_*
+*.out
+*.dat
+*.inp
+!dustk*.inp
+*.pyc
+*~
+opacity/dustkappa_Draine_Si_sUV.inp
+opacity/dustkapscatmat_Draine_Si_sUV.inp
