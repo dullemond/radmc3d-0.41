@@ -700,7 +700,7 @@ subroutine read_scat_angular_grid(action)
      write(stdo,*) '      The first theta value MUST be 0'
      stop
   endif
-  if(scat_thetai_grid(scat_munr).ne.180.d0) then
+  if(abs(scat_thetai_grid(scat_munr)-pi).gt.1d-6) then
      write(stdo,*) 'ERROR while reading scattering_angular_grid.inp file:'
      write(stdo,*) '      The last theta value MUST be 180'
      stop
