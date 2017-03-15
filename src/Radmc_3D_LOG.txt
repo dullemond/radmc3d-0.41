@@ -8195,4 +8195,10 @@ finetuning: I noticed during some testing with a supersimple annulus model
             re-emission event, the photpgk must be updated: the Q=U=V=0
             and the n(1:3) set to the new direction. Is now fixed!
 
-
+15.03.2017  rtglobal_module.f90:
+  BUGFIX!   When reading scattering_angular_grid.inp the theta grid must
+            internally be converted into radian!
+            polarization_module.f90:
+            Check in polarization_randomorient_mc_scatter() that the thetai
+            grid has the right boundaries.
+            (marked as Bugfix 2017.03.15)

@@ -677,6 +677,7 @@ subroutine read_scat_angular_grid(action)
   endif
   !
   ! Now read the angular grid from 0 all the way to 180
+  ! Bugfix 2017.03.15 : theta must be converted into radian
   !
   do imu=1,scat_munr
      read(1,*,end=702,err=702) scat_thetai_grid(imu)
@@ -684,11 +685,11 @@ subroutine read_scat_angular_grid(action)
         if(scat_thetai_grid(imu).le.scat_thetai_grid(imu-1)) then
            write(stdo,*) 'ERROR in file scattering_angular_grid.inp:'
            write(stdo,*) '   theta grid must be monotonically increasing'
-           write(stdo,*) '   from 0 to 90 (the rest is a mirror copy from 90 to 180)'
            stop
         endif
      endif
-     scat_mui_grid(imu) = cos(scat_thetai_grid(imu)*pi/180.d0)
+     scat_thetai_grid(imu) = scat_thetai_grid(imu)*pi/180.d0
+     scat_mui_grid(imu)    = cos(scat_thetai_grid(imu))
   enddo
   close(1)
   !

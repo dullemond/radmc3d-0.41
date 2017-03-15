@@ -747,6 +747,18 @@ subroutine polarization_randomorient_mc_scatter(phot,nmu,mui, &
         stop
      endif
   endif
+  ! Bugfix 2017.03.15: Now check also if the theta grid is ok
+  if(thetai(1).lt.thetai(nmu)) then
+     if((thetai(1).ne.0.d0).or.(abs(thetai(nmu)-twopi).gt.1.d-6)) then
+        write(stdo,*) 'ERROR in polarization module: theta-grid must go from 0 to twopi or twopi to 0.'
+        stop
+     endif
+  else
+     if((thetai(nmu).ne.0.d0).or.(abs(thetai(1)-twopi).gt.1.d-6)) then
+        write(stdo,*) 'ERROR in polarization module: theta-grid must go from 0 to twopi or twopi to 0.'
+        stop
+     endif
+  endif
   !
   !##########################################################################
   ! Check the self-consistency of the s and n vectors
