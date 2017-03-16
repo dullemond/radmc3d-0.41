@@ -11334,8 +11334,32 @@ NOTE: This only allows the treatment of {\em randomly oriented
 scattering off fixed-oriented particles\footnote{In fact, for oriented
   particles it would be impractical to use dust opacity files of this kind,
   since we would then have at least {\em three} scattering angles, which
-  would require huge table. In that case it would be necessary to compute
-  the matrix elements on-the-fly.}.
+  would require huge table. In that case it would be presumably necessary to
+  compute the matrix elements on-the-fly.}.
+
+Note that the scattering-angle grid of the {\small\tt dustkapscatmat\_xxx.inp}
+files can be chosen non-regular, e.g.\ to put a more finely spaced grid
+close to $\theta=0$ (forward scattering) and $\theta=\pi$ (backscattering).
+This can be useful for large grains and/or short wavelengths, where forward
+scattering can be extremely strongly peaked. Since multiple dust species
+can each have a different scattering $\theta$-grid, it requires you to
+give an additional file to {\small\tt RADMC-3D} that represents the 
+scattering $\theta$-grid for all grains. This file is called 
+{\small\tt scattering\_angular\_grid.inp}. The format is as follows:
+\begin{asciibox}\begin{verbatim}
+1            <=== Format number, must be 1
+181          <=== Nr of theta grid points
+0.0          <=== First angle (in degrees). Must be 0
+1.0          
+2.0          
+...
+...
+...
+179.0        
+180.0        <=== Last angle (in degrees). Must be 180
+\end{verbatim}\end{asciibox}
+{\bf NOTE:} This file is not compulsory. If it is not given, then 
+{\small\tt RADMC-3D} will make its own internal scattering angle grid.
 
 \subsection{The dustopac\_$<$name$>$.inp files: Backward compatibility with RADMC-2D}
 \label{sec-dustopac-oldstyle}
@@ -12752,6 +12776,12 @@ modus of polarization is implemented.
     \item Bugfixes to the OpenMP stuff. In particular the OpenMP 
       parallellization of the scattering MC crashed. This is now fixed.
       In general the OpenMP stuff was a bit cleaned up.
+    \item Bugfix in thermal Monte Carlo with full polarization mode: needed
+      to reset the photon package after each thermal absorption/re-emission
+      event. Usually the effect is subtle, but had to be fixed.
+    \item Bugfix in reading the {\small\tt scattering\_angular\_grid.inp}:
+      the {\small\tt theta} angles should be converted into radian. But
+      this file was not officially offered before anyway. 
   \end{itemize}
 \end{itemize}
 
