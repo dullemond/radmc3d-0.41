@@ -233,7 +233,7 @@ print 'Optical depth along midplane = ',tau
 #
 # Now run RADMC-3D to determine the dust temperature
 #
-#os.system('radmc3d mctherm')
+os.system('radmc3d mctherm')
 #os.system('radmc3d mctherm setthreads 4')   # Run with OpenMP parallellization
 
 #----------------------------------------------------------------------
@@ -263,8 +263,8 @@ plt.xlabel(r'$r-r_{\mathrm{in}}$ [au]')
 plt.ylabel(r'$T_d$ [K]')
 plt.axis([0.00001, 400., 10, 2000.])
 plt.legend(loc='lower left')
-plt.savefig('compare_tdust_midplane.png')
-#plt.show()
+#plt.savefig('compare_tdust_midplane.png')
+plt.show()
 
 f     = interpolate.interp1d(rc/au,np.linspace(0,nnr-1,nnr))
 ir02  = int(f([0.2])[0])+1
@@ -300,8 +300,8 @@ plt.xlabel(r'$z/r$')
 plt.ylabel(r'$T_d$ [K]')
 plt.axis([-0.5,0.5, 100., 1000.])
 plt.legend(loc='lower left')
-plt.savefig('compare_tdust_vert_0.2au.png')
-#plt.show()
+#plt.savefig('compare_tdust_vert_0.2au.png')
+plt.show()
 
 plt.figure(5)
 plt.plot(zcyl200/200,tdust200,label='RADMC-3D')
@@ -311,6 +311,6 @@ plt.xlabel(r'$z/r$')
 plt.ylabel(r'$T_d$ [K]')
 plt.axis([-0.5,0.5, 10., 100.])
 plt.legend(loc='lower left')
-plt.savefig('compare_tdust_vert_200au.png')
-#plt.show()
+#plt.savefig('compare_tdust_vert_200au.png')
+plt.show()
 

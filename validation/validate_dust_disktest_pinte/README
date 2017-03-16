@@ -1,0 +1,33 @@
+Here we do the protoplanetary disk model tests of Pinte et al. 2009. The
+test is described in the paper
+
+   Pinte, C.; Harries, T.J.; Min, M.; Watson, A.M.; Dullemond, C.P.; Woitke,
+   P.; Menard, F.; Duran-Rojas, M.C. (2009) "Benchmark problems for
+   continuum radiative transfer. High optical depths, anisotropic
+   scattering, and polarisation." A&A, 498(3), 967–980. 
+
+and all the files and comparisons can be downloaded from the following 
+website:
+
+   http://ipag.osug.fr/~pintec/benchmark/
+
+Both the isotropic scattering tests and the full polarized scattering
+tests are done. 
+
+The agreement of the temperature profiles with those of MCFOST is good. 
+In particular the agreement for the isotropic scattering cases are perfect.
+This is not surprising because the predecessor of RADMC-3D (called RADMC)
+was one of the codes participating in this benchmark, albeit only for the
+isotropic scattering case. 
+
+With RADMC-3D now also the full polarized anisotropic scattering case can be
+compared to the benchmark. For the three highest optical depth cases (dust
+masses of 3E-5, 3E-6 and 3E-7 Msun) the agreement is very good, nearly
+perfect (apart from noise). But interestingly for the lowest disk mass (3E-8
+Msun), which has a radial optical depth of only 1E3, there are some small
+differences. That is a bit puzzling, because the more optically thick cases
+are numerically harder! Since the agreement on the harder problems is very
+good, I for now consider this test passed. But as a TODO I should figure out
+if this difference is real or due to a misunderstanding. 
+
+16.03.2017

@@ -30,7 +30,7 @@ plsig  = -1.5e0         # Powerlaw for Sigma_dust
 h0     = 10*au          # Disk height at r0
 plh    = 1.125          # Powerlaw for 
 
-nphot  = 10000000        # Nr of photon packages
+nphot  = 100000000        # Nr of photon packages
 
 #
 # Find the opacity and wavelength lambda 
@@ -220,7 +220,7 @@ plt.show()
 #
 # Now run RADMC-3D to determine the dust temperature
 #
-#os.system('radmc3d mctherm')
+os.system('radmc3d mctherm')
 #os.system('radmc3d mctherm setthreads 4')   # Run with OpenMP parallellization
 
 #----------------------------------------------------------------------

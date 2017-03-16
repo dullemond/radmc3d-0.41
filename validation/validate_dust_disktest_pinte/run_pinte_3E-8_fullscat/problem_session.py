@@ -30,7 +30,7 @@ plsig  = -1.5e0         # Powerlaw for Sigma_dust
 h0     = 10*au          # Disk height at r0
 plh    = 1.125          # Powerlaw for 
 
-nphot  = 10000000        # Nr of photon packages
+nphot  = 100000000        # Nr of photon packages
 
 #
 # Find the opacity and wavelength lambda 
@@ -233,8 +233,8 @@ plt.show()
 #
 # Now run RADMC-3D to determine the dust temperature
 #
-#os.system('radmc3d mctherm')
-os.system('radmc3d mctherm setthreads 4')   # Run with OpenMP parallellization
+os.system('radmc3d mctherm')
+#os.system('radmc3d mctherm setthreads 4')   # Run with OpenMP parallellization
 
 #----------------------------------------------------------------------
 
@@ -250,19 +250,6 @@ with open('vert200_temp_tau1e3_fullscat_mcfost','r') as f:
     data = np.loadtxt(f)
 pinte_vert_200_z, pinte_vert_200_temp = data.T
 
-with open('midplane_temp_tau1e3_fullscat_mcmax','r') as f:
-    data = np.loadtxt(f)
-mcmax_r, mcmax_mid_temp, dummy = data.T
-
-with open('vert0.2_temp_tau1e3_fullscat_mcmax','r') as f:
-    data = np.loadtxt(f)
-mcmax_vert_02_z, mcmax_vert_02_temp, dummy = data.T
-
-with open('vert200_temp_tau1e3_fullscat_mcmax','r') as f:
-    data = np.loadtxt(f)
-mcmax_vert_200_z, mcmax_vert_200_temp, dummy = data.T
-
-
 a=analyze.readData(dtemp=True,ddens=True,binary=False)
 
 imid = a.grid.y.size/2
@@ -270,14 +257,13 @@ rin=0.1*au
 plt.figure(3)
 plt.plot((a.grid.x-rin)/au,a.dusttemp[:,imid,0,0],label='RADMC-3D')
 plt.plot(pinte_r-rin/au,pinte_mid_temp,label='MCFOST')
-plt.plot(mcmax_r-rin/au,mcmax_mid_temp,label='MCMAX')
 plt.xscale('log')
 plt.yscale('log')
 plt.xlabel(r'$r-r_{\mathrm{in}}$ [au]')
 plt.ylabel(r'$T_d$ [K]')
 plt.axis([0.00001, 400., 10, 2000.])
 plt.legend(loc='lower left')
-plt.savefig('compare_tdust_midplane.png')
+#plt.savefig('compare_tdust_midplane.png')
 plt.show()
 
 f     = interpolate.interp1d(rc/au,np.linspace(0,nnr-1,nnr))
@@ -309,24 +295,22 @@ with open('vert200_temp_tau1e3_fullscat_radmc3d','w') as f:
 plt.figure(4)
 plt.plot(zcyl02/0.2,tdust02,label='RADMC-3D')
 plt.plot(pinte_vert_02_z/(0.2),pinte_vert_02_temp,label='MCFOST')
-plt.plot(mcmax_vert_02_z/(0.2),mcmax_vert_02_temp,label='MCMAX')
 plt.yscale('log')
 plt.xlabel(r'$z/r$')
 plt.ylabel(r'$T_d$ [K]')
 plt.axis([-0.5,0.5, 100., 1000.])
 plt.legend(loc='lower left')
-plt.savefig('compare_tdust_vert_0.2au.png')
+#plt.savefig('compare_tdust_vert_0.2au.png')
 plt.show()
 
 plt.figure(5)
 plt.plot(zcyl200/200,tdust200,label='RADMC-3D')
 plt.plot(pinte_vert_200_z/(200.),pinte_vert_200_temp,label='MCFOST')
-plt.plot(mcmax_vert_200_z/(200.),mcmax_vert_200_temp,label='MCMAX')
 plt.yscale('log')
 plt.xlabel(r'$z/r$')
 plt.ylabel(r'$T_d$ [K]')
 plt.axis([-0.5,0.5, 10., 100.])
 plt.legend(loc='lower left')
-plt.savefig('compare_tdust_vert_200au.png')
+#plt.savefig('compare_tdust_vert_200au.png')
 plt.show()
 
