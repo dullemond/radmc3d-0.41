@@ -452,10 +452,12 @@ def getVelocity(grid=None, ppar=None):
 #
 # ============================================================================================================================
 def getStellarsrcDensity(grid=None, ppar=None):
-    """Calculates the density of continuous starlike sources (e.g. for viscous accretion heating)
+    """
+    Calculates the density of continuous starlike sources (e.g. for viscous accretion heating)
     
     Parameters
     ----------
+
     grid : radmc3dGrid
            An instance of the radmc3dGrid class containing the spatial and frequency/wavelength grid
     
@@ -464,6 +466,7 @@ def getStellarsrcDensity(grid=None, ppar=None):
     
     Returns
     -------
+
     Returns the density of the contiuous starlike sources
     """
 
@@ -481,14 +484,14 @@ def getStellarsrcDensity(grid=None, ppar=None):
     
     The stellar density is defined as:
 
-        L_nu / (4*pi) = St_temp * rho_stellar * dV
+    L_nu / (4*pi) = St_temp * rho_stellar * dV
 
-        where
+    where
 
-        L_nu is the frequency dependent luminosity of a grid cell
-        St_temp is the stellar template (as given by getStellarsrcTemplates())
-        rho_stellar is the stellar density 
-        dV is the volume of the cell
+    L_nu is the frequency dependent luminosity of a grid cell
+    St_temp is the stellar template (as given by getStellarsrcTemplates())
+    rho_stellar is the stellar density 
+    dV is the volume of the cell
 
         
     Parameters
@@ -499,14 +502,13 @@ def getStellarsrcDensity(grid=None, ppar=None):
     ppar : dictionary
            A dictionary containing all parameters of the model
            mandatory keys for an accretion disk:
-                    'mstar' - stellar mass
-                    'rstar' - stellar radius
-                    'accrate' - accretion rate
+           'mstar' - stellar mass
+           'rstar' - stellar radius
+           'accrate' - accretion rate
 
 
     NOTE, that for the calculation of the effective disk temperature only the first
     star is used if more than one values are given in mstar and rstar.
-
     """
 
     src  = analyze.radmc3dRadSources(ppar=ppar, grid=grid)
@@ -523,11 +525,12 @@ def getStellarsrcTemplates(grid=None, ppar=None):
     Function to calculate the stellar density for a continuous starlike source when modeling a viscous accretion disk
 
     The stellar template can be defined in two ways:
-        1) by Tstar, Rstar, Mstar assuming it radiates as a blackbody
-            In this case, similar to the definitions in the stars.inp file the temperature has to be a negative number.
-        2) by a full frequency-dependent spectru given in erg / sec / Hz / gram-of-star . 
-            So multiply this by the stellar density in units of gram-of-star / cm^3, and divide by 4*pi to get the
-            stellar source function in units of erg / src / Hz / cm^3 / steradian.
+    
+    1) by Tstar, Rstar, Mstar assuming it radiates as a blackbody
+        In this case, similar to the definitions in the stars.inp file the temperature has to be a negative number.
+    2) by a full frequency-dependent spectru given in erg / sec / Hz / gram-of-star . 
+        So multiply this by the stellar density in units of gram-of-star / cm^3, and divide by 4*pi to get the
+        stellar source function in units of erg / src / Hz / cm^3 / steradian.
 
 
     The model setup functions (problemSetupDust() and problemSetupGas()) will check the sign of the first element with
@@ -543,24 +546,24 @@ def getStellarsrcTemplates(grid=None, ppar=None):
     ppar : dictionary
            A dictionary containing all parameters of the model
            mandatory keys for an accretion disk:
-                    'mstar' - stellar mass
-                    'rstar' - stellar radius
-                    'accrate' - accretion rate
+           'mstar' - stellar mass
+           'rstar' - stellar radius
+           'accrate' - accretion rate
 
 
     NOTE, that for the calculation of the effective disk temperature only the first
     star is used if more than one values are given in mstar and rstar.
    
-    Returns:
-    --------
-        Returns an array with the stellar templates
-        If the stellar template is defined by the temperature, radius and mass of the stars the returned array
-        must have a dimensions [Ntemplate, 3]. The [i,0], [i,1] and [i,2] elements of the array contain the 
-        stellar temperature, radius and mass of the ith template, respectively. NOTE, that in this case the
-        stellar temperatures needs to be negative!
-        
-        If the stellar template is defined by the full frequency dependent spectra the returned array should
-        have [Ntemplate, Nwavelength] dimension. 
+    Returns
+    -------
+    Returns an array with the stellar templates
+    If the stellar template is defined by the temperature, radius and mass of the stars the returned array
+    must have a dimensions [Ntemplate, 3]. The [i,0], [i,1] and [i,2] elements of the array contain the 
+    stellar temperature, radius and mass of the ith template, respectively. NOTE, that in this case the
+    stellar temperatures needs to be negative!
+    
+    If the stellar template is defined by the full frequency dependent spectra the returned array should
+    have [Ntemplate, Nwavelength] dimension. 
     """
 
     src  = analyze.radmc3dRadSources(ppar=ppar, grid=grid)

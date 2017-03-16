@@ -483,7 +483,8 @@ class radmc3dImage(object):
         if fitsheadkeys:
             if len(fitsheadkeys.keys())>0:
                 for ikey in fitsheadkeys.keys():
-                    hdulist[0].header.update(ikey, fitsheadkeys[ikey], '')
+                    #hdulist[0].header.update(ikey, fitsheadkeys[ikey], '')
+                    hdulist[0].header.set(ikey, fitsheadkeys[ikey], '')
 
         if os.path.exists(fname):
             print fname+' already exists'
@@ -661,12 +662,9 @@ class radmc3dImage(object):
         
         old     : bool
                  If set to True it reads old radmc-2d style image        
-        Options
-        -------
         
-        binary  : bool
+        binary  : bool, optional
                  False - the image format is formatted ASCII if True - C-compliant binary (omitted if old=True)
-
         """
 # --------------------------------------------------------------------------------------------------
         pc   = 3.08572e18
@@ -1112,10 +1110,8 @@ def readImage(fname=None, binary=False, old=False):
         
         old     : bool
                  If set to True it reads old radmc-2d style image        
-        Options
-        -------
         
-        binary  : bool
+        binary  : bool, optional
                  False - the image format is formatted ASCII if True - C-compliant binary (omitted if old=True)
     """
 
@@ -1124,8 +1120,113 @@ def readImage(fname=None, binary=False, old=False):
     return dum
 
 # ***************************************************************************************************************
+def plotPolDir(image=None, arcsec=False, au=False, dpc=None, ifreq=0, cmask_rad=None, color='w', nx=20, ny=20):
+    """
+    Function to plot the polarisation direction for full stokes images
+
+    Parameters
+    ----------
+
+    image         : radmc3dImage
+                    A radmc3dImage class returned by readimage   
+
+    arcsec        : bool
+                    If True image axis will have the unit arcsec (NOTE: dpc keyword should also be set!)
+    
+    au            : bool
+                    If True image axis will have the unit AU
+    
+    dpc           : float
+                    Distance to the source in parsec (This keywords should be set if arcsec=True, or bunit!='norm')
+    
+    ifreq         : int
+                    If the image file/array consists of multiple frequencies/wavelengths ifreq denotes the index
+                    of the frequency/wavelength in the image array to be plotted
+    
+    cmask_rad     : float
+                    Simulates coronographyic mask : sets the image values to zero within this radius of the image center
+                    The unit is the same as the image axis (au, arcsec, cm)
+                    NOTE: this works only on the plot, the image array is not changed (for that used the cmask() function)
+    color         : str
+                    Color for the polarisation direction plot
+
+    nx            : int
+                    Number of grid points along the horizontal axis at which the direction should be displayed
+    
+    ny            : int
+                    Number of grid points along the vertical axis at which the direction should be displayed
+    """
+
+    #
+    # First check if the images is a full stokes image
+    #
+
+    if not image.stokes:
+        print 'ERROR'
+        print 'The image is not a full stokes image. Polarisation direction can only be displayed if '
+        print 'the full stokes vector is present at every pixel of the image'
+        return
+    
+# Natural constants
+    pc   = 3.08572e18
+    
+    if cmask_rad!=None:
+        dum_image = cmask(image, rad=cmask_rad, au=au, arcsec=arcsec, dpc=dpc) 
+    else:
+        dum_image = copy.deepcopy(image)
+        
+# Select the coordinates of the data
+    if au:
+        x = image.x/1.496e13
+        y = image.y/1.496e13
+        xlab = 'X [AU]'
+        ylab = 'Y [AU]'
+    elif arcsec:
+        x = image.x/1.496e13/dpc
+        y = image.y/1.496e13/dpc
+        xlab = 'RA offset ["]'
+        ylab = 'DEC offset ["]'
+    else:
+        x = image.x
+        y = image.y
+        xlab = 'X [cm]'
+        ylab = 'Y [cm]'
+
+    #ext = (x[0], x[image.nx-1], y[0], y[image.ny-1])
+    iix = [int(np.floor(i)) for i in np.arange(nx)*float(x.shape[0])/nx]
+    iiy = [int(np.floor(i)) for i in np.arange(ny)*float(x.shape[0])/ny]
+    xr  = x[iix]
+    yr  = y[iiy]
+    xxr,yyr = np.meshgrid(xr,yr,indexing='ij')
+    xxr,yyr = np.meshgrid(xr,yr,indexing='ij')
+    qqr     = (np.squeeze(dum_image.image[:,:,1,ifreq])/np.squeeze(dum_image.image[:,:,0,ifreq]).clip(1e-60))[np.ix_(iix,iiy)]
+    uur     = (np.squeeze(dum_image.image[:,:,2,ifreq])/np.squeeze(dum_image.image[:,:,0,ifreq]).clip(1e-60))[np.ix_(iix,iiy)]
+    lpol    = np.sqrt(qqr**2 + uur**2).clip(1e-60)
+    qqr    /= lpol
+    uur    /= lpol
+    ang     = np.arccos(qqr)/2.0
+    ii      = (uur<0)
+    if True in ii:
+        ang[ii] = np.pi - ang[ii]
+    vx   = np.cos(ang)
+    vy   = np.sin(ang)
+    ii      = (lpol<1e-6)
+    vx[ii]  = 0.001
+    vy[ii]  = 0.001
+    q       = plb.quiver(xxr,yyr,vx,vy,
+      color=color,pivot='mid',scale=2.*np.max([nx,ny]),
+      headwidth=1e-10,headlength=1e-10,headaxislength=1e-10)
+    
+    plb.xlabel(xlab)
+    plb.ylabel(ylab)
+
+    return
+
+
+# ***************************************************************************************************************
 def plotImage(image=None, arcsec=False, au=False, log=False, dpc=None, maxlog=None, saturate=None, bunit='norm', \
-        ifreq=0, cmask_rad=None, interpolation='nearest', cmap=plb.cm.gist_gray, stokes='I', **kwargs):
+        ifreq=0, cmask_rad=None, interpolation='nearest', cmap=plb.cm.gist_gray, stokes='I', 
+        poldir=False, pdcolor='w', pdnx=20, pdny=20,  **kwargs):
     """Plots a radmc3d image.
     
 
@@ -1163,11 +1264,14 @@ def plotImage(image=None, arcsec=False, au=False, log=False, dpc=None, maxlog=No
                     Simulates coronographyic mask : sets the image values to zero within this radius of the image center
                     The unit is the same as the image axis (au, arcsec, cm)
                     NOTE: this works only on the plot, the image array is not changed (for that used the cmask() function)
-
-    cmap          : matplotlib color map
     
     interpolation : str
                     interpolation keyword for imshow (e.g. 'nearest', 'bilinear', 'bicubic')
+
+    cmap          : matplotlib color map
+
+    stokes        : {'I', 'Q', 'U', 'V', 'PI'}
+                   What to plot for full stokes images, Stokes I/Q/U/V or PI - polarised intensity
     
     Example
     -------
@@ -1212,7 +1316,7 @@ def plotImage(image=None, arcsec=False, au=False, log=False, dpc=None, maxlog=No
             if dum_image.nwav==1:
                 dum_image.image = np.sqrt(image.image[:,:,1]**2 + image.image[:,:,2]**2 + image.image[:,:,3]**2)
             else:    
-                dum_image.image = np.sqrt(image.image[:,:,1,:]**2 + image.image[:,:,2,:]**2 + image.image[:,:,3]**2)
+                dum_image.image = np.sqrt(image.image[:,:,1,:]**2 + image.image[:,:,2,:]**2 + image.image[:,:,3,:]**2)
 
 
     if cmask_rad!=None:
@@ -1222,7 +1326,6 @@ def plotImage(image=None, arcsec=False, au=False, log=False, dpc=None, maxlog=No
         
     if (ifreq==None):
         ifreq = 0
-    #data = np.squeeze(dum_image.image[::-1,:,ifreq])
     data = np.squeeze(dum_image.image[:,::-1,ifreq].T)
 
     #if (image.nfreq>1):
@@ -1327,9 +1430,6 @@ def plotImage(image=None, arcsec=False, au=False, log=False, dpc=None, maxlog=No
     plb.delaxes()
     plb.delaxes()
 
-    #if (cmap==None): 
-        #cmap = cm.gist_gray
-#    implot = imshow(data, extent=ext, cmap=cm.gist_gray)
     implot = plb.imshow(data, extent=ext, cmap=cmap, interpolation=interpolation, **kwargs)
     plb.xlabel(xlab)
     plb.ylabel(ylab)
@@ -1337,6 +1437,37 @@ def plotImage(image=None, arcsec=False, au=False, log=False, dpc=None, maxlog=No
     cbar = plb.colorbar(implot)
     cbar.set_label(cb_label)
     plb.show()
+
+    ##
+    ## Plot the polarisation direction
+    ## Thanks Kees!!
+    ##
+    #if poldir:
+        #plotPolDir(image=None, arcsec=False, au=False, dpc=None, ifreq=0, cmask_rad=None, color='w', nx=20, ny=20)
+        #iix = [int(np.floor(i)) for i in np.arange(pdnx)*float(x.shape[0])/pdnx]
+        #iiy = [int(np.floor(i)) for i in np.arange(pdny)*float(x.shape[0])/pdny]
+        #xr  = x[iix]
+        #yr  = y[iiy]
+        #xxr,yyr = np.meshgrid(xr,yr,indexing='ij')
+        #xxr,yyr = np.meshgrid(xr,yr,indexing='ij')
+        #qqr     = (np.squeeze(dum_image.image[:,:,1,ifreq])/np.squeeze(dum_image.image[:,:,0,ifreq]).clip(1e-60))[np.ix_(iix,iiy)]
+        #uur     = (np.squeeze(dum_image.image[:,:,2,ifreq])/np.squeeze(dum_image.image[:,:,0,ifreq]).clip(1e-60))[np.ix_(iix,iiy)]
+        #lpol    = np.sqrt(qqr**2 + uur**2).clip(1e-60)
+        #qqr    /= lpol
+        #uur    /= lpol
+        #ang     = np.arccos(qqr)/2.0
+        #ii      = (uur<0)
+        #if True in ii:
+            #ang[ii] = np.pi - ang[ii]
+        #vx   = np.cos(ang)
+        #vy   = np.sin(ang)
+        #ii      = (lpol<1e-6)
+        #vx[ii]  = 0.001
+        #vy[ii]  = 0.001
+        #q       = plb.quiver(xxr,yyr,vx,vy,
+          #color=pdcolor,pivot='mid',scale=2.*np.max([pdnx,pdny]),
+          #headwidth=1e-10,headlength=1e-10,headaxislength=1e-10)
+
 
     return {'implot':implot, 'cbar':cbar}
 
@@ -1464,10 +1595,16 @@ def makeImage(npix=None, incl=None, wav=None, sizeau=None, phi=None, posang=None
         print ' sizeau keyword is not set'
         return -1
 
+    
+    #
+    # Kees' fix for the case when a locally compiled radmc3d exists in the current directory
+    #
     com = ''
     if os.path.isfile('radmc3d'):
         com = com + './'
     com = com + 'radmc3d image' 
+
+    #com = 'radmc3d image' 
     com = com + ' npix ' + str(int(npix))
     com = com + ' incl ' + str(incl)
     com = com + ' sizeau ' + str(sizeau)

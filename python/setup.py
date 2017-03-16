@@ -62,9 +62,8 @@ for i in range(len(python_files)):
 
         packageNames.append(txt)
 
-
 setup(name='radmc3dPy',
-        version='0.28.2',
+        version='0.29',
       description='Python module for RADMC3D',
       author='Attila Juhasz',
       author_email='juhasz@ast.cam.ac.uk',

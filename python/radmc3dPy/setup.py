@@ -14,9 +14,9 @@ import os, sys, copy
 
 from radmc3dPy.natconst import *
 import radmc3dPy.analyze as analyze
-
+import inspect
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-def problemSetupDust(model='', binary=True, writeDustTemp=False, old=False, **kwargs):
+def problemSetupDust(model='', binary=True, writeDustTemp=False, old=False, dfunc=None, dfpar=None, **kwargs):
     """
     Function to set up a dust model for RADMC-3D 
     
@@ -41,14 +41,27 @@ def problemSetupDust(model='', binary=True, writeDustTemp=False, old=False, **kw
     old             : bool, optional
                       If set to True the input files for the old 2D version of radmc will be created
 
-    **kwargs        : 
-                    Any varible name in problem_params.inp can be used as a keyword argument.
-                    At first all variables are read from problem_params.in to a dictionary called ppar. Then 
-                    if there is any keyword argument set in the call of problem_setup_dust the ppar dictionary 
-                    is searched for this key. If found the value belonging to that key in the ppar dictionary 
-                    is changed to the value of the keyword argument. If no such key is found then the dictionary 
-                    is simply extended by the keyword argument. Finally the problem_params.inp file is updated
-                    with the new parameter values.
+    dfunc           : function, optional
+                      Decision function for octree-like amr tree building. It should take linear arrays of 
+                      cell centre coordinates (x,y,z) and cell half-widhts (dx,dy,dz) in all three dimensions,
+                      a radmc3d model, a dictionary with all parameters from problem_params.inp and an other 
+                      keyword argument (**kwargs). It should return a boolean ndarray of the same length as 
+                      the input coordinates containing True if the cell should be resolved and False if not. 
+                      An example for the implementation of such decision function can be found in radmc3dPy.analyze
+                      module (radmc3dPy.analyze.gdensMinMax()).
+
+    dfpar           : dictionary
+                      Dicionary of keyword arguments to be passed on to dfunc. These parameters will not be written
+                      to problem_params.inp. Parameters can also be passed to dfunc via normal keyword arguments 
+                      gathered in **kwargs, however all keyword arguments in **kwargs will be written to problem_params.inp
+
+    **kwargs        : Any varible name in problem_params.inp can be used as a keyword argument.
+                      At first all variables are read from problem_params.in to a dictionary called ppar. Then 
+                      if there is any keyword argument set in the call of problem_setup_dust the ppar dictionary 
+                      is searched for this key. If found the value belonging to that key in the ppar dictionary 
+                      is changed to the value of the keyword argument. If no such key is found then the dictionary 
+                      is simply extended by the keyword argument. Finally the problem_params.inp file is updated
+                      with the new parameter values.
  
       
     Notes
@@ -89,6 +102,15 @@ def problemSetupDust(model='', binary=True, writeDustTemp=False, old=False, **kw
     if not ppar:
         print 'problem_params.inp was not found'
         return 
+
+    if ppar['grid_style'] != 0:
+        if old:
+            print 'ERROR'
+            print 'problemSetupDust was called with the old switch, meaning to create a model setup'
+            print 'for the predecessor radmc code, and with the AMR activated'
+            print 'radmc does not support mesh refinement'
+            return
+
 # --------------------------------------------------------------------------------------------
 # If there is any additional keyword argument (**kwargs) then check
 #   if there is such key in the ppar dictionary and if is change its value that of
@@ -133,16 +155,25 @@ def problemSetupDust(model='', binary=True, writeDustTemp=False, old=False, **kw
 # --------------------------------------------------------------------------------------------
 # Create the grid
 # --------------------------------------------------------------------------------------------
-    grid = analyze.radmc3dGrid()
+    #
+    # Check if AMR is activated or not
+    #
+    if ppar['grid_style'] == 1:
+        grid = analyze.radmc3dOctree()
+        
+        # Pass all parameters from dfpar to ppar
+        if dfpar is not None:
+            for ikey in dfpar.keys():
+                ppar[ikey] = dfpar[ikey]
+
+        # Spatial grid
+        grid.makeSpatialGrid(ppar=ppar, dfunc=dfunc, model=model, **kwargs)
+    else:
+        grid = analyze.radmc3dGrid()
+        # Spatial grid
+        grid.makeSpatialGrid(ppar=ppar)
     # Wavelength grid
     grid.makeWavelengthGrid(ppar=ppar)
-    # Spatial grid
-    grid.makeSpatialGrid(ppar=ppar)
-
-#    from matplotlib.pylab import plot
-    #plot(np.pi/2.-grid.y, 'ko-')
-    #dum = raw_input()
-    #exit()
 
 # --------------------------------------------------------------------------------------------
 # Dust opacity
@@ -227,7 +258,6 @@ def problemSetupDust(model='', binary=True, writeDustTemp=False, old=False, **kw
 
 
         radSources.csdens = mdl.getStellarsrcDensity(grid=grid, ppar=ppar)
-
 # --------------------------------------------------------------------------------------------
 # Create the dust density distribution 
 # --------------------------------------------------------------------------------------------
@@ -267,14 +297,20 @@ def problemSetupDust(model='', binary=True, writeDustTemp=False, old=False, **kw
 # Now write out everything 
 # --------------------------------------------------------------------------------------------
 
-    #Frequency grid
-    grid.writeWavelengthGrid(old=old)
-    #Spatial grid
-    grid.writeSpatialGrid(old=old)
+    if ppar['grid_style'] == 1:
+        #Frequency grid
+        grid.writeWavelengthGrid()
+        #Spatial grid
+        grid.writeSpatialGrid()
+
+    else:
+        #Frequency grid
+        grid.writeWavelengthGrid(old=old)
+        #Spatial grid
+        grid.writeSpatialGrid(old=old)
     #Input radiation field
     radSources.writeStarsinp(ppar=ppar, old=old)
-    #radSources.writeStarsinp(wav=grid.wav, pstar=ppar['pstar'], tstar=ppar['tstar'], \
-            #rstar=ppar['rstar'], incl_spot=ppar['incl_accretion'])
+    
     # Continuous starlike sources
     if stellarsrcEnabled:
         radSources.writeStellarsrcTemplates()
@@ -295,10 +331,17 @@ def problemSetupDust(model='', binary=True, writeDustTemp=False, old=False, **kw
     print '-------------------------------------------------------------'
 
     #Dust density distribution
-    data.writeDustDens(binary=binary, old=old)
+    if ppar['grid_style'] == 1:
+        data.writeDustDens(binary=binary, octree=True)
+    else:
+        data.writeDustDens(binary=binary, old=old)
+
     #Dust temperature distribution
     if writeDustTemp:
-        data.writeDustTemp(binary=binary)
+        if ppar['grid_style'] == 1:
+            data.writeDustTemp(binary=binary, octree=True)
+        else:
+            data.writeDustTemp(binary=binary)
     #radmc3d.inp
     if not old:
         writeRadmc3dInp(modpar=modpar)
@@ -317,44 +360,58 @@ def problemSetupDust(model='', binary=True, writeDustTemp=False, old=False, **kw
 
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-def problemSetupGas(model='', fullsetup=False, binary=True,  writeGasTemp=False, **kwargs):
+def problemSetupGas(model='', fullsetup=False, binary=True,  writeGasTemp=False, dfunc=None, dfpar=None, **kwargs):
     """
     Function to set up a gas model for RADMC-3D 
     
     Parameters
     ----------
 
-    model         : str
-                    Name of the model that should be used to create the density structure
-                    the file should be in a directory from where it can directly be imported 
-                    (i.e. the directory should be in the PYTHON_PATH environment variable, or
-                    it should be the current working directory)
-                    and the file name should be 'MODELNAME.py', where MODELNAME stands for the string
-                    that should be specified in this variable
+    model           : str
+                      Name of the model that should be used to create the density structure
+                      the file should be in a directory from where it can directly be imported 
+                      (i.e. the directory should be in the PYTHON_PATH environment variable, or
+                      it should be the current working directory)
+                      and the file name should be 'MODELNAME.py', where MODELNAME stands for the string
+                      that should be specified in this variable
 
-    fullsetup     : bool, optional
-                    If False only the files related to the gas simulation is written out
-                    (i.e. no grid, stellar parameter file and radmc3d master command file is written)
-                    assuming that these files have already been created for a previous continuum simulation.
-                    If True the spatial and wavelength grid as well as the input radiation field
-                    and the radmc3d master command file will be (over)written. 
+    fullsetup       : bool, optional
+                      If False only the files related to the gas simulation is written out
+                      (i.e. no grid, stellar parameter file and radmc3d master command file is written)
+                      assuming that these files have already been created for a previous continuum simulation.
+                      If True the spatial and wavelength grid as well as the input radiation field
+                      and the radmc3d master command file will be (over)written. 
 
-    binary        : bool, optional
-                    If True input files will be written in binary format, if False input files are
-                    written as formatted ascii text. 
+    binary          : bool, optional
+                      If True input files will be written in binary format, if False input files are
+                      written as formatted ascii text. 
 
-    writeGasTemp  : bool, optional
-                    If True a separate gas_temperature.inp/gas_tempearture.binp file will be
-                    written under the condition that the model contains a function get_gas_temperature() 
+    writeGasTemp    : bool, optional
+                      If True a separate gas_temperature.inp/gas_tempearture.binp file will be
+                      written under the condition that the model contains a function get_gas_temperature() 
     
-    **kwargs      :
-                    Any varible name in problem_params.inp can be used as a keyword argument.
-                    At first all variables are read from problem_params.in to a dictionary called ppar. Then 
-                    if there is any keyword argument set in the call of problem_setup_gas the ppar dictionary 
-                    is searched for such key. If found the value belonging to that key in the ppar dictionary 
-                    is changed to the value of the keyword argument. If no such key is found then the dictionary 
-                    is simply extended by the keyword argument. Finally the problem_params.inp file is updated
-                    with the new parameter values.
+    dfunc           : function, optional
+                      Decision function for octree-like amr tree building. It should take linear arrays of 
+                      cell centre coordinates (x,y,z) and cell half-widhts (dx,dy,dz) in all three dimensions,
+                      a radmc3d model, a dictionary with all parameters from problem_params.inp and an other 
+                      keyword argument (**kwargs). It should return a boolean ndarray of the same length as 
+                      the input coordinates containing True if the cell should be resolved and False if not. 
+                      An example for the implementation of such decision function can be found in radmc3dPy.analyze
+                      module (radmc3dPy.analyze.gdensMinMax()). 
+
+    dfpar           : dictionary
+                      Dicionary of keyword arguments to be passed on to dfunc. These parameters will not be written
+                      to problem_params.inp. Parameters can also be passed to dfunc via normal keyword arguments 
+                      gathered in **kwargs, however all keyword arguments in **kwargs will be written to problem_params.inp
+
+    **kwargs        : Any varible name in problem_params.inp can be used as a keyword argument.
+                      At first all variables are read from problem_params.in to a dictionary called ppar. Then 
+                      if there is any keyword argument set in the call of problem_setup_gas the ppar dictionary 
+                      is searched for such key. If found the value belonging to that key in the ppar dictionary 
+                      is changed to the value of the keyword argument. If no such key is found then the dictionary 
+                      is simply extended by the keyword argument. Finally the problem_params.inp file is updated
+                      with the new parameter values.
+                      Any additional keyword argument for the octree AMR mesh generation should also be passed here.
 
        
     Notes
@@ -468,13 +525,25 @@ def problemSetupGas(model='', fullsetup=False, binary=True,  writeGasTemp=False,
 # --------------------------------------------------------------------------------------------
 # Create the grid
 # --------------------------------------------------------------------------------------------
-        grid = analyze.radmc3dGrid()
+        #
+        # Check if AMR is activated or not
+        #
+        if ppar['grid_style'] == 1:
+            grid = analyze.radmc3dOctree()
+            # Pass all parameters from dfpar to ppar
+            if dfpar is not None:
+                for ikey in dfpar.keys():
+                    ppar[ikey] = dfpar[ikey]
+            # Spatial grid
+            grid.makeSpatialGrid(ppar=ppar, dfunc=dfunc, model=model, **kwargs)
+        else:
+            grid = analyze.radmc3dGrid()
+            # Spatial grid
+            grid.makeSpatialGrid(ppar=ppar)
     
         # Wavelength grid
         grid.makeWavelengthGrid(ppar=ppar)
 
-        # Spatial grid
-        grid.makeSpatialGrid(ppar=ppar)
 
 # --------------------------------------------------------------------------------------------
 # Create the input radiation field (stars at this point) 
@@ -559,7 +628,7 @@ def problemSetupGas(model='', fullsetup=False, binary=True,  writeGasTemp=False,
 # --------------------------------------------------------------------------------------------
     else:
         grid=analyze.readGrid()
-
+    
 # --------------------------------------------------------------------------------------------
 # Create the gas density distribution 
 # --------------------------------------------------------------------------------------------
@@ -573,7 +642,8 @@ def problemSetupGas(model='', fullsetup=False, binary=True,  writeGasTemp=False,
     #       mean molecular weight
     if dir(mdl).__contains__('getGasDensity'):
         if callable(getattr(mdl, 'getGasDensity')):
-            data.rhogas = mdl.getGasDensity(grid=grid, ppar=ppar)
+            if ppar['grid_style'] == 1:
+                data.rhogas = mdl.getGasDensity(grid=grid, ppar=ppar)
     else:
         print 'WARNING'
         print ' '+model+'.py does not contain a getGasDensity() function, therefore, '
@@ -593,8 +663,11 @@ def problemSetupGas(model='', fullsetup=False, binary=True,  writeGasTemp=False,
                 data.ndens_mol = data.rhogas / (2.4 * mp) * gasabun 
 
                 # Write the gas density
-                data.writeGasDens(ispec=ppar['gasspec_mol_name'][imol], binary=binary)
-           
+                if ppar['grid_style'] == 1:
+                    data.writeGasDens(ispec=ppar['gasspec_mol_name'][imol], binary=binary, octree=True)
+                else:
+                    data.writeGasDens(ispec=ppar['gasspec_mol_name'][imol], binary=binary)
+
             if abs(ppar['lines_mode'])>2:
                 for icp in range(len(ppar['gasspec_colpart_name'])):
                     gasabun = mdl.getGasAbundance(grid=grid, ppar=ppar, ispec=ppar['gasspec_colpart_name'][icp])
@@ -615,7 +688,10 @@ def problemSetupGas(model='', fullsetup=False, binary=True,  writeGasTemp=False,
         if callable(getattr(mdl, 'getVelocity')):
             data.gasvel = mdl.getVelocity(grid=grid, ppar=ppar)
             # Write the gas velocity
-            data.writeGasVel(binary=binary) 
+            if ppar['grid_style'] == 1:
+                data.writeGasVel(binary=binary, octree=True) 
+            else:
+                data.writeGasVel(binary=binary) 
     else:
         print 'WARNING'
         print ' '+model+'.py does not contain a getVelocity() function, therefore, '
@@ -631,7 +707,10 @@ def problemSetupGas(model='', fullsetup=False, binary=True,  writeGasTemp=False,
             if callable(getattr(mdl, 'getGasTemperature')):
                 data.gastemp = mdl.getGasTemperature(grid=grid, ppar=ppar)
                 # Write the gas temperature
-                data.writeGasTemp(binary=binary) 
+                if ppar['grid_style'] == 1:
+                    data.writeGasTemp(binary=binary, octree=True) 
+                else:
+                    data.writeGasTemp(binary=binary) 
         else:
             print 'WARNING'
             print ' '+model+'.py does not contain a getGasTemperature() function, therefore, '
@@ -645,7 +724,10 @@ def problemSetupGas(model='', fullsetup=False, binary=True,  writeGasTemp=False,
         if callable(getattr(mdl, 'getVTurb')):
             data.vturb = mdl.getVTurb(grid=grid, ppar=ppar)
             # Write the turbulent velocity field
-            data.writeVTurb(binary=binary) 
+            if ppar['grid_style'] == 1:
+                data.writeVTurb(binary=binary, octree=True) 
+            else:
+                data.writeVTurb(binary=binary) 
     else:
         data.vturb = np.zeros([grid.nx, grid.ny, grid.nz], dtype=float64)
         data.vturb[:,:,:] = 0.
@@ -807,3 +889,241 @@ def writeLinesInp(ppar=None):
     wfile.close()
 
 # --------------------------------------------------------------------------------------------------
+def validateModel(model='', dustModel=False, gasModel=False, writeDustTemp=False, octree=False):
+    """
+    Function to validate a model. It checks three things: 1) whether or not the model can be imported,
+    2) whether the model has all the function to be used as dust and/or gas model, 3) if it has the right
+    number of arguments. The function names tested are getDefaultParams, getDustDensity, getGasDensity, 
+    getGasAbundance, getVTurb, getVelocity, getDustTempearture (optional).
+
+    Parameters
+    ----------
+
+    model       : str
+                  Name of the model to be tested
+
+    dustModel   : bool
+                  If True the existence of functions getDustDensity() and getDustTemperature() will be checked.
+                  The latter is only checked if writeDustTemp is set to True.
+
+    gasModel    : bool
+                  If True the existence of functions getGasDensity(), getGasAbundance(), getVTurb(), getVelocity()
+                  will be checked.
+
+    writeDustTemp: bool
+                   If True the existence of the function getDustTemperature() will be checked.
+
+    octree      : bool
+                  If True the number of argument of the model functions will be checked. For regular grids only two 
+                  arguments should be present for the grid instance and for the parameter dictionary (grid, ppar). 
+                  For a model to be used with octree AMR three additional arguments for the three spatial coordiantes
+                  (x,y,z) should be present. The argument sequence should then be x, y, z, grid, ppar.
+
+    Returns
+    -------
+    A boolean True if the model is valid and False if it is not. 
+
+    """
+
+    #
+    # First check if the model can be imported
+    #
+    try:
+        mdl = __import__(model)
+    except:
+        try:
+            mdl  = __import__('radmc3dPy.models.'+model, fromlist=['']) 
+        except:
+            print 'ERROR'
+            print ' '+model+'.py could not be imported'
+            print ' The model files should either be in the current working directory or'
+            print ' in the radmc3d python module directory'
+            return
+
+
+    isValid = True
+    #
+    # Now check the function names in the model
+    #
+    fnamelist = [f[0] for f in inspect.getmembers(mdl) if inspect.isfunction(f[1])]
+    
+    if 'getDefaultParams' not in fnamelist:
+        print 'ERROR'
+        print model + ' does not contain a function to provide default parameters (getDefaultParams)'
+        isValid = False
+
+    if dustModel:
+        if 'getDustDensity' not in fnamelist:
+            print 'ERROR'
+            print model + ' does not contain a function to provide dust density (getDustDensity)'
+            isValid = False
+           
+        if writeDustTemp:
+            if 'getDustTemperature' not in fnamelist:
+                print 'ERROR'
+                print model + ' does not contain a function to provide dust temperature (getDustTemperature)'
+                print 'yet the setup function has been called with the option to write the dust temperature.'
+                isValid = False
+
+    if gasModel:
+        if 'getGasDensity' not in fnamelist:
+            print 'ERROR'
+            print model + ' does not contain a function to provide gas density (getGasDensity)'
+            isValid = False
+
+        if 'getGasAbundance' not in fnamelist:
+            print 'ERROR'
+            print model + ' does not contain a function to provide molecular abundance (getGasAbundance)'
+            isValid = False
+        
+        if 'getVTurb' not in fnamelist:
+            print 'ERROR'
+            print model + ' does not contain a function to provide turbulent velocity (getVTurb)'
+            isValid = False
+
+        if 'getVelocity' not in fnamelist:
+            print 'ERROR'
+            print model + ' does not contain a function to provide gas velocity (getVelocity)'
+            isValid = False
+
+    #
+    # Check the number of arguments
+    #
+    if dustModel:
+        arglist = inspect.getargspec(mdl.getDustDensity).args
+        argnames = ''
+        if len(arglist)>0:
+            argnames = arglist[0]
+            for iarg in arglist[1:]:
+                argnames += ', '+iarg
+        if octree:
+            if len(arglist)<5:
+                print 'ERROR'
+                print model+'.getDustDensity() has only '+("%d"%len(arglist))+' arguments : ', argnames
+                print 'To use octree the argument list should be :'
+                print 'x=None, y=None, z=None, grid=None, ppar=None)'
+                isValid = False
+        else:
+            if len(arglist)<2:
+                print 'ERROR'
+                print model+'.getDustDensity() has only '+("%d"%len(arglist))+' arguments : ', argnames
+                print 'The minimal argument list of a model function should be :'
+                print 'grid=None, ppar=None)'
+                isValid = False
+
+
+        if writeDustTemp:
+            arglist = inspect.getargspec(mdl.getDustTemperature).args
+            argnames = ''
+            if len(arglist)>0:
+                argnames = arglist[0]
+                for iarg in arglist[1:]:
+                    argnames += ', '+iarg
+            if octree:
+                if len(arglist)<5:
+                    print 'ERROR'
+                    print model+'.getDustTemperature() has only '+("%d"%len(arglist))+' arguments : ', argnames
+                    print 'To use octree the argument list should be :'
+                    print 'x=None, y=None, z=None, grid=None, ppar=None)'
+                    isValid = False
+            else:
+                if len(arglist)<2:
+                    print 'ERROR'
+                    print model+'.getDustTemperature() has only '+("%d"%len(arglist))+' arguments : ', argnames
+                    print 'The minimal argument list of a model function should be :'
+                    print 'grid=None, ppar=None)'
+                    isValid = False
+
+    if gasModel:
+        arglist = inspect.getargspec(mdl.getGasDensity).args
+        argnames = ''
+        if len(arglist)>0:
+            argnames = arglist[0]
+            for iarg in arglist[1:]:
+                argnames += ', '+iarg
+        if octree:
+            if len(arglist)<5:
+                print 'ERROR'
+                print model+'.getGasDensity() has only '+("%d"%len(arglist))+' arguments : ', argnames
+                print 'To use octree the argument list should be :'
+                print 'x=None, y=None, z=None, grid=None, ppar=None)'
+                isValid = False
+        else:
+            if len(arglist)<2:
+                print 'ERROR'
+                print model+'.getGasDensity() has only '+("%d"%len(arglist))+' arguments : ', argnames
+                print 'The minimal argument list of a model function should be :'
+                print 'grid=None, ppar=None)'
+                isValid = False
+
+
+        arglist = inspect.getargspec(mdl.getGasAbundance).args
+        argnames = ''
+        if len(arglist)>0:
+            argnames = arglist[0]
+            for iarg in arglist[1:]:
+                argnames += ', '+iarg
+        if octree:
+            if len(arglist)<5:
+                print 'ERROR'
+                print model+'.getGasAbundance() has only '+("%d"%len(arglist))+' arguments : ', argnames
+                print 'To use octree the argument list should be :'
+                print 'x=None, y=None, z=None, grid=None, ppar=None)'
+                isValid = False
+        else:
+            if len(arglist)<2:
+                print 'ERROR'
+                print model+'.getGasAbundance() has only '+("%d"%len(arglist))+' arguments : ', argnames
+                print 'The minimal argument list of a model function should be :'
+                print 'grid=None, ppar=None)'
+                isValid = False
+
+        arglist = inspect.getargspec(mdl.getVTurb).args
+        argnames = ''
+        if len(arglist)>0:
+            argnames = arglist[0]
+            for iarg in arglist[1:]:
+                argnames += ', '+iarg
+        if octree:
+            if len(arglist)<5:
+                print 'ERROR'
+                print model+'.getVTurb() has only '+("%d"%len(arglist))+' arguments : ', argnames
+                print 'To use octree the argument list should be :'
+                print 'x=None, y=None, z=None, grid=None, ppar=None)'
+                isValid = False
+        else:
+            if len(arglist)<2:
+                print 'ERROR'
+                print model+'.getVTurb() has only '+("%d"%len(arglist))+' arguments : ', argnames
+                print 'The minimal argument list of a model function should be :'
+                print 'grid=None, ppar=None)'
+                isValid = False
+
+
+        arglist = inspect.getargspec(mdl.getVelocity).args
+        argnames = ''
+        if len(arglist)>0:
+            argnames = arglist[0]
+            for iarg in arglist[1:]:
+                argnames += ', '+iarg
+        if octree:
+            if len(arglist)<5:
+                print 'ERROR'
+                print model+'.getVelocity() has only '+("%d"%len(arglist))+' arguments : ', argnames
+                print 'To use octree the argument list should be :'
+                print 'x=None, y=None, z=None, grid=None, ppar=None)'
+                isValid = False
+        else:
+            if len(arglist)<2:
+                print 'ERROR'
+                print model+'.getVelocity() has only '+("%d"%len(arglist))+' arguments : ', argnames
+                print 'The minimal argument list of a model function should be :'
+                print 'grid=None, ppar=None)'
+                isValid = False
+
+    
+    #
+    # If it passed all tests so far then formally the model should be OK. There is no guarantee, though
+    # that it will work properly. 
+    #
+    return isValid

@@ -12,7 +12,6 @@ radmc3dPy.setup.problemSetupDust('ppdisk', binary=False)
 os.system('cp -v ../datafiles/dustkappa_silicate.inp .')
 
 # Calculate the dust temperature
-
 os.system('radmc3d mctherm')
 
 # Gas model setup with ascii input files

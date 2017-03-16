@@ -305,7 +305,7 @@ def vrot(crd=None, v=None, ang=None):
     crd_xyz   = ctrans_sph2cart(crd=crd)
 # Convert the velocity vector to cartesian coordinate system
     v_xyz     = vtrans_sph2cart(crd=crd, v=v)
-# Rotate the vecto
+# Rotate the vector
     v_xyz_rot = csrot(crd=v_xyz, ang=ang)
 # Transform the rotated vector back to the spherical coordinate system
     v_rot     = vtrans_sph2cart(crd=crd_xyz, v=v_xyz_rot, reverse=True) 

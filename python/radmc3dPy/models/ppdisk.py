@@ -260,7 +260,16 @@ def getGasDensity(grid=None, ppar=None):
                     dum1 = ppar['sig0'] * (rcyl/ppar['rdisk'])**(-ppar['plsig1']) * expterm #np.exp(-(rcyl/ppar['rdisk'])**(2.0 - ppar['plsig1']))
 
 
-                    #plb.loglog(rcyl.flatten(), dum1.flatten())
+                    #r = np.arange(400.)+1.
+                    #sig0 = 0.05
+                    #gam = 0.7
+                    #rc = 200.
+
+                    #dummy_sigma = sig0 * (r/rc)**(-gam) * np.exp(-(r/rc)**(2.-gam))
+
+                    #plb.loglog(rcyl.flatten()/1.496e13, dum1.flatten())
+                    #plb.loglog(r, dummy_sigma*100., 'r-')
+                    
                     #dum = raw_input()
                     #exit()
 
