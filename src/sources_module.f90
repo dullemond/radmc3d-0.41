@@ -1477,12 +1477,18 @@ end subroutine sources_compute_snualphanu_at_vertices
 !
 ! NOTE: If sources_interpol_jnu is set, then snu = jnu rather than the
 !       source function jnu/anu. 
+! 
+! NOTE: This routine also uses information from the latest call to
+!       amrray_find_next_location_***() to determine on which cell 
+!       interface we are currently.
 !-------------------------------------------------------------------------
 subroutine sources_find_srcalp_interpol(x,y,z,snu,anu,inclstokes)
   implicit none
   double precision :: x,y,z,snu(1:4),anu
   logical :: inclstokes
   integer :: index,icross,ivt00,ivt01,ivt10,ivt11
+  integer :: ivt000,ivt001,ivt010,ivt011
+  integer :: ivt100,ivt101,ivt110,ivt111
   type(amr_branch), pointer :: a
   double precision :: epsx,epsx1,epsy,epsy1,epsz,epsz1
   double precision :: x0,x1,y0,y1,z0,z1
@@ -1495,6 +1501,8 @@ subroutine sources_find_srcalp_interpol(x,y,z,snu,anu,inclstokes)
   !
   ! Check which cell to use
   !
+  ! New 2017.03.18: Allow inside-cell point 
+  ! 
   if(amrray_icross.gt.0) then
      index = ray_index
      icross = amrray_icross
@@ -1502,9 +1510,14 @@ subroutine sources_find_srcalp_interpol(x,y,z,snu,anu,inclstokes)
      index = ray_indexnext
      icross = -amrray_icross
   else
-     snu(1:4) = 0.d0
-     anu = 1d-99
-     return
+     if(ray_index.le.0) then
+        snu(1:4) = 0.d0
+        anu = 1d-99
+        return
+     else
+        index = ray_index
+        icross = 0
+     endif
   endif
   !
   ! Check
@@ -1534,6 +1547,143 @@ subroutine sources_find_srcalp_interpol(x,y,z,snu,anu,inclstokes)
   ! Check out which interface
   !
   select case(icross)
+  case(0)
+     !
+     ! Somewhere inside the cell. We have to do a trillinear interpolation
+     !
+     ! Find the vertex indices and the linear interpolation epsilons
+     !
+     if(amr_tree_present) then
+        !
+        ! The AMR tree is available, so get the information from there
+        !
+        if(amr_xdim.eq.1) then
+           x0 = amr_finegrid_xi(a%ixyzf(1),1,a%level)
+           x1 = amr_finegrid_xi(a%ixyzf(1)+1,1,a%level)
+           epsx  = (x-x0)/(x1-x0)
+           epsx1 = 1.d0-epsx
+           if((epsx.lt.-1d-6).or.(epsx.gt.1.000001d0)) stop 2091
+        else
+           epsx  = 0.d0
+           epsx1 = 1.d0
+        endif
+        if(amr_ydim.eq.1) then
+           y0 = amr_finegrid_xi(a%ixyzf(2),2,a%level)
+           y1 = amr_finegrid_xi(a%ixyzf(2)+1,2,a%level)
+           epsy  = (y-y0)/(y1-y0)
+           epsy1 = 1.d0-epsy
+           if((epsy.lt.-1d-6).or.(epsy.gt.1.000001d0)) stop 2091
+        else
+           epsy  = 0.d0
+           epsy1 = 1.d0
+        endif
+        if(amr_zdim.eq.1) then
+           z0 = amr_finegrid_xi(a%ixyzf(3),3,a%level)
+           z1 = amr_finegrid_xi(a%ixyzf(3)+1,3,a%level)
+           epsz = (z-z0)/(z1-z0)
+           epsz1 = 1.d0-epsz
+           if((epsz.lt.-1d-6).or.(epsz.gt.1.000001d0)) stop 2092
+        else
+           epsz  = 0.d0
+           epsz1 = 1.d0
+        endif
+        ivt000 = amr_cell_corners(1,1,1,index)
+        ivt010 = amr_cell_corners(1,1+amr_ydim,1,index)
+        ivt001 = amr_cell_corners(1,1,1+amr_zdim,index)
+        ivt011 = amr_cell_corners(1,1+amr_ydim,1+amr_zdim,index)
+        ivt100 = amr_cell_corners(1+amr_xdim,1,1,index)
+        ivt110 = amr_cell_corners(1+amr_xdim,1+amr_ydim,1,index)
+        ivt101 = amr_cell_corners(1+amr_xdim,1,1+amr_zdim,index)
+        ivt111 = amr_cell_corners(1+amr_xdim,1+amr_ydim,1+amr_zdim,index)
+     else
+        !
+        ! Regular grid, so construct the information from ixx,iyy,izz
+        !
+        if(amr_xdim.eq.1) then
+           x0 = amr_finegrid_xi(ixx,1,0)
+           x1 = amr_finegrid_xi(ixx+1,1,0)
+           epsx  = (x-x0)/(x1-x0)
+           epsx1 = 1.d0-epsx
+           if((epsx.lt.-1d-6).or.(epsx.gt.1.000001d0)) stop 2091
+        else
+           epsx  = 0.d0
+           epsx1 = 1.d0
+        endif
+        if(amr_ydim.eq.1) then
+           y0 = amr_finegrid_xi(iyy,2,0)
+           y1 = amr_finegrid_xi(iyy+1,2,0)
+           epsy  = (y-y0)/(y1-y0)
+           epsy1 = 1.d0-epsy
+           if((epsy.lt.-1d-6).or.(epsy.gt.1.000001d0)) stop 2091
+        else
+           epsy  = 0.d0
+           epsy1 = 1.d0
+        endif
+        if(amr_zdim.eq.1) then
+           z0 = amr_finegrid_xi(izz,3,0)
+           z1 = amr_finegrid_xi(izz+1,3,0)
+           epsz = (z-z0)/(z1-z0)
+           epsz1 = 1.d0-epsz
+           if((epsz.lt.-1d-6).or.(epsz.gt.1.000001d0)) stop 2092
+        else
+           epsz  = 0.d0
+           epsz1 = 1.d0
+        endif
+        ivt000 = ixx+((iyy-1)+(izz-1)*nny)*nnx
+        ivt010 = ixx+((iyy-1+amr_ydim)+(izz-1)*nny)*nnx
+        ivt001 = ixx+((iyy-1)+(izz-1+amr_zdim)*nny)*nnx
+        ivt011 = ixx+((iyy-1+amr_ydim)+(izz-1+amr_zdim)*nny)*nnx
+        ivt100 = ixx+amr_xdim+((iyy-1)+(izz-1)*nny)*nnx
+        ivt110 = ixx+amr_xdim+((iyy-1+amr_ydim)+(izz-1)*nny)*nnx
+        ivt101 = ixx+amr_xdim+((iyy-1)+(izz-1+amr_zdim)*nny)*nnx
+        ivt111 = ixx+amr_xdim+((iyy-1+amr_ydim)+(izz-1+amr_zdim)*nny)*nnx
+     endif
+     !
+     ! Do the interpolations
+     !
+     if(inclstokes) then
+        snu(1:4) = epsx1*(epsz1*(epsy1*sources_vertex_snu(ivt000,1:4)+epsy*sources_vertex_snu(ivt010,1:4)) + &
+                          epsz*(epsy1*sources_vertex_snu(ivt001,1:4)+epsy*sources_vertex_snu(ivt011,1:4))) + &
+                   epsx*(epsz1*(epsy1*sources_vertex_snu(ivt100,1:4)+epsy*sources_vertex_snu(ivt110,1:4)) +  &
+                          epsz*(epsy1*sources_vertex_snu(ivt101,1:4)+epsy*sources_vertex_snu(ivt111,1:4)))
+     else
+        snu(1) = epsx1*(epsz1*(epsy1*sources_vertex_snu(ivt000,1)+epsy*sources_vertex_snu(ivt010,1)) + &
+                        epsz*(epsy1*sources_vertex_snu(ivt001,1)+epsy*sources_vertex_snu(ivt011,1))) + &
+                 epsx*(epsz1*(epsy1*sources_vertex_snu(ivt100,1)+epsy*sources_vertex_snu(ivt110,1)) + &
+                        epsz*(epsy1*sources_vertex_snu(ivt101,1)+epsy*sources_vertex_snu(ivt111,1))) 
+
+     endif
+     anu   = epsx1*(epsz1*(epsy1*sources_vertex_anu(ivt000)+epsy*sources_vertex_anu(ivt010)) + &
+                    epsz*(epsy1*sources_vertex_anu(ivt001)+epsy*sources_vertex_anu(ivt011))) + &
+             epsx*(epsz1*(epsy1*sources_vertex_anu(ivt00)+epsy*sources_vertex_anu(ivt10)) + &
+                   epsz*(epsy1*sources_vertex_anu(ivt01)+epsy*sources_vertex_anu(ivt11)))
+     if(sources_catch_doppler_line) then
+        sources_local_doppler_curr = &
+         epsx1*(epsz1*(epsy1*sources_vertex_doppler(ivt000)+epsy*sources_vertex_doppler(ivt010)) + &
+                epsz *(epsy1*sources_vertex_doppler(ivt001)+epsy*sources_vertex_doppler(ivt011)))+ &
+          epsx*(epsz1*(epsy1*sources_vertex_doppler(ivt100)+epsy*sources_vertex_doppler(ivt110)) + &
+                epsz *(epsy1*sources_vertex_doppler(ivt101)+epsy*sources_vertex_doppler(ivt111)))
+        sources_local_turb_curr = &
+         epsx1*(epsz1*(epsy1*sources_vertex_turb(ivt000)+epsy*sources_vertex_turb(ivt010)) + &
+                epsz *(epsy1*sources_vertex_turb(ivt001)+epsy*sources_vertex_turb(ivt011)))+ &
+          epsx*(epsz1*(epsy1*sources_vertex_turb(ivt100)+epsy*sources_vertex_turb(ivt110)) + &
+                epsz *(epsy1*sources_vertex_turb(ivt101)+epsy*sources_vertex_turb(ivt111)))
+        sources_local_temp_curr = &
+         epsx1*(epsz1*(epsy1*sources_vertex_temp(ivt000)+epsy*sources_vertex_temp(ivt010)) + &
+                epsz *(epsy1*sources_vertex_temp(ivt001)+epsy*sources_vertex_temp(ivt011)))+ &
+          epsx*(epsz1*(epsy1*sources_vertex_temp(ivt100)+epsy*sources_vertex_temp(ivt110)) + &
+                epsz *(epsy1*sources_vertex_temp(ivt101)+epsy*sources_vertex_temp(ivt111)))
+        sources_local_line_nup_curr(:) = &
+         epsx1*(epsz1*(epsy1*sources_vertex_line_nup(:,ivt000)+epsy*sources_vertex_line_nup(:,ivt010)) + &
+                epsz *(epsy1*sources_vertex_line_nup(:,ivt001)+epsy*sources_vertex_line_nup(:,ivt011)))+ &
+          epsx*(epsz1*(epsy1*sources_vertex_line_nup(:,ivt100)+epsy*sources_vertex_line_nup(:,ivt110)) + &
+                epsz *(epsy1*sources_vertex_line_nup(:,ivt101)+epsy*sources_vertex_line_nup(:,ivt111)))
+        sources_local_line_ndown_curr(:) = &
+         epsx1*(epsz1*(epsy1*sources_vertex_line_ndown(:,ivt000)+epsy*sources_vertex_line_ndown(:,ivt010)) + &
+                epsz *(epsy1*sources_vertex_line_ndown(:,ivt001)+epsy*sources_vertex_line_ndown(:,ivt011)))+ &
+          epsx*(epsz1*(epsy1*sources_vertex_line_ndown(:,ivt100)+epsy*sources_vertex_line_ndown(:,ivt110)) + &
+                epsz *(epsy1*sources_vertex_line_ndown(:,ivt101)+epsy*sources_vertex_line_ndown(:,ivt111)))
+     endif
   case(1)
      !
      ! Left x-wall...
