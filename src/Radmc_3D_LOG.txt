@@ -8202,3 +8202,15 @@ finetuning: I noticed during some testing with a supersimple annulus model
             Check in polarization_randomorient_mc_scatter() that the thetai
             grid has the right boundaries.
             (marked as Bugfix 2017.03.15)
+
+18.03.2017  Continue with the maxdphi stuff: in spherical coordinates there
+            should be a possibility to limit the maximum angle change of the
+            ray with the origin. I now implemented the trilinear interpolation
+            in sources_find_srcalp_interpol(). 
+
+      !!    I noticed that I already implemented maxdphi in several other
+            parts of the code, but somehow this never landed into this
+            branch. I think this was a mistake of forgetting to switch
+            branch. Anyway: it is already in amrray_module.f90. See the
+            maxdeltasina keyword.
+
