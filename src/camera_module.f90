@@ -3666,7 +3666,12 @@ subroutine camera_make_rect_image(img,tausurf)
         ! thereby skipping intermediate angles. That is bad for the 
         ! interpolation of the scattering source function.
         !
-        camera_maxdphi = twopi / dust_2daniso_nphi
+        if(camera_maxdphi.eq.0.d0) then
+           write(stdo,*) 'WARNING: 2-D anisotropic scattering without camera_maxdphi set... Dangerous.'
+        endif
+        if(camera_maxdphi.gt.twopi/dust_2daniso_nphi) then
+           camera_maxdphi = twopi / dust_2daniso_nphi
+        endif
         if(camera_maxdphi.ge.0.5d0) camera_maxdphi=0.5d0
         !
         ! Message
