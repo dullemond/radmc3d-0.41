@@ -124,7 +124,7 @@ program radmc3d
   camera_stokesvector        = .false.
   lines_autosubset           = .true.
   camera_lambda_starlight_single_scat_mode    = 0
-  camera_maxdphi             = 0.d0
+  camera_maxdphi             = 0.1d0   ! New as of March 2017
   !
   ! Line wavelength grid parameter settings
   ! 

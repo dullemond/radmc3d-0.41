@@ -470,9 +470,16 @@ subroutine camera_init()
   !
   ! Some further comments:
   !
-  if((camera_maxdphi.gt.0.d0).and.(igrid_coord.ge.100).and.(igrid_coord.lt.200)) then
-     write(stdo,*) 'Ray-trace segment length limited to ensure maximum delta angle ',&
-                   'w.r.t. origin of ',camera_maxdphi
+  ! If using second order integration in spherical coordinates, then
+  ! better set the camera_maxdphi to a reasonably small value.
+  !
+  if((igrid_coord.ge.100).and.(igrid_coord.lt.200).and.camera_secondorder) then
+     if(camera_maxdphi.eq.0d0) then
+        write(stdo,*) 'WARNING: camera_maxdphi set to 0. Could be dangerous. Better set it to e.g. 0.1.'
+     elseif(camera_maxdphi.le.0.01d0) then
+        write(stdo,*) 'WARNING: camera_maxdphi set to very small value >0. ',&
+             'This is OK, but it may make the code slow.'
+     endif
   endif
   !
 end subroutine camera_init
