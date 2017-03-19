@@ -124,6 +124,7 @@ program radmc3d
   camera_stokesvector        = .false.
   lines_autosubset           = .true.
   camera_lambda_starlight_single_scat_mode    = 0
+  camera_maxdphi             = 0.d0
   !
   ! Line wavelength grid parameter settings
   ! 
@@ -2285,6 +2286,7 @@ subroutine read_radmcinp_file()
      call parse_input_double ('camera_max_dangle@            ',camera_max_dangle)
      call parse_input_double ('camera_min_drr@               ',mindrr)
      call parse_input_integer('camera_interpol_jnu@          ',interpoljnu)
+     call parse_input_double ('camera_maxdphi@               ',camera_maxdphi)
      call parse_input_integer('sources_interpol_jnu@         ',interpoljnu)
 !     call parse_input_double ('lines_maxdoppler@             ',lines_maxdoppler)
      call parse_input_integer('lines_mode@                   ',lines_mode)
