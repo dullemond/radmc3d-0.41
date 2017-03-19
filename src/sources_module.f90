@@ -1655,8 +1655,8 @@ subroutine sources_find_srcalp_interpol(x,y,z,snu,anu,inclstokes)
      endif
      anu   = epsx1*(epsz1*(epsy1*sources_vertex_anu(ivt000)+epsy*sources_vertex_anu(ivt010)) + &
                     epsz*(epsy1*sources_vertex_anu(ivt001)+epsy*sources_vertex_anu(ivt011))) + &
-             epsx*(epsz1*(epsy1*sources_vertex_anu(ivt00)+epsy*sources_vertex_anu(ivt10)) + &
-                   epsz*(epsy1*sources_vertex_anu(ivt01)+epsy*sources_vertex_anu(ivt11)))
+             epsx*(epsz1*(epsy1*sources_vertex_anu(ivt100)+epsy*sources_vertex_anu(ivt110)) + &
+                   epsz*(epsy1*sources_vertex_anu(ivt101)+epsy*sources_vertex_anu(ivt111)))
      if(sources_catch_doppler_line) then
         sources_local_doppler_curr = &
          epsx1*(epsz1*(epsy1*sources_vertex_doppler(ivt000)+epsy*sources_vertex_doppler(ivt010)) + &
