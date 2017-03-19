@@ -1450,9 +1450,15 @@ subroutine camera_serial_raytrace(nrfreq,inu0,inu1,x,y,z,dx,dy,dz,distance,   &
            !
            ! We use spherical coordinates
            !
-           if(camera_maxdphi.le.0.d0) then
+           if((camera_maxdphi.le.0.d0).or.((.not.camera_secondorder).and. &
+                (.not.dust_2daniso))) then
               !
-              ! Normal case
+              ! If camera_maxdphi is not set to a positive value, then
+              ! do not cut segments (always go from one cell wall to the
+              ! next in one segment). 
+              !
+              ! Same is true if first order integration is used, and the 2-D
+              ! anisotropic scattering mode is not used. 
               !
               call amrray_find_next_location_spher(ray_dsend,           &
                    ray_cart_x,ray_cart_y,ray_cart_z,                    &
