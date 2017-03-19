@@ -468,6 +468,13 @@ subroutine camera_init()
      stop
   endif
   !
+  ! Some further comments:
+  !
+  if((camera_maxdphi.gt.0.d0).and.(igrid_coord.ge.100).and.(igrid_coord.lt.200)) then
+     write(stdo,*) 'Ray-trace segment length limited to ensure maximum delta angle ',&
+                   'w.r.t. origin of ',camera_maxdphi
+  endif
+  !
 end subroutine camera_init
 
 
