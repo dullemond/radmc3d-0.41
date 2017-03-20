@@ -274,6 +274,7 @@ module camera_module
   !
   integer :: cim_nr,cim_np
   double precision, allocatable :: cim_rc(:),cim_ri(:),cim_pc(:),cim_pi(:)
+  double precision, allocatable :: cim_surfarea(:,:)
   !
   !    A new mode for scattering images: the lambda single scattering mode. Default
   !    is 0 (i.e. normal Monte Carlo scattering). If set to 1, then use the
@@ -546,6 +547,7 @@ subroutine camera_cleanup()
   if(allocated(cim_ri)) deallocate(cim_ri)
   if(allocated(cim_pc)) deallocate(cim_pc)
   if(allocated(cim_pi)) deallocate(cim_pi)
+  if(allocated(cim_surfarea)) deallocate(cim_surfarea)
   !
 end subroutine camera_cleanup
 
@@ -6020,7 +6022,7 @@ subroutine setup_pixels_circular(irmin,irmax,nrphiinf,nrext,dbdr,imethod,nrref)
   implicit none
   integer :: irmin,irmax,nrphiinf,nrext,dbdr
   integer :: imethod,nrref
-  integer :: ix,ir,iins,i
+  integer :: ix,ir,iins,i,iphi
   integer :: iradius,nrrextra
   doubleprecision :: epsrrr,refdum1,refdum2,telesc_eps,dr
   parameter(telesc_eps=1d-10)
@@ -6075,8 +6077,10 @@ subroutine setup_pixels_circular(irmin,irmax,nrphiinf,nrext,dbdr,imethod,nrref)
   if(allocated(cim_ri)) deallocate(cim_ri)
   if(allocated(cim_pc)) deallocate(cim_pc)
   if(allocated(cim_pi)) deallocate(cim_pi)
+  if(allocated(cim_surfarea)) deallocate(cim_surfarea)
   allocate(cim_rc(0:cim_nr),cim_ri(0:cim_nr+1))  ! Note: cell 0 = star
   allocate(cim_pc(1:cim_np),cim_pi(1:cim_np+1))
+  allocate(cim_surfarea(0:cim_nr,1:cim_np))
   !
   ! Do some checks
   !
@@ -6110,7 +6114,7 @@ subroutine setup_pixels_circular(irmin,irmax,nrphiinf,nrext,dbdr,imethod,nrref)
      cim_pc(i) = twopi * (i-0.5d0)/cim_np
   enddo
   do i=1,cim_np+1
-     cim_pc(i) = twopi * (i-1.d0)/cim_np
+     cim_pi(i) = twopi * (i-1.d0)/cim_np
   enddo
   !
   ! Now make the r-grid, which must be adapted to the r-grid of the
@@ -6252,6 +6256,17 @@ subroutine setup_pixels_circular(irmin,irmax,nrphiinf,nrext,dbdr,imethod,nrref)
   camera_image_halfsize_y = cim_ri(cim_nr+1)
   camera_image_nx = 0
   camera_image_ny = 0
+  camera_image_nr   = cim_nr
+  camera_image_nphi = cim_np
+  !
+  ! Calculate the surface areas of these "pixels"
+  !
+  do ir=0,camera_image_nr
+     do iphi=1,camera_image_nphi
+        cim_surfarea(ir,iphi) = 0.5d0 * ( cim_ri(ir+1)**2 - cim_ri(ir)**2 ) * &
+             ( cim_pi(iphi+1) - cim_pi(iphi) )
+     enddo
+  enddo
   !
 end subroutine setup_pixels_circular
 
@@ -6341,8 +6356,6 @@ subroutine camera_make_circ_image(nrphiinf,nrext,dbdr,imethod,nrref)
   ! Set up the circular/radial pixel arrangement for the circular image
   ! 
   call setup_pixels_circular(irmin,irmax,nrphiinf,nrext,dbdr,imethod,nrref)
-  camera_image_nr   = cim_nr
-  camera_image_nphi = cim_np
   !
   ! If the dust emission is included, then make sure the dust data,
   ! density and temperature are read. If yes, do not read again.
