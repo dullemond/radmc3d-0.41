@@ -6255,26 +6255,48 @@ end subroutine setup_pixels_circular
 
 !-------------------------------------------------------------------------
 !                         MAKE A CIRCULAR IMAGE
-!                  (BACKWARD COMPATIBILITY WITH RADMC)
+! 
+! In parcicular for models in spherical coordinates it can be useful to
+! arrange the pixels not in x and y, but instead in r and phi. This allows
+! one to automatically adapt to the refining grid toward the origin. It
+! also makes it easier to analyze the results of 1-D models, because you
+! will then merely get intensity as a function of radius instead of the
+! overkill of a full x,y image.
 !-------------------------------------------------------------------------
-subroutine camera_make_circ_image()
+subroutine camera_make_circ_image(tausurf)
   use amr_module
   implicit none
   double precision :: x,y,z,dxx,dyy,dzz,px,py
-  integer :: inu,ix,iy,idxx,idxy,istar,ierr,inu0,inu1,ierror
-  double precision :: pdx,pdy,dz,d2,d3,factor,celldxmin
-  double precision :: dirx,diry,dirz,distance,xbk,ybk,zbk
-  logical :: domc
+  integer :: inu,ix,iy,idxx,idxy,istar,ierr,inu0,inu1,ierror,ispec
+  double precision :: pdx,pdy,dz,d2,d3,factor,celldxmin,quvsq
+  double precision :: dirx,diry,dirz,distance,xbk,ybk,zbk,svcx,svcy,svcz
+  logical :: domc,dotausurf
+  logical, optional :: tausurf
+  character*80 :: strint
+  integer :: iact,icnt,ilinesub
+  logical :: redo
   !
-  ! Some checks
+  ! Circular images are only possible if you use spherical coordinates
   !
-  if(camera_localobserver) then
-     write(stdo,*) 'ERROR: In circular images no local observer perspective allowed'
+  if((igrid_coord.lt.100).or.(igrid_coord.ge.200)) then
+     write(stdo,*) 'ERROR: Circular images only allowed for spherical coordinates.'
      stop
   endif
-  if(.not.allocated(cim_ri)) then
-     write(stdo,*) 'ERROR in circular image generator: please set up pixels first.'
+  !
+  ! Subpixeling not allowed in spherical images
+  !
+  if(camera_diagnostics_subpix) then
+     write(stdo,*) 'ERROR: Subpixeling is not allowed in circular images.'
      stop
+  endif
+  !
+  ! If "tausurf" is set, then the purpose of this subroutine
+  ! changes from being an imager to being a "tau=1 surface finder".
+  ! Default is .false.
+  !
+  dotausurf = .false.
+  if(present(tausurf)) then
+     dotausurf = tausurf
   endif
   !
   ! Do a self-consistency test: for spherical coordinates with 
@@ -6297,11 +6319,94 @@ subroutine camera_make_circ_image()
      endif
   endif
   !
-  ! Let the Monte Carlo module know what mode we have (local observer
+  ! Local observer mode is incompatible with 1-D plane-parallel
+  ! or 2-D pencil-parallel modes
+  !
+  if(camera_localobserver) then
+     if(igrid_coord.eq.10) then 
+        write(stdo,*) 'ERROR: In 1-D plane-parallel mode, no local observer is allowed.'
+        stop
+     endif
+     if(igrid_coord.eq.20) then
+        write(stdo,*) 'ERROR: In 2-D pencil-parallel mode, no local observer is allowed.'
+        stop
+     endif
+  endif
+  !
+  ! If we have 1-D plane-parallel or 2-D pencil-parallel modes, we
+  ! switch off the sub-pixeling. For 1-D this is not necessary anyway.
+  ! For 2-D it might still be necessary, but we will leave it to the
+  ! user to do it by hand - we'll warn.
+  !
+  if(igrid_coord.eq.10) then
+     camera_nrrefine = -1
+  endif
+  if(igrid_coord.eq.20) then
+     if(camera_nrrefine.gt.0) then
+        write(stdo,*) 'WARNING: When using 2-D pencil-parallel coordinates,'
+        write(stdo,*) '         RADMC-3D does not provide an automatic'
+        write(stdo,*) '         subpixeling method (yet). In order to '
+        write(stdo,*) '         ensure flux conservation you must take'
+        write(stdo,*) '         care yourself to have enough resolution'
+        write(stdo,*) '         to resolve all scales in the y-z plane.'
+        write(stdo,*) '         In other words, we now switch to nofluxcons.'
+     endif
+     camera_nrrefine = -1
+  endif
+  !
+  ! If we have 1-D plane-parallel mode, then we always do just a 1x1
+  ! pixel image (it's useless to do more pixels)
+  !
+  if(igrid_coord.eq.10) then
+     camera_image_nx = 1
+     camera_image_ny = 1
+  endif
+  !
+  ! If we have 2-D pencil-parallel mode, then we always do just a 1xN
+  ! pixel image (it's useless to do more pixels)
+  !
+  if(igrid_coord.eq.20) then
+     camera_image_nx = 1
+  endif
+  !
+  ! Since we have two very different modes of observation (one with the 
+  ! observer at infinity, in which the image sizes are specified in cm,
+  ! and one with the observer local, in which the image sizes are specified
+  ! in radians), we must do some checks for self-consistency, because
+  ! the user may easily have forgotten to specify something.
+  !
+  if(img.eq.0) then
+     if(camera_localobserver) then
+        if(camera_image_halfsize_x.gt.10.d0) then
+           write(stdo,*) 'ERROR in camera module: You have chosen the local observer perspective,'
+           write(stdo,*) '      but the image size is still specified in cm instead of radian.'
+           stop
+        endif
+        if((abs(camera_observer_position(1)).ge.1d90).or. &
+             (abs(camera_observer_position(2)).ge.1d90).or. &
+             (abs(camera_observer_position(3)).ge.1d90)) then
+           write(stdo,*) 'ERROR in camera module: You have chosen the local observer perspective,'
+           write(stdo,*) '      but you have not yet specified the 3-D position of the observer.'
+           stop
+        endif
+     else
+        if((igrid_coord.ne.10).and.(igrid_coord.ne.20)) then
+           if(camera_image_halfsize_x.lt.10.d0) then
+              write(stdo,*) 'ERROR in camera module: You have chosen the observer at infinity perspective,'
+              write(stdo,*) '      but the image size is still specified in radian instead of cm (or AU or pc).'
+              stop
+           endif
+        endif
+     endif
+  endif
+  !
+  ! Also let the Monte Carlo module know what mode we have (local observer
   ! or not)
   !
-  mcscat_localobserver = .false.
-  camera_localobserver = .false.
+  mcscat_localobserver = camera_localobserver
+  if(mcscat_localobserver) then
+     mcscat_localobs_pos(1:3) = camera_observer_position(1:3)
+  endif
   !
   ! If the dust emission is included, then make sure the dust data,
   ! density and temperature are read. If yes, do not read again.
@@ -6322,6 +6427,13 @@ subroutine camera_make_circ_image()
      call read_lines_all(1)
   endif
   !
+  ! Do a check
+  !
+  if(rt_incl_lines.and.(lines_maxshift.le.0.d0)) then
+     write(stdo,*) 'INTERNAL ERROR in lines: lines_maxshift variable not set'
+     stop
+  endif
+  !
   ! If gas continuum is included, then make sure the gas continuum
   ! data are read. If yes, then do not read it again.
   !
@@ -6331,11 +6443,71 @@ subroutine camera_make_circ_image()
   !
   ! If lines are active, and if the level populations are to be calculated
   ! beforehand and stored in the big array, then compute them now, if not
-  ! already done.
+  ! already done. 
+  !
+  ! Note: it only stores those levels which are selected in the "subset"
+  ! (see lines_module.f90). The idea of the subset is that to save memory
+  ! you may not want to store all level populations.  Example: A molecule
+  ! may have 30 relevant levels. If you need to store all populations
+  ! globally, then you need 30 x 8 bytes x nrcells of memory. For large
+  ! grids that could be very much. If, however, you wish to only model one
+  ! of the lines, then only 2 level populations have to be stored at each
+  ! point (the upper and the lower level belonging to that line). If you
+  ! select these 2 levels as your "subset" then only these 2 levels will be
+  ! stored in the global lines_levelpop() array, saving a lot of memory. For
+  ! the LVG method all levels are needed *locally* to compute the
+  ! populations, but once these populations are computed, only the 2
+  ! relevant ones are then stored in the *global* array lines_levelpop().
+  !
+  ! You can select this subset manually (in the lines.inp file) or
+  ! automatically (by calling the subroutine
+  ! lines_automatic_subset_selection() in the lines_module.f90).  The latter
+  ! is done just above here.
   !
   if(rt_incl_lines) then
      if((lines_mode.ge.1).and.(lines_mode.le.9)) then
-        call lines_compute_and_store_local_populations(2)
+        !
+        ! Level subset selection
+        !
+        if(lines_autosubset) then
+           !
+           ! If requested, do an automatic subset selection of the
+           ! molecular levels
+           ! 
+           call lines_automatic_subset_selection(camera_nrfreq,     &
+                camera_frequencies,1,camera_nrfreq,lines_maxshift,  &
+                redo)
+           !
+           ! Now force a recomputation of the populations, unless
+           ! "redo" is .false., meaning that we have the same
+           ! levels as before (and thus the population as computed
+           ! before must be still correct). Note that if there
+           ! exists no lines_levelpop() array, then redo will also
+           ! be .true.
+           !
+           if(redo) then
+              iact=2
+           else
+              iact=1
+           endif
+           call lines_compute_and_store_local_populations(iact)
+        else
+           !
+           ! Subset is not automatically selected. So either it has
+           ! been selected manually or not at all (in which case the
+           ! "subset" is the full set of levels).
+           !
+           write(stdo,*) 'Will store level populations for all levels or ',   &
+                'for a manually (in lines.inp) selected subset of levels.'
+           !
+           ! Now compute the populations only if they have not yet been
+           ! computed. If the lines_popul() array is present, we know that
+           ! it contains the correct populations, because the subset
+           ! is fixed by the user (or is the complete set). 
+           !
+           call lines_compute_and_store_local_populations(1)
+           !
+        endif
      endif
   endif
   !
@@ -6343,12 +6515,98 @@ subroutine camera_make_circ_image()
   !
   call camera_init()
   !
+  ! If tau surface mode, then allocate the following arrays, too.
+  ! These give back the 3-D positions of the points on the tau surface.
+  ! The projected position is put into the camera_circ_image_iquv() array.
+  !
+  if(dotausurf) then
+     if(allocated(camera_tausurface_z)) deallocate(camera_tausurface_z)
+     if(allocated(camera_tausurface_y)) deallocate(camera_tausurface_y)
+     if(allocated(camera_tausurface_x)) deallocate(camera_tausurface_x)
+     allocate(camera_tausurface_x(1:camera_image_nx,1:camera_image_ny,1:camera_nrfreq))
+     allocate(camera_tausurface_y(1:camera_image_nx,1:camera_image_ny,1:camera_nrfreq))
+     allocate(camera_tausurface_z(1:camera_image_nx,1:camera_image_ny,1:camera_nrfreq))
+  endif
+  !
+  ! Warnings
+  !
+  if(rt_incl_lines.and.(lines_mode.lt.0).and.(scattering_mode.ne.0)) then
+     write(stdo,*) 'WARNING: Using dust scattering AND line transfer with '
+     write(stdo,*) '         on-the-fly level population determination can'
+     write(stdo,*) '         make RADMC-3D very slow, because dust scattering'
+     write(stdo,*) '         means that the transfer must be done freq-by-freq,'
+     write(stdo,*) '         and thus the populations must be recalculated'
+     write(stdo,*) '         at each freq, which is slowing down the code.'
+     write(stdo,*) '         Various possible solutions:'
+     write(stdo,*) '          1. If possible, switch off dust scattering'
+     write(stdo,*) '             (for instance for far-IR or mm wavelengths)'
+     write(stdo,*) '             by setting scattering_mode_max=0 in radmc3d.inp'
+     write(stdo,*) '          2. Use not-on-the-fly populations (lines_mode>0)'
+     write(stdo,*) '             [at the moment this mode is still in prep]'
+  endif
+  !
   ! Check
   !
   if(camera_nrfreq.lt.1) then
      write(stdo,*) 'ERROR in camera module: camera frequency array'
-     write(stdo,*) '      not set when calling camera_make_rect_image()'
+     write(stdo,*) '      not set when calling camera_make_circ_image()'
      stop
+  endif
+  if((camera_image_nx.le.0).or.(camera_image_ny.le.0)) then
+     write(stdo,*) 'ERROR in camera module: must have >=1 values for'
+     write(stdo,*) '    camera_image_nx and camera_image_ny'
+     stop
+  endif
+  if((camera_refine_criterion.le.0.d0).and.(camera_nrrefine.gt.0)) then
+     write(stdo,*) 'ERROR in camera module: must set the camera_refine_criterion'
+     write(stdo,*) '      when making flux-conserving images.'
+     stop
+  endif
+  if(img.gt.0) then
+     if(.not.allocated(cameras_pt_pos)) then
+        write(stdo,*) 'ERROR in camera module: multiple image arrays not'
+        write(stdo,*) '      yet allocated.'
+        stop
+     endif
+     if(img.gt.cameras_nr_images) then
+        write(stdo,*) 'ERROR in camera module: asked to make image nr ',img,&
+             ' but that is beyond cameras_nr_images.'
+        stop
+     endif
+  endif
+  !
+  ! If using multiple images, then we copy all the info to the relevant
+  ! arrays here.
+  !
+  if(img.gt.0) then
+     !
+     ! Get the data from the movie arrays, and perform some basic
+     ! checks.
+     !
+     camera_pointing_position(1:3)   = cameras_pt_pos(1:3,img)    
+     camera_image_halfsize_x         = cameras_img_hs_x(img)    
+     camera_image_halfsize_y         = cameras_img_hs_y(img)    
+     camera_zoomcenter_x             = cameras_zmc_x(img)
+     camera_zoomcenter_y             = cameras_zmc_y(img)
+     camera_pointing_degr_posang     = cameras_pt_degr_pa(img)  
+     if(camera_localobserver) then
+        camera_observer_position(1:3)   = cameras_obs_pos(1:3,img)   
+        if((camera_image_halfsize_x.gt.10.d0).or. &
+           (camera_image_halfsize_y.gt.10.d0)) then
+           write(stdo,*) 'ERROR in camera module: You have chosen the local observer perspective,'
+           write(stdo,*) '      but the image size is still specified in cm instead of radian.'
+           stop
+        endif
+     else
+        camera_observer_degr_theta      = cameras_obs_degr_th(img) 
+        camera_observer_degr_phi        = cameras_obs_degr_ph(img) 
+        if((camera_image_halfsize_x.lt.10.d0).or. &
+           (camera_image_halfsize_y.lt.10.d0)) then
+           write(stdo,*) 'ERROR in camera module: You have chosen the observer at infinity perspective,'
+           write(stdo,*) '      but the image size is still specified in radian instead of cm (or AU or pc).'
+           stop
+        endif
+     endif
   endif
   !
   ! Check
@@ -6358,15 +6616,66 @@ subroutine camera_make_circ_image()
      stop
   endif
   !
-  ! For the camera-at-infinity view the angles are given and the
-  ! cos and sin can be calculated easily
+  ! For now the flux-conserving ray-tracing is not yet implemented for
+  ! local-observer perspective
   !
-  camera_pointing_cos_posang  = cos(camera_pointing_degr_posang*pi/180.)
-  camera_pointing_sin_posang  = sin(camera_pointing_degr_posang*pi/180.)
-  camera_observer_cos_theta   = cos(camera_observer_degr_theta*pi/180.)
-  camera_observer_sin_theta   = sin(camera_observer_degr_theta*pi/180.)
-  camera_observer_cos_phi     = cos(camera_observer_degr_phi*pi/180.)
-  camera_observer_sin_phi     = sin(camera_observer_degr_phi*pi/180.)
+  if(camera_localobserver) then
+     if(camera_nrrefine.gt.0) then
+        write(stdo,*) 'ERROR: For the local observer viewing mode the '
+        write(stdo,*) '       flux-conserving ray-tracing is not yet available.'
+        stop
+     endif
+  endif
+  !
+  ! Pre-compute cosines and sines
+  !
+  if(camera_localobserver) then
+     !
+     ! For the local perspective view the angles must first be calculated
+     !
+     camera_pointing_cos_posang  = cos(camera_pointing_degr_posang*pi/180.)
+     camera_pointing_sin_posang  = sin(camera_pointing_degr_posang*pi/180.)
+     dxx = camera_pointing_position(1) - camera_observer_position(1)
+     dyy = camera_pointing_position(2) - camera_observer_position(2)
+     dzz = camera_pointing_position(3) - camera_observer_position(3)
+     d3 = sqrt( dxx**2 + dyy**2 + dzz**2 )
+     d2 = sqrt( dxx**2 + dyy**2 )
+     if(d3.eq.0.d0) then
+        write(stdo,*) 'ERROR in camera module: observer and pointing positions'
+        write(stdo,*) '      are identical. Cannot computing pointing direction.'
+        stop
+     endif
+     camera_observer_sin_theta   = d2/d3
+     camera_observer_cos_theta   = sqrt(1.d0-camera_observer_sin_theta**2)
+     if(camera_observer_position(3).lt.camera_pointing_position(3)) then
+        camera_observer_cos_theta   = -camera_observer_cos_theta
+     endif
+     if(d2.gt.0.d0) then
+        camera_observer_sin_phi     = dxx/d2
+        camera_observer_cos_phi     = dyy/d2
+     else
+        camera_observer_sin_phi     = 0.d0
+        camera_observer_cos_phi     = 1.d0
+     endif
+  else
+     !
+     ! For the camera-at-infinity view the angles are given and the
+     ! cos and sin can be calculated easily
+     !
+     camera_pointing_cos_posang  = cos(camera_pointing_degr_posang*pi/180.)
+     camera_pointing_sin_posang  = sin(camera_pointing_degr_posang*pi/180.)
+     camera_observer_cos_theta   = cos(camera_observer_degr_theta*pi/180.)
+     camera_observer_sin_theta   = sin(camera_observer_degr_theta*pi/180.)
+     camera_observer_cos_phi     = cos(camera_observer_degr_phi*pi/180.)
+     camera_observer_sin_phi     = sin(camera_observer_degr_phi*pi/180.)
+  endif
+  !
+  ! For now we do not allow local observer if scattering is switched on
+  !
+  if((scattering_mode.gt.0).and.camera_localobserver) then
+     write(stdo,*) 'ERROR: Monte Carlo scattering not yet implemented with local observer...'
+     stop
+  endif
   !
   ! For now we do not allow multiple vantage points
   !
@@ -6380,23 +6689,91 @@ subroutine camera_make_circ_image()
   domc = .false.
   if(scattering_mode.ge.1) then
      !
+     ! For now scattering is not allowed in local observer mode
+     !
+     if(camera_localobserver) then
+        write(stdo,*) 'ERROR: At the moment scattering is not'
+        write(stdo,*) '       allowed for local observer mode.'
+        stop
+     endif
+     !
      ! Compute the direction vector of the observer. Start with (0,0,1).
-     ! Actually this is only necessary for scattering_mode.gt.1, but alas.
+     ! Actually this is only necessary for scattering_mode.ge.2, but alas.
      !
      dirx = 0.d0
      diry = 0.d0
      dirz = 1.d0
+     !
+     ! A rotation in the y,z plane, i.e. going from pole-on
+     ! to more face-on (if a disk is assumed to be present in the x-y plane)
+     !
      ybk  = diry
      zbk  = dirz
      diry = camera_observer_cos_theta * ybk - camera_observer_sin_theta * zbk
      dirz = camera_observer_sin_theta * ybk + camera_observer_cos_theta * zbk
+     !
+     ! Then a rotation in the x,y plane, rotating horizontally around
+     ! the object. If the camera looks toward the object, then the
+     ! camera now moves to the left (clockwise around the object).
+     !
      xbk  = dirx
      ybk  = diry
      dirx = camera_observer_cos_phi * xbk + camera_observer_sin_phi * ybk
      diry =-camera_observer_sin_phi * xbk + camera_observer_cos_phi * ybk
+     !
+     ! Checks
+     !
      if(abs(dirx**2+diry**2+dirz**2-1.d0).gt.1d-6) then
         write(stdo,*) 'ERROR in camera module: direction vector not OK.'
         write(stdo,*) dirx,diry,dirz
+        stop
+     endif
+     !
+     ! Compute the S-vector of observer for polarization. Start with (0,1,0).
+     ! Actually this is only necessary for scattering_mode.ge.4, but it
+     ! never hurts.
+     !
+     svcx = 0.d0
+     svcy = 1.d0
+     svcz = 0.d0
+     !
+     ! Rotate camera along its axis 
+     !
+     ! Note that the camera is rotated in clockwise direction, so any
+     ! image is rotated in counter-clockwise direction on the CCD
+     !
+     xbk  = svcx
+     ybk  = svcy
+     svcx = camera_pointing_cos_posang * xbk + camera_pointing_sin_posang * ybk
+     svcy =-camera_pointing_sin_posang * xbk + camera_pointing_cos_posang * ybk
+     !
+     ! Then a rotation in the y,z plane, i.e. going from pole-on
+     ! to more face-on (if a disk is assumed to be present in the x-y plane)
+     !
+     ybk  = svcy
+     zbk  = svcz
+     svcy = camera_observer_cos_theta * ybk - camera_observer_sin_theta * zbk
+     svcz = camera_observer_sin_theta * ybk + camera_observer_cos_theta * zbk
+     !
+     ! Then a rotation in the x,y plane, rotating horizontally around
+     ! the object. If the camera looks toward the object, then the
+     ! camera now moves to the left (clockwise around the object).
+     !
+     xbk  = svcx
+     ybk  = svcy
+     svcx = camera_observer_cos_phi * xbk + camera_observer_sin_phi * ybk
+     svcy =-camera_observer_sin_phi * xbk + camera_observer_cos_phi * ybk
+     !
+     ! Checks
+     !
+     if(abs(svcx**2+svcy**2+svcz**2-1.d0).gt.1d-6) then
+        write(stdo,*) 'ERROR in camera module: S-vector not OK.'
+        write(stdo,*) svcx,svcy,svcz
+        stop
+     endif
+     if(abs(svcx*dirx+svcy*diry+svcz*dirz).gt.1d-6) then
+        write(stdo,*) 'INTERNAL ERROR: Somehow the S-vector is not '
+        write(stdo,*) '  perpendicular to the direction vector... Warn author.'
         stop
      endif
      !
@@ -6436,17 +6813,118 @@ subroutine camera_make_circ_image()
   ! For now allow only one single direction (i.e. one single vantage point)
   !
   if(domc.and.(scattering_mode.gt.1)) then
+     if((igrid_coord.ge.100).and.(amr_dim.ne.3)) then
+        !
+        ! Special case: 2D axisymmetric model in spherical coordinate
+        ! but with full scattering mode (only possible for scattering_mode.ge.5).
+        !
+        if(amr_dim.eq.1) then
+           write(stdo,*) 'ERROR: scattering_mode.ge.2 is incompatible with'
+           write(stdo,*) '       1-D spherical coordinates.'
+           stop
+        endif
+        if(scattering_mode.lt.5) then
+           write(stdo,*) 'ERROR: scattering_mode.lt.5 is incompatible with'
+           write(stdo,*) '       2-D spherical coordinates.'
+           stop
+        endif
+        if(camera_secondorder) then
+           write(stdo,*) 'ERROR: At the moment the 2-D axisymmetric full-scattering mode is not yet'
+           write(stdo,*) '       compatible with second order ray-tracing... :-('
+           stop
+        endif
+        !
+        ! Switch on the special treatment
+        !
+        dust_2daniso = .true.
+        !
+        ! Extend the scattering source array to dust_2daniso_nphi + 1 phi-angle
+        ! points starting with phi=0 and ending with phi=360 degrees
+        !
+        mcscat_nrdirs = dust_2daniso_nphi + 1
+        !
+        ! Make sure that the ray tracing cannot make larger steps
+        ! than a maximum angle wrt the origin. Reason: for near edge-on
+        ! views a ray could otherwise pass through a cell (=annulus) 
+        ! almost along the annulus tube, and change phi angle too much,
+        ! thereby skipping intermediate angles. That is bad for the 
+        ! interpolation of the scattering source function.
+        !
+        if(camera_maxdphi.eq.0.d0) then
+           write(stdo,*) 'WARNING: 2-D anisotropic scattering without camera_maxdphi set... Dangerous.'
+        endif
+        if(camera_maxdphi.gt.twopi/dust_2daniso_nphi) then
+           camera_maxdphi = twopi / dust_2daniso_nphi
+        endif
+        if(camera_maxdphi.ge.0.5d0) camera_maxdphi=0.5d0
+        !
+        ! Message
+        !
+        write(stdo,*) 'Note: Using 2-D full-phase scattering mode. This requires a bit of extra memory.'
+     else
+        !
+        ! Normal case (3-D)
+        !
+        mcscat_nrdirs = 1
+     endif
+     !
+     ! Make the scattering direction the same as the direction of
+     ! viewing. 
+     ! For now allow only one single direction (i.e. one single vantage point)
+     !
+     ! NOTE: For 2-D axisymmetric models in spherical coordinates, we
+     !       do things in a special way: we reserve mcscat_nrdirs 
+     !       "directions", which are in fact all the same, but for
+     !       the scattering source function we will set the scattering
+     !       event at different positions. 
+     !
      if(allocated(mcscat_dirs)) deallocate(mcscat_dirs)
-     allocate(mcscat_dirs(1:3,1:1),STAT=ierr)
+     allocate(mcscat_dirs(1:3,1:mcscat_nrdirs),STAT=ierr)
      if(ierr.gt.0) then
         write(stdo,*) 'ERROR: Could not allocate mcscat_dirs()'
         stop
      endif
-     mcscat_nrdirs = 1
      mcscat_current_dir = 1
-     mcscat_dirs(1,1:1) = dirx
-     mcscat_dirs(2,1:1) = diry
-     mcscat_dirs(3,1:1) = dirz
+     mcscat_dirs(1,1:mcscat_nrdirs) = dirx
+     mcscat_dirs(2,1:mcscat_nrdirs) = diry
+     mcscat_dirs(3,1:mcscat_nrdirs) = dirz
+     !
+     ! For convenience, store this also here in the camera module
+     ! (works only for a single vantage point)
+     !
+     camera_dir(1) = dirx
+     camera_dir(2) = diry
+     camera_dir(3) = dirz
+     !
+     ! In case you want to include polarization, we set also the
+     ! S-vectors, which will be perpendicular to the direction 
+     ! vector, and pointing vertically upward in the image plane.
+     !
+     if(allocated(mcscat_svec)) deallocate(mcscat_svec)
+     allocate(mcscat_svec(1:3,1:mcscat_nrdirs),STAT=ierr)
+     if(ierr.gt.0) then
+        write(stdo,*) 'ERROR: Could not allocate mcscat_svec()'
+        stop
+     endif
+     mcscat_svec(1,1:mcscat_nrdirs) = svcx
+     mcscat_svec(2,1:mcscat_nrdirs) = svcy
+     mcscat_svec(3,1:mcscat_nrdirs) = svcz
+     !
+     ! For convenience, store this also here in the camera module
+     ! (works only for a single vantage point)
+     !
+     camera_svec(1) = svcx
+     camera_svec(2) = svcy
+     camera_svec(3) = svcz
+     !
+     ! But mirror symmetry is not allowed for anisotropic scattering
+     !
+     if((igrid_coord.ge.100).and.(igrid_coord.le.199)) then
+        if(igrid_mirror.ne.0) then
+           write(stdo,*) 'ERROR: Mirror symmetry not compatible with anisotropic scattering.'
+           stop
+        endif
+     endif
   endif
   !
   ! Compute pixel size.
@@ -6456,6 +6934,21 @@ subroutine camera_make_circ_image()
   !
   pdx = 2*camera_image_halfsize_x / (1.d0*camera_image_nx)
   pdy = 2*camera_image_halfsize_y / (1.d0*camera_image_ny)
+  !
+  ! If the tausurface mode is on, then allocate some arrays
+  !
+  if(dotausurf) then
+     if(allocated(camera_dstop)) deallocate(camera_dstop)
+     if(allocated(camera_zstop)) deallocate(camera_zstop)
+     if(allocated(camera_ystop)) deallocate(camera_ystop)
+     if(allocated(camera_xstop)) deallocate(camera_xstop)
+     if(allocated(camera_taustop)) deallocate(camera_taustop)
+     allocate(camera_taustop(camera_nrfreq))
+     allocate(camera_xstop(camera_nrfreq))
+     allocate(camera_ystop(camera_nrfreq))
+     allocate(camera_zstop(camera_nrfreq))
+     allocate(camera_dstop(camera_nrfreq))
+  endif
   !
   ! Reset flag
   !
@@ -6522,6 +7015,17 @@ subroutine camera_make_circ_image()
                                           scatsrc=.true.)
            write(stdo,*) 'Average number of scattering events per photon package = ', &
                       ieventcounttot/(1.d0*rt_mcparams%nphot_scat)
+           !
+           ! If the Monte Carlo settings are very conservative, then give a warning
+           ! that you may want to change this (but at your own risk). 
+           !
+           if(mc_scat_maxtauabs.gt.5.d0) then
+              write(stdo,*) 'Tip for speed-up: By default the settings of RADMC-3D are conservative (i.e. safe but slow).'
+              write(stdo,*) '   A photon package in monochromatic Monte Carlo is only destroyed after tau_abs = ',mc_scat_maxtauabs
+              write(stdo,*) '   In most cases, however, an optical depth limit of 5 is enough.'
+              write(stdo,*) '   You can (though at your own risk) speed this up by adding the following line to radmc3d.inp:'
+              write(stdo,*) '   mc_scat_maxtauabs = 5.d0'
+           endif
         elseif(camera_lambda_starlight_single_scat_mode.eq.1) then
            call do_lambda_starlight_single_scattering(rt_mcparams,ierror,scatsrc=.true.)
         else
@@ -6536,15 +7040,15 @@ subroutine camera_make_circ_image()
      ! nevertheless, as it will not hurt.
      !
      if(rt_incl_lines) then
-     ! ------------------------------------------------------------------
-     ! Attila Juhasz
-     ! lines_find_active_lines_leves -> if all energy levels are known - leiden
-     ! format for line data
-     ! lines_find_active_lines_linelist -> for linelist mode
-     ! ------------------------------------------------------------------
-     !   call lines_find_active_lines_levels(camera_nrfreq,             &
-     !                   camera_frequencies,inu0,inu1,lines_maxshift)
-     !
+        ! ------------------------------------------------------------------
+        ! Attila Juhasz
+        ! lines_find_active_lines_leves -> if all energy levels are known - leiden
+        ! format for line data
+        ! lines_find_active_lines_linelist -> for linelist mode
+        ! ------------------------------------------------------------------
+        !   call lines_find_active_lines_levels(camera_nrfreq,             &
+        !                   camera_frequencies,inu0,inu1,lines_maxshift)
+        !
         if(lines_maxnrlevels.gt.0) then
            call lines_find_active_lines_levels(camera_nrfreq,             &
                 camera_frequencies,inu0,inu1,lines_maxshift)
@@ -6552,8 +7056,17 @@ subroutine camera_make_circ_image()
            call lines_find_active_lines_linelist(camera_nrfreq,             &
                 camera_frequencies,inu0,inu1,lines_maxshift)
         endif
-
-     ! ------------------------------------------------------------------
+        ! ------------------------------------------------------------------
+     endif
+     !
+     ! Message
+     !
+     if(inu0.eq.inu1) then
+        write(stdo,*) 'Ray-tracing image for lambda = ', &
+                1d4*cc/camera_frequencies(inu0),' micron...'
+     else
+        call integer_to_string(abs(inu1-inu0)+1,strint)
+        write(stdo,*) 'Ray-tracing images: all '//trim(strint)//' wavelength at once...'
      endif
      !
      ! Now make the image at all wavelengths simultaneously
@@ -6564,8 +7077,8 @@ subroutine camera_make_circ_image()
      !
      ! Multi-wavelength Method 2:
      !
-     ! Scattering is included, so we need the scattering source function. Since this 
-     ! array is easily too big to be stored for all wavelengths. In this method we
+     ! If scattering is included, we need the scattering source function. Since this 
+     ! array is easily too big to be stored for all wavelengths: In this method we
      ! compute the scattering source function for each frequency separately, and then
      ! make the corresponding image, and then go to the next frequency.
      !
@@ -6591,24 +7104,61 @@ subroutine camera_make_circ_image()
      ! Do a loop over all camera frequencies
      !
      do inu0=1,camera_nrfreq
+        !
+        ! Set this by default
+        !
         inu1=inu0
         !
-        ! Set the wavelength for the Monte Carlo scattering simulation
+        ! If we must do Monte Carlo, then do this
         !
-        mc_frequencies(1) = camera_frequencies(inu0)
-        !
-        ! Message
-        !
-        write(stdo,*) 'Doing scattering Monte Carlo simulation for lambda = ', &
+        if(domc) then
+           !
+           ! Set the wavelength for the Monte Carlo scattering simulation
+           !
+           mc_frequencies(1) = camera_frequencies(inu0)
+           !
+           ! Message
+           !
+           write(stdo,*) 'Doing scattering Monte Carlo simulation for lambda = ', &
                 1d4*cc/mc_frequencies(1),' micron...'
-        call flush(stdo)
-        !
-        ! Call the single wavelength Monte Carlo module
-        !
-        call do_monte_carlo_scattering(rt_mcparams,ierror,do_resetseed,&
-                                       scatsrc=.true.)
-        write(stdo,*) 'Average number of scattering events per photon package = ', &
+           call flush(stdo)
+           !
+           ! Call the single wavelength Monte Carlo module
+           !
+           if(camera_lambda_starlight_single_scat_mode.eq.0) then
+              call do_monte_carlo_scattering(rt_mcparams,ierror,do_resetseed,&
+                                             scatsrc=.true.)
+              write(stdo,*) 'Average number of scattering events per photon package = ', &
                       ieventcounttot/(1.d0*rt_mcparams%nphot_scat)
+              !
+              ! If the Monte Carlo settings are very conservative, then give a warning
+              ! that you may want to change this (but at your own risk). 
+              !
+              if(mc_scat_maxtauabs.gt.5.d0) then
+                 write(stdo,*) 'Tip for speed-up: By default the settings of RADMC-3D are conservative ', &
+                      '(i.e. safe but slow).'
+                 write(stdo,'(A68,A16,F6.2)') '   A photon package in monochromatic Monte Carlo is only destroyed ', &
+                      'after tau_abs = ',mc_scat_maxtauabs
+                 write(stdo,*) '   In most cases, however, an optical depth limit of 5 is enough.'
+                 write(stdo,*) '   You can (though at your own risk) speed this up by adding the following ', &
+                      'line to radmc3d.inp:'
+                 write(stdo,*) '   mc_scat_maxtauabs = 5.d0'
+              else
+                 if(mc_scat_maxtauabs.gt.2.d0) then
+                    write(stdo,'(A36,F6.2,A36)') ' Warning: Using mc_scat_maxtauabs = ',mc_scat_maxtauabs, &
+                         ' (this is fine, but be aware of it).'
+                 else
+                    write(stdo,'(A36,F6.2,A34)') ' ERROR: Using mc_scat_maxtauabs = ',mc_scat_maxtauabs, &
+                         ': This is too low...'
+                 endif
+              endif
+           elseif(camera_lambda_starlight_single_scat_mode.eq.1) then
+              call do_lambda_starlight_single_scattering(rt_mcparams,ierror,scatsrc=.true.)
+           else
+              write(stdo,*) 'Lambda single scattering mode cannot be other than 0 or 1 for now.'
+              stop 8762
+           endif
+        endif
         !
         ! Pre-compute which lines and which levels for line transfer may
         ! contribute to these wavelengths. Note that this only has to be
@@ -6616,6 +7166,9 @@ subroutine camera_make_circ_image()
         ! nevertheless, as it will not hurt.
         !
         if(rt_incl_lines) then
+           !
+           ! Check which lines to include
+           !
            ! ------------------------------------------------------------------
            ! Attila Juhasz
            ! lines_find_active_lines_leves -> if all energy levels are known - leiden
@@ -6634,13 +7187,99 @@ subroutine camera_make_circ_image()
             endif
 
            ! ------------------------------------------------------------------
-
+           !
+           ! If camera_catch_doppler_line.eq..true., then allocate the
+           ! corner-based line quantities
+           !
+           if(camera_catch_doppler_line) then
+              if(allocated(sources_vertex_line_nup)) then
+                 deallocate(sources_local_line_ndown_curr)
+                 deallocate(sources_local_line_nup_curr)
+                 deallocate(sources_local_line_ndown_prev)
+                 deallocate(sources_local_line_nup_prev)
+                 deallocate(sources_local_line_ndown_end)
+                 deallocate(sources_local_line_nup_end)
+                 deallocate(sources_cell_line_ndown)
+                 deallocate(sources_cell_line_nup)
+                 deallocate(sources_vertex_line_ndown)
+                 deallocate(sources_vertex_line_nup)
+              endif
+              sources_vertex_lines_nractivetot = 0
+              do ispec=1,lines_nr_species
+                 sources_vertex_lines_nractivetot = sources_vertex_lines_nractivetot + &
+                      active_nrlines(ispec)
+              enddo
+              allocate(sources_vertex_line_nup(1:sources_vertex_lines_nractivetot,1:amr_nr_vertices_max))
+              allocate(sources_vertex_line_ndown(1:sources_vertex_lines_nractivetot,1:amr_nr_vertices_max))
+              allocate(sources_cell_line_nup(1:sources_vertex_lines_nractivetot,1:amr_nr_vertices_max))
+              allocate(sources_cell_line_ndown(1:sources_vertex_lines_nractivetot,1:amr_nr_vertices_max))
+              allocate(sources_local_line_nup_curr(1:sources_vertex_lines_nractivetot))
+              allocate(sources_local_line_ndown_curr(1:sources_vertex_lines_nractivetot))
+              allocate(sources_local_line_nup_prev(1:sources_vertex_lines_nractivetot))
+              allocate(sources_local_line_ndown_prev(1:sources_vertex_lines_nractivetot))
+              allocate(sources_local_line_nup_end(1:sources_vertex_lines_nractivetot))
+              allocate(sources_local_line_ndown_end(1:sources_vertex_lines_nractivetot))
+           endif
+        endif
+        !
+        ! Message
+        !
+        write(stdo,*) 'Ray-tracing image for lambda = ', &
+                1d4*cc/camera_frequencies(inu0),' micron...'
+        !
+        ! If we do second order integration of the transfer equation,
+        ! we must compute the emissivities at the corner points of the
+        ! cells (the vertex grid). 
+        !
+        if(camera_secondorder) then
+           !
+           ! Set some flags and values
+           !
+           sources_localobserver = camera_localobserver
+           !
+           ! Do some preparations 
+           !
+           if(.not.camera_localobserver) then
+              !
+              ! Set the direction vector, if observer is at infinity
+              ! 
+              ! Note: this is necessary only for the inclusion of the scattering
+              !       source function from the Monte Carlo module. This is
+              !       anyway unavailable for local observer mode. 
+              !
+              dirx = 0.d0
+              diry = 0.d0
+              dirz = 1.d0
+              ybk  = diry
+              zbk  = dirz
+              diry = camera_observer_cos_theta * ybk - camera_observer_sin_theta * zbk
+              dirz = camera_observer_sin_theta * ybk + camera_observer_cos_theta * zbk
+              xbk  = dirx
+              ybk  = diry
+              dirx = camera_observer_cos_phi * xbk + camera_observer_sin_phi * ybk
+              diry =-camera_observer_sin_phi * xbk + camera_observer_cos_phi * ybk
+              if(abs(dirx**2+diry**2+dirz**2-1.d0).gt.1d-6) then
+                 write(stdo,*) 'ERROR in camera module: direction vector not OK.'
+                 write(stdo,*) dirx,diry,dirz
+                 stop
+              endif
+              ray_cart_dirx = dirx
+              ray_cart_diry = diry
+              ray_cart_dirz = dirz
+           else
+              !
+              ! Local observer mode, so set the observer position
+              !
+              sources_observer_position(:) = camera_observer_position(:)
+           endif
+           !
+           ! Then call the subroutine
+           !
+           call sources_compute_snualphanu_at_vertices(inu0,camera_stokesvector)
         endif
         !
         ! Now make the image for this wavelength only
         !
-        write(stdo,*) 'Making image for lambda = ', &
-                1d4*cc/mc_frequencies(1),' micron...'
         call camera_make_circ_image_sub(inu0,inu1)
         !
      enddo
@@ -6657,6 +7296,25 @@ subroutine camera_make_circ_image()
      write(stdo,*) '    Tip: Use fluxcons argument in command line.'
   endif
   !
+  ! Close (if necessary) the "subpixeling_diagnostics.out" file
+  ! and switch this diagnostics off, so that it won't do this each
+  ! image in case you render a spectrum or SED.
+  !
+  if(camera_diagnostics_subpix) then
+     close(10)
+     camera_diagnostics_subpix = .false.
+  endif
+  !
+  ! If the tausurface mode is on, then deallocate some arrays
+  !
+  if(dotausurf) then
+     if(allocated(camera_dstop)) deallocate(camera_dstop)
+     if(allocated(camera_zstop)) deallocate(camera_zstop)
+     if(allocated(camera_ystop)) deallocate(camera_ystop)
+     if(allocated(camera_xstop)) deallocate(camera_xstop)
+     if(allocated(camera_taustop)) deallocate(camera_taustop)
+  endif
+  !
   !--------------------------------------------------------------
   !        A sub-subroutine for making the image
   !--------------------------------------------------------------
@@ -6665,55 +7323,179 @@ subroutine camera_make_circ_image()
   subroutine camera_make_circ_image_sub(inu00,inu11)
     implicit none
     integer :: inu00,inu11
+    integer :: inuu
+    integer :: backup_nrrefine,backup_tracemode
+    logical :: warn_tausurf_problem,flag_quv_too_big
     !
     ! Reset some non-essential counters
     !
     camera_subpixeling_npixfine = 0
     camera_subpixeling_npixtot  = 0
     !
-    ! Compute the intensity of all pixels
+    ! Here we decide whether to make a "normal" image or
+    ! whether we find the tau=1 surface 
     !
-    do iy=1,camera_image_ny
-       do ix=1,camera_image_nx
-          !
-          ! Set the ray variables
-          !
-          px = camera_zoomcenter_x + ((ix-1)-(0.5d0*(camera_image_nx-1)))*pdx
-          py = camera_zoomcenter_y + ((iy-1)-(0.5d0*(camera_image_ny-1)))*pdy
-          !
-          ! Now compute the intensity of this pixel
-          !
-          ! Note that if nrrefine>0 this routine will call itself
-          ! recursively until a desired spatial resolution is acquired
-          ! so as to guarantee that all flux is picked up, but this
-          ! recursion is limited to nrrefine depth levels.
-          !
-          call camera_compute_one_pixel(camera_nrfreq,inu00,inu11,px,py,pdx,pdy,    &
-                                        camera_nrrefine,camera_intensity_iquv,-1)
-          !
-          ! Put the result into the image array
-          !
-          camera_rect_image_iquv(ix,iy,inu00:inu11,1) = camera_intensity_iquv(inu00:inu11,1)
-          if(camera_stokesvector) then
-             camera_rect_image_iquv(ix,iy,inu00:inu11,2) = camera_intensity_iquv(inu00:inu11,2)
-             camera_rect_image_iquv(ix,iy,inu00:inu11,3) = camera_intensity_iquv(inu00:inu11,3)
-             camera_rect_image_iquv(ix,iy,inu00:inu11,4) = camera_intensity_iquv(inu00:inu11,4)
-          endif
-          !
+    if(.not.dotausurf) then
+       !
+       ! Make a "normal" image, i.e. compute the intensity of all pixels
+       !
+       ! *** NEAR FUTURE: PUT OPENMP DIRECTIVES HERE (START) ***
+       !
+       flag_quv_too_big = .false.
+       do iy=1,camera_image_ny
+          do ix=1,camera_image_nx
+             !
+             ! Set the ray variables
+             !
+             px = camera_zoomcenter_x + ((ix-1)-(0.5d0*(camera_image_nx-1)))*pdx
+             py = camera_zoomcenter_y + ((iy-1)-(0.5d0*(camera_image_ny-1)))*pdy
+             !
+             ! Now compute the intensity of this pixel
+             !
+             ! Note that if nrrefine>0 this routine will call itself
+             ! recursively until a desired spatial resolution is acquired
+             ! so as to guarantee that all flux is picked up, but this
+             ! recursion is limited to nrrefine depth levels.
+             !
+             call camera_compute_one_pixel(camera_nrfreq,inu00,inu11,px,py,pdx,pdy,    &
+                                           camera_nrrefine,camera_intensity_iquv,-1)
+             !
+             ! Put the result into the image array
+             !
+             camera_circ_image_iquv(ix,iy,inu00:inu11,1) = camera_intensity_iquv(inu00:inu11,1)
+             if(camera_stokesvector) then
+                !
+                ! Copy also the other Stokes components
+                !
+                camera_circ_image_iquv(ix,iy,inu00:inu11,2) = camera_intensity_iquv(inu00:inu11,2)
+                camera_circ_image_iquv(ix,iy,inu00:inu11,3) = camera_intensity_iquv(inu00:inu11,3)
+                camera_circ_image_iquv(ix,iy,inu00:inu11,4) = camera_intensity_iquv(inu00:inu11,4)
+                !
+                ! Self-consistency check
+                !
+                do inuu=inu00,inu11
+                   quvsq = camera_intensity_iquv(inuu,2)**2 + &
+                           camera_intensity_iquv(inuu,3)**2 + &
+                           camera_intensity_iquv(inuu,4)**2
+                   if(quvsq.gt.0.d0) then
+                      if(camera_intensity_iquv(inuu,1).eq.0.d0) then
+                         write(stdo,*) 'INTERNAL ERROR: Q^2+U^2+V^2>0 but I=0...'
+                         write(stdo,*) '    Warn author.'
+                         stop
+                      endif
+                      quvsq = quvsq / camera_intensity_iquv(inuu,1)**2
+                      if(quvsq.gt.1.000001d0) then
+                         flag_quv_too_big = .true.
+                      endif
+                   endif
+                enddo
+             endif
+             !
+          enddo
        enddo
-    enddo
+       if(flag_quv_too_big) then
+          write(stdo,*) 'WARNING: While making an image, I found an instance of Q^2+U^2+V^2>I^2...'
+       endif
+       !
+       ! *** NEAR FUTURE: PUT OPENMP DIRECTIVES HERE (FINISH) ***
+       !
+    else
+       !
+       ! Find the tau=1 surface (or any tau=tausurf surface)
+       !
+       ! Set the nrrefine to 0, and set the camera_tracemode to -3
+       !
+       backup_nrrefine  = camera_nrrefine
+       backup_tracemode = camera_tracemode
+       camera_nrrefine  = 0
+       camera_tracemode = -3
+       !
+       warn_tausurf_problem = .false.
+       !
+       do iy=1,camera_image_ny
+          do ix=1,camera_image_nx
+             !
+             ! Set the ray variables
+             !
+             px = camera_zoomcenter_x + ((ix-1)-(0.5d0*(camera_image_nx-1)))*pdx
+             py = camera_zoomcenter_y + ((iy-1)-(0.5d0*(camera_image_ny-1)))*pdy
+             !
+             ! Reset the camera_xyzsstop
+             !
+             camera_taustop(inu00:inu11) = 1d91
+             camera_xstop(inu00:inu11)   = -1d91
+             camera_ystop(inu00:inu11)   = -1d91
+             camera_zstop(inu00:inu11)   = -1d91
+             camera_dstop(inu00:inu11)   = -1d91
+             !
+             ! Now do a first ray trace, to find the total optical depth
+             !
+             call camera_compute_one_pixel(camera_nrfreq,inu00,inu11,px,py,pdx,pdy,    &
+                                           camera_nrrefine,camera_intensity_iquv,-1)
+             !
+             ! Check if anywhere the optical depth goes beyond 1d14*camera_tausurface
+             !
+             do inuu=inu00,inu11
+                if(camera_intensity_iquv(inuu,1).gt.1d14*camera_tausurface) then
+                   warn_tausurf_problem = .true.
+                endif
+             enddo
+             !
+             ! Compute the taustop
+             !
+             camera_taustop(inu00:inu11) = camera_intensity_iquv(inu00:inu11,1) - camera_tausurface
+             !
+             ! Reset xyzdstop (should not be necessary, but just for safety)
+             !
+             camera_xstop(inu00:inu11)   = -1d91
+             camera_ystop(inu00:inu11)   = -1d91
+             camera_zstop(inu00:inu11)   = -1d91
+             camera_dstop(inu00:inu11)   = -1d91
+             !
+             ! Now do the second ray trace, to find the tau=tausurface surface
+             !
+             call camera_compute_one_pixel(camera_nrfreq,inu00,inu11,px,py,pdx,pdy,    &
+                                           camera_nrrefine,camera_intensity_iquv,-1)
+             !
+             ! Put the resulting dstop into the image array
+             !
+             camera_circ_image_iquv(ix,iy,inu00:inu11,1) = camera_dstop(inu00:inu11)
+             !
+             ! If the big arrays for the xyz stop are available, then also store
+             ! these
+             !
+             if(allocated(camera_tausurface_x)) then
+                camera_tausurface_x(ix,iy,inu00:inu11) = camera_xstop(inu00:inu11)
+                camera_tausurface_y(ix,iy,inu00:inu11) = camera_ystop(inu00:inu11)
+                camera_tausurface_z(ix,iy,inu00:inu11) = camera_zstop(inu00:inu11)
+             endif
+             !
+          enddo
+       enddo
+       !
+       ! Print a warning if the tau exceeded the limit somewhere
+       !
+       if(warn_tausurf_problem) then
+          write(stdo,*) 'WARNING: The optical depth exceeded 1d14*tausurface, so the tau surface determination may go wrong.'
+       endif
+       !
+       ! Reset the original values of the tracemode and nrrefine
+       !
+       camera_nrrefine  = backup_nrrefine
+       camera_tracemode = backup_tracemode
+    endif
     !
     ! Add the discrete star sources. 
     !
     ! NOTE: Only for the mode in which stars are treated as point-sources.
     !
-    if((camera_incl_stars.ne.0).and.(.not.star_sphere)) then
+    if((camera_incl_stars.ne.0).and.(.not.star_sphere).and.(.not.dotausurf)) then
        !
        ! Do a check
        !
-       if(.not.allocated(star_spec)) then
+       if(.not.allocated(star_spec).and.(nstars.gt.0)) then
           write(stdo,*) 'WARNING in camera module: Stars not allocated.'
-!          stop
+          stop
        endif
        !
        ! Now add all stars
@@ -6771,18 +7553,18 @@ subroutine camera_make_circ_image()
 !             endif
              !
              ! Now modify the intensity of the pixel to include the star
-             ! Note: We always assume the starlight to be unpolarized
+             ! Note: We always assume that the starlight is unpolarized
              !
-             camera_rect_image_iquv(idxx,idxy,inu00:inu11,1) =                       &
-                   (1.d0-factor) * camera_rect_image_iquv(idxx,idxy,inu00:inu11,1) + &  
+             camera_circ_image_iquv(idxx,idxy,inu00:inu11,1) =                        &
+                   (1.d0-factor) * camera_circ_image_iquv(idxx,idxy,inu00:inu11,1) +  &  
                    factor * camera_intensity_iquv(inu00:inu11,1)
              if(camera_stokesvector) then
-                camera_rect_image_iquv(idxx,idxy,inu00:inu11,2) =                       &
-                     (1.d0-factor) * camera_rect_image_iquv(idxx,idxy,inu00:inu11,2)
-                camera_rect_image_iquv(idxx,idxy,inu00:inu11,3) =                       &
-                     (1.d0-factor) * camera_rect_image_iquv(idxx,idxy,inu00:inu11,3)
-                camera_rect_image_iquv(idxx,idxy,inu00:inu11,4) =                       &
-                     (1.d0-factor) * camera_rect_image_iquv(idxx,idxy,inu00:inu11,4)
+                camera_circ_image_iquv(idxx,idxy,inu00:inu11,2) =                     &
+                   (1.d0-factor) * camera_circ_image_iquv(idxx,idxy,inu00:inu11,2)
+                camera_circ_image_iquv(idxx,idxy,inu00:inu11,3) =                     &
+                   (1.d0-factor) * camera_circ_image_iquv(idxx,idxy,inu00:inu11,3)
+                camera_circ_image_iquv(idxx,idxy,inu00:inu11,4) =                     &
+                   (1.d0-factor) * camera_circ_image_iquv(idxx,idxy,inu00:inu11,4)
              endif
           endif
        enddo
