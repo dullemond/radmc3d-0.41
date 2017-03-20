@@ -6333,7 +6333,7 @@ subroutine camera_make_circ_image(nrphiinf,nrext,dbdr,imethod,nrref)
   !
   ! For now we do not allow more than 1 star in the spherical images
   !
-  if(nstar.gt.1) then
+  if(nstars.gt.1) then
      write(stdo,*) 'ERROR: In circular images at the moment only one star allowed.'
      stop
   endif
@@ -7073,35 +7073,6 @@ subroutine camera_make_circ_image(nrphiinf,nrext,dbdr,imethod,nrref)
      !
   endif
   !
-  ! Check if refinement was sufficient
-  !
-  if(camera_warn_resolution) then
-     write(stdo,*) 'WARNING: The currently produced image is not '
-     write(stdo,*) '         guaranteed to have the correct flux '
-     write(stdo,*) '         because it does not use the flux'
-     write(stdo,*) '         conserving recursive pixeling.'
-     write(stdo,*) '    Tip: Use fluxcons argument in command line.'
-  endif
-  !
-  ! Close (if necessary) the "subpixeling_diagnostics.out" file
-  ! and switch this diagnostics off, so that it won't do this each
-  ! image in case you render a spectrum or SED.
-  !
-  if(camera_diagnostics_subpix) then
-     close(10)
-     camera_diagnostics_subpix = .false.
-  endif
-  !
-  ! If the tausurface mode is on, then deallocate some arrays
-  !
-  if(dotausurf) then
-     if(allocated(camera_dstop)) deallocate(camera_dstop)
-     if(allocated(camera_zstop)) deallocate(camera_zstop)
-     if(allocated(camera_ystop)) deallocate(camera_ystop)
-     if(allocated(camera_xstop)) deallocate(camera_xstop)
-     if(allocated(camera_taustop)) deallocate(camera_taustop)
-  endif
-  !
   !--------------------------------------------------------------
   !        A sub-subroutine for making the image
   !--------------------------------------------------------------
@@ -7135,9 +7106,9 @@ subroutine camera_make_circ_image(nrphiinf,nrext,dbdr,imethod,nrref)
           ! Reset intensity
           ! 
           if(incl_extlum.eq.0) then
-             camera_intensity_iquv(inu0:inu1,1:4) = 0.d0
+             camera_intensity_iquv(inu00:inu11,1:4) = 0.d0
           else
-             do inu=inu0,inu1
+             do inu=inu00,inu11
                 camera_intensity_iquv(inu,1)   = find_extlumintens_interpol(camera_frequencies(inu))
                 camera_intensity_iquv(inu,2:4) = 0.d0
              enddo
@@ -7145,7 +7116,7 @@ subroutine camera_make_circ_image(nrphiinf,nrext,dbdr,imethod,nrref)
           !
           ! Call the ray-tracer 
           !
-          call camera_serial_raytrace(nrfreq,inu0,inu1,x,y,z,dirx,diry,dirz, &
+          call camera_serial_raytrace(camera_nrfreq,inu00,inu11,x,y,z,dirx,diry,dirz, &
                                       distance,celldxmin,camera_intensity_iquv)
           !
           ! Put the result into the image array
@@ -7211,7 +7182,7 @@ subroutine camera_make_circ_image(nrphiinf,nrext,dbdr,imethod,nrref)
        !
        ! Call the ray-tracer 
        !
-       call camera_serial_raytrace(nrfreq,inu0,inu1,x,y,z,dirx,diry,dirz, &
+       call camera_serial_raytrace(camera_nrfreq,inu00,inu11,x,y,z,dirx,diry,dirz, &
                                    distance,celldxmin,camera_intensity_iquv)
        !
        ! Put the result into the image array
