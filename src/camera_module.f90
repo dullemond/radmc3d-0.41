@@ -6186,7 +6186,9 @@ subroutine setup_pixels_circular(irmin,irmax,nrphiinf,nrext,dbdr,imethod,nrref)
   ! spatial object. These rays will contain most of the information of 
   ! the image, once the telescope imaging routine has done it's job.
   !
-  irmax = max(irmax,amr_grid_nx)
+  ! irmax = max(irmax,amr_grid_nx)   ! Bugfix 20.03.2017
+  irmax = min(irmax,amr_grid_nx)
+  if(irmax.eq.0) irmax=amr_grid_nx   ! 0 means: till the end of the grid
   do ix=irmin,irmax-1
      if(iradius.gt.cim_nr) then
         write(stdo,*) 'BUG setup_pixels_circular(): exceed limits'
@@ -6242,19 +6244,51 @@ end subroutine setup_pixels_circular
 ! also makes it easier to analyze the results of 1-D models, because you
 ! will then merely get intensity as a function of radius instead of the
 ! overkill of a full x,y image.
+!
+! The method used for setting up the pixels is the "tangent ray method",
+! with several additions. 
+!
+! ARGUMENTS:
+!    nrphiinf       The number of pixels arranged in each circle (i.e.
+!                   the number of phi-pixels). For 1-D spherically symmetric
+!                   models this can be set to 1, because we do not expect 
+!                   any differences in the image along the phi-direction 
+!                   for spherically symmetric models. Recommended value
+!                   for 2-D axisymmetric and 3-D models: something of the
+!                   order of 128. 
+!    nrext          The number of extra rays inside of the inner edge
+!                   between the stellar surface and the grid inner edge.
+!                   Recommended value: something like 10.
+!    dbdr           For the original tangent-ray method this should be 
+!                   set to 1. If set to 2 or higher, then for each radial
+!                   coordinate in the spherical coordinates, extra rays
+!                   are inserted. For dbdr=2 there will be 2 radial 
+!                   pixel circles for each radial coordinate grid point. 
+!                   More accurate but substantially slower. Reccomended
+!                   value is 1.
+!    imethod        Set this to 1 (the other methods are for backward
+!                   compatibility with older radiative transfer programs).
+!    nrref          Further refinement near inner grid edge. Recommended
+!                   value is 1 (no further refinement).
 !-------------------------------------------------------------------------
-subroutine camera_make_circ_image(tausurf)
+subroutine camera_make_circ_image(nrphiinf,nrext,dbdr,imethod,nrref)
   use amr_module
   implicit none
+  integer :: nrphiinf,nrext,dbdr,imethod,nrref
   double precision :: x,y,z,dxx,dyy,dzz,px,py
   integer :: inu,ix,iy,idxx,idxy,istar,ierr,inu0,inu1,ierror,ispec
-  double precision :: pdx,pdy,dz,d2,d3,factor,celldxmin,quvsq
+  double precision :: dz,d2,d3,factor,celldxmin,quvsq
   double precision :: dirx,diry,dirz,distance,xbk,ybk,zbk,svcx,svcy,svcz
-  logical :: domc,dotausurf
-  logical, optional :: tausurf
+  logical :: domc
   character*80 :: strint
   integer :: iact,icnt,ilinesub
   logical :: redo
+  integer :: irmin,irmax
+  !
+  ! Set some defaults
+  !
+  irmin = 1
+  irmax = amr_grid_nx
   !
   ! Circular images are only possible if you use spherical coordinates
   !
@@ -6270,102 +6304,11 @@ subroutine camera_make_circ_image(tausurf)
      stop
   endif
   !
-  ! If "tausurf" is set, then the purpose of this subroutine
-  ! changes from being an imager to being a "tau=1 surface finder".
-  ! Default is .false.
-  !
-  dotausurf = .false.
-  if(present(tausurf)) then
-     dotausurf = tausurf
-  endif
-  !
-  ! Local observer mode is incompatible with 1-D plane-parallel
-  ! or 2-D pencil-parallel modes
+  ! Local observer not allowed in circular images
   !
   if(camera_localobserver) then
-     if(igrid_coord.eq.10) then 
-        write(stdo,*) 'ERROR: In 1-D plane-parallel mode, no local observer is allowed.'
-        stop
-     endif
-     if(igrid_coord.eq.20) then
-        write(stdo,*) 'ERROR: In 2-D pencil-parallel mode, no local observer is allowed.'
-        stop
-     endif
-  endif
-  !
-  ! If we have 1-D plane-parallel or 2-D pencil-parallel modes, we
-  ! switch off the sub-pixeling. For 1-D this is not necessary anyway.
-  ! For 2-D it might still be necessary, but we will leave it to the
-  ! user to do it by hand - we'll warn.
-  !
-  if(igrid_coord.eq.10) then
-     camera_nrrefine = -1
-  endif
-  if(igrid_coord.eq.20) then
-     if(camera_nrrefine.gt.0) then
-        write(stdo,*) 'WARNING: When using 2-D pencil-parallel coordinates,'
-        write(stdo,*) '         RADMC-3D does not provide an automatic'
-        write(stdo,*) '         subpixeling method (yet). In order to '
-        write(stdo,*) '         ensure flux conservation you must take'
-        write(stdo,*) '         care yourself to have enough resolution'
-        write(stdo,*) '         to resolve all scales in the y-z plane.'
-        write(stdo,*) '         In other words, we now switch to nofluxcons.'
-     endif
-     camera_nrrefine = -1
-  endif
-  !
-  ! If we have 1-D plane-parallel mode, then we always do just a 1x1
-  ! pixel image (it's useless to do more pixels)
-  !
-  if(igrid_coord.eq.10) then
-     camera_image_nx = 1
-     camera_image_ny = 1
-  endif
-  !
-  ! If we have 2-D pencil-parallel mode, then we always do just a 1xN
-  ! pixel image (it's useless to do more pixels)
-  !
-  if(igrid_coord.eq.20) then
-     camera_image_nx = 1
-  endif
-  !
-  ! Since we have two very different modes of observation (one with the 
-  ! observer at infinity, in which the image sizes are specified in cm,
-  ! and one with the observer local, in which the image sizes are specified
-  ! in radians), we must do some checks for self-consistency, because
-  ! the user may easily have forgotten to specify something.
-  !
-  if(img.eq.0) then
-     if(camera_localobserver) then
-        if(camera_image_halfsize_x.gt.10.d0) then
-           write(stdo,*) 'ERROR in camera module: You have chosen the local observer perspective,'
-           write(stdo,*) '      but the image size is still specified in cm instead of radian.'
-           stop
-        endif
-        if((abs(camera_observer_position(1)).ge.1d90).or. &
-             (abs(camera_observer_position(2)).ge.1d90).or. &
-             (abs(camera_observer_position(3)).ge.1d90)) then
-           write(stdo,*) 'ERROR in camera module: You have chosen the local observer perspective,'
-           write(stdo,*) '      but you have not yet specified the 3-D position of the observer.'
-           stop
-        endif
-     else
-        if((igrid_coord.ne.10).and.(igrid_coord.ne.20)) then
-           if(camera_image_halfsize_x.lt.10.d0) then
-              write(stdo,*) 'ERROR in camera module: You have chosen the observer at infinity perspective,'
-              write(stdo,*) '      but the image size is still specified in radian instead of cm (or AU or pc).'
-              stop
-           endif
-        endif
-     endif
-  endif
-  !
-  ! Also let the Monte Carlo module know what mode we have (local observer
-  ! or not)
-  !
-  mcscat_localobserver = camera_localobserver
-  if(mcscat_localobserver) then
-     mcscat_localobs_pos(1:3) = camera_observer_position(1:3)
+     write(stdo,*) 'ERROR: local observer mode not allowed in circular images.'
+     stop
   endif
   !
   ! If the dust emission is included, then make sure the dust data,
@@ -6475,19 +6418,6 @@ subroutine camera_make_circ_image(tausurf)
   !
   call camera_init()
   !
-  ! If tau surface mode, then allocate the following arrays, too.
-  ! These give back the 3-D positions of the points on the tau surface.
-  ! The projected position is put into the camera_circ_image_iquv() array.
-  !
-  if(dotausurf) then
-     if(allocated(camera_tausurface_z)) deallocate(camera_tausurface_z)
-     if(allocated(camera_tausurface_y)) deallocate(camera_tausurface_y)
-     if(allocated(camera_tausurface_x)) deallocate(camera_tausurface_x)
-     allocate(camera_tausurface_x(1:camera_image_nx,1:camera_image_ny,1:camera_nrfreq))
-     allocate(camera_tausurface_y(1:camera_image_nx,1:camera_image_ny,1:camera_nrfreq))
-     allocate(camera_tausurface_z(1:camera_image_nx,1:camera_image_ny,1:camera_nrfreq))
-  endif
-  !
   ! Warnings
   !
   if(rt_incl_lines.and.(lines_mode.lt.0).and.(scattering_mode.ne.0)) then
@@ -6512,130 +6442,17 @@ subroutine camera_make_circ_image(tausurf)
      write(stdo,*) '      not set when calling camera_make_circ_image()'
      stop
   endif
-  if((camera_image_nx.le.0).or.(camera_image_ny.le.0)) then
-     write(stdo,*) 'ERROR in camera module: must have >=1 values for'
-     write(stdo,*) '    camera_image_nx and camera_image_ny'
-     stop
-  endif
-  if((camera_refine_criterion.le.0.d0).and.(camera_nrrefine.gt.0)) then
-     write(stdo,*) 'ERROR in camera module: must set the camera_refine_criterion'
-     write(stdo,*) '      when making flux-conserving images.'
-     stop
-  endif
-  if(img.gt.0) then
-     if(.not.allocated(cameras_pt_pos)) then
-        write(stdo,*) 'ERROR in camera module: multiple image arrays not'
-        write(stdo,*) '      yet allocated.'
-        stop
-     endif
-     if(img.gt.cameras_nr_images) then
-        write(stdo,*) 'ERROR in camera module: asked to make image nr ',img,&
-             ' but that is beyond cameras_nr_images.'
-        stop
-     endif
-  endif
-  !
-  ! If using multiple images, then we copy all the info to the relevant
-  ! arrays here.
-  !
-  if(img.gt.0) then
-     !
-     ! Get the data from the movie arrays, and perform some basic
-     ! checks.
-     !
-     camera_pointing_position(1:3)   = cameras_pt_pos(1:3,img)    
-     camera_image_halfsize_x         = cameras_img_hs_x(img)    
-     camera_image_halfsize_y         = cameras_img_hs_y(img)    
-     camera_zoomcenter_x             = cameras_zmc_x(img)
-     camera_zoomcenter_y             = cameras_zmc_y(img)
-     camera_pointing_degr_posang     = cameras_pt_degr_pa(img)  
-     if(camera_localobserver) then
-        camera_observer_position(1:3)   = cameras_obs_pos(1:3,img)   
-        if((camera_image_halfsize_x.gt.10.d0).or. &
-           (camera_image_halfsize_y.gt.10.d0)) then
-           write(stdo,*) 'ERROR in camera module: You have chosen the local observer perspective,'
-           write(stdo,*) '      but the image size is still specified in cm instead of radian.'
-           stop
-        endif
-     else
-        camera_observer_degr_theta      = cameras_obs_degr_th(img) 
-        camera_observer_degr_phi        = cameras_obs_degr_ph(img) 
-        if((camera_image_halfsize_x.lt.10.d0).or. &
-           (camera_image_halfsize_y.lt.10.d0)) then
-           write(stdo,*) 'ERROR in camera module: You have chosen the observer at infinity perspective,'
-           write(stdo,*) '      but the image size is still specified in radian instead of cm (or AU or pc).'
-           stop
-        endif
-     endif
-  endif
-  !
-  ! Check
-  !
-  if((camera_image_halfsize_x.le.0.d0).or.(camera_image_halfsize_y.le.0.d0)) then
-     write(stdo,*) 'ERROR in camera module: zero image scale'
-     stop
-  endif
-  !
-  ! For now the flux-conserving ray-tracing is not yet implemented for
-  ! local-observer perspective
-  !
-  if(camera_localobserver) then
-     if(camera_nrrefine.gt.0) then
-        write(stdo,*) 'ERROR: For the local observer viewing mode the '
-        write(stdo,*) '       flux-conserving ray-tracing is not yet available.'
-        stop
-     endif
-  endif
   !
   ! Pre-compute cosines and sines
+  ! For the camera-at-infinity view the angles are given and the
+  ! cos and sin can be calculated easily
   !
-  if(camera_localobserver) then
-     !
-     ! For the local perspective view the angles must first be calculated
-     !
-     camera_pointing_cos_posang  = cos(camera_pointing_degr_posang*pi/180.)
-     camera_pointing_sin_posang  = sin(camera_pointing_degr_posang*pi/180.)
-     dxx = camera_pointing_position(1) - camera_observer_position(1)
-     dyy = camera_pointing_position(2) - camera_observer_position(2)
-     dzz = camera_pointing_position(3) - camera_observer_position(3)
-     d3 = sqrt( dxx**2 + dyy**2 + dzz**2 )
-     d2 = sqrt( dxx**2 + dyy**2 )
-     if(d3.eq.0.d0) then
-        write(stdo,*) 'ERROR in camera module: observer and pointing positions'
-        write(stdo,*) '      are identical. Cannot computing pointing direction.'
-        stop
-     endif
-     camera_observer_sin_theta   = d2/d3
-     camera_observer_cos_theta   = sqrt(1.d0-camera_observer_sin_theta**2)
-     if(camera_observer_position(3).lt.camera_pointing_position(3)) then
-        camera_observer_cos_theta   = -camera_observer_cos_theta
-     endif
-     if(d2.gt.0.d0) then
-        camera_observer_sin_phi     = dxx/d2
-        camera_observer_cos_phi     = dyy/d2
-     else
-        camera_observer_sin_phi     = 0.d0
-        camera_observer_cos_phi     = 1.d0
-     endif
-  else
-     !
-     ! For the camera-at-infinity view the angles are given and the
-     ! cos and sin can be calculated easily
-     !
-     camera_pointing_cos_posang  = cos(camera_pointing_degr_posang*pi/180.)
-     camera_pointing_sin_posang  = sin(camera_pointing_degr_posang*pi/180.)
-     camera_observer_cos_theta   = cos(camera_observer_degr_theta*pi/180.)
-     camera_observer_sin_theta   = sin(camera_observer_degr_theta*pi/180.)
-     camera_observer_cos_phi     = cos(camera_observer_degr_phi*pi/180.)
-     camera_observer_sin_phi     = sin(camera_observer_degr_phi*pi/180.)
-  endif
-  !
-  ! For now we do not allow local observer if scattering is switched on
-  !
-  if((scattering_mode.gt.0).and.camera_localobserver) then
-     write(stdo,*) 'ERROR: Monte Carlo scattering not yet implemented with local observer...'
-     stop
-  endif
+  camera_pointing_cos_posang  = cos(camera_pointing_degr_posang*pi/180.)
+  camera_pointing_sin_posang  = sin(camera_pointing_degr_posang*pi/180.)
+  camera_observer_cos_theta   = cos(camera_observer_degr_theta*pi/180.)
+  camera_observer_sin_theta   = sin(camera_observer_degr_theta*pi/180.)
+  camera_observer_cos_phi     = cos(camera_observer_degr_phi*pi/180.)
+  camera_observer_sin_phi     = sin(camera_observer_degr_phi*pi/180.)
   !
   ! For now we do not allow multiple vantage points
   !
@@ -6887,36 +6704,17 @@ subroutine camera_make_circ_image(tausurf)
      endif
   endif
   !
-  ! Compute pixel size.
-  !
-  ! NOTE: For the observer-at-infinity mode this is in centimeters.
-  !       For the local-observer mode this is in radian.
-  !
-  pdx = 2*camera_image_halfsize_x / (1.d0*camera_image_nx)
-  pdy = 2*camera_image_halfsize_y / (1.d0*camera_image_ny)
-  !
-  ! If the tausurface mode is on, then allocate some arrays
-  !
-  if(dotausurf) then
-     if(allocated(camera_dstop)) deallocate(camera_dstop)
-     if(allocated(camera_zstop)) deallocate(camera_zstop)
-     if(allocated(camera_ystop)) deallocate(camera_ystop)
-     if(allocated(camera_xstop)) deallocate(camera_xstop)
-     if(allocated(camera_taustop)) deallocate(camera_taustop)
-     allocate(camera_taustop(camera_nrfreq))
-     allocate(camera_xstop(camera_nrfreq))
-     allocate(camera_ystop(camera_nrfreq))
-     allocate(camera_zstop(camera_nrfreq))
-     allocate(camera_dstop(camera_nrfreq))
-  endif
-  !
   ! Reset flag
   !
   camera_warn_resolution = .false.
   !
+  ! Set up the pixels for the circular image
+  ! 
+  call setup_pixels_circular(irmin,irmax,nrphiinf,nrext,dbdr,imethod,nrref)
+  !
   ! Message
   !
-  write(stdo,*) 'Rendering image(s)...'
+  write(stdo,*) 'Rendering circular image(s)...'
   !
   ! Now make the image. We can do so in two different ways. The first is to
   ! do all frequencies (wavelengths) at once. If scattering is included this
@@ -7289,6 +7087,20 @@ subroutine camera_make_circ_image(tausurf)
     !
     ! Reset some non-essential counters
     !
+
+
+##########################################
+##########################################
+##########################################
+##########################################
+##########################################
+##########################################
+##########################################
+##########################################
+
+
+
+
     camera_subpixeling_npixfine = 0
     camera_subpixeling_npixtot  = 0
     !
