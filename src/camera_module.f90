@@ -3101,26 +3101,6 @@ subroutine camera_make_rect_image(img,tausurf)
      open(unit=10,file='subpixeling_diagnostics.out')
   endif
   !
-  ! Do a self-consistency test: for spherical coordinates with 
-  ! a symmetry (i.e. 2-D axial symmetry or 1-D spherical symmetry)
-  ! anisotropic scattering cannot be included. This is because for
-  ! e.g. 2-D axial symmetry each cell is in fact a "ring" around the
-  ! symmetry axis. The various locations along this ring have different
-  ! angle toward the observer (unless the observer looks pole-on). 
-  ! Only with isotropic scattering this problem does not show up.
-  ! One solution is to convert a 2-D model into a 3-D model before
-  ! making the images. 
-  !
-  if(igrid_type.lt.100) then
-     if((igrid_coord.ge.100).and.(amr_zdim.eq.0).and.  &
-          (scattering_mode.ge.2)) then
-        write(stdo,*) 'ERROR: Anisotropic scattering only allowed in 3-D models,'
-        write(stdo,*) '       or in 2-D models that are converted into 3-D before'
-        write(stdo,*) '       the images or spectra are made.'
-        stop
-     endif
-  endif
-  !
   ! Local observer mode is incompatible with 1-D plane-parallel
   ! or 2-D pencil-parallel modes
   !
@@ -6250,26 +6230,6 @@ subroutine camera_make_circ_image()
   if(.not.allocated(cim_ri)) then
      write(stdo,*) 'ERROR in circular image generator: please set up pixels first.'
      stop
-  endif
-  !
-  ! Do a self-consistency test: for spherical coordinates with 
-  ! a symmetry (i.e. 2-D axial symmetry or 1-D spherical symmetry)
-  ! anisotropic scattering cannot be included. This is because for
-  ! e.g. 2-D axial symmetry each cell is in fact a "ring" around the
-  ! symmetry axis. The various locations along this ring have different
-  ! angle toward the observer (unless the observer looks pole-on). 
-  ! Only with isotropic scattering this problem does not show up.
-  ! One solution is to convert a 2-D model into a 3-D model before
-  ! making the images. 
-  !
-  if(igrid_type.lt.100) then
-     if((igrid_coord.ge.100).and.(amr_zdim.eq.0).and.  &
-          (scattering_mode.ge.2)) then
-        write(stdo,*) 'ERROR: Anisotropic scattering only allowed in 3-D models,'
-        write(stdo,*) '       or in 2-D models that are converted into 3-D before'
-        write(stdo,*) '       the images or spectra are made.'
-        stop
-     endif
   endif
   !
   ! Let the Monte Carlo module know what mode we have (local observer
