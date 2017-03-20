@@ -175,6 +175,10 @@ module camera_module
   !
   integer :: camera_image_nx,camera_image_ny
   !
+  !   The number of pixels in r and phi image-plane directions (for circular images)
+  !
+  integer :: camera_image_nr,camera_image_nphi
+  !
   !   Flags and variables for the setting of the camera_frequencies array
   !
   integer :: camera_theinu,camera_range_nlam
@@ -248,6 +252,7 @@ module camera_module
   !
   double precision, allocatable :: camera_intensity_iquv(:,:)
   double precision, allocatable :: camera_rect_image_iquv(:,:,:,:)
+  double precision, allocatable :: camera_circ_image_iquv(:,:,:,:)
   logical :: camera_warn_resolution
   !
   !    Flag to force RADMC-3D to precompute the source function for all frequencies
@@ -265,7 +270,7 @@ module camera_module
   !
   double precision :: camera_starsphere_nrpix = 20
   !
-  !    For backward compatibility with RADMC, here is the circular image stuff
+  ! The data for the circular images
   !
   integer :: cim_nr,cim_np
   double precision, allocatable :: cim_rc(:),cim_ri(:),cim_pc(:),cim_pi(:)
@@ -408,13 +413,11 @@ subroutine camera_init()
   !
   ! Check some stuff
   !
-  if(camera_image_nx.le.0) then 
-     write(stdo,*) 'ERROR in camera module: image_nx = ',camera_image_nx
-     stop
-  endif
-  if(camera_image_ny.le.0) then 
-     write(stdo,*) 'ERROR in camera module: image_ny = ',camera_image_ny
-     stop
+  if((camera_image_nx.le.0).or.(camera_image_ny.le.0)) then 
+     if((camera_image_nr.le.0).or.(camera_image_nphi.le.0)) then
+        write(stdo,*) 'ERROR in camera module: Zero number of pixels...'
+        stop
+     endif
   endif
   if(rt_incl_dust) then
      if(.not.allocated(dust_kappa_abs)) then
@@ -456,16 +459,32 @@ subroutine camera_init()
      write(stdo,*) 'ERROR in camera module: Could not allocate spectrum array.'
      stop
   endif
-  allocate(camera_rect_image_iquv(1:camera_image_nx,1:camera_image_ny,1:camera_nrfreq,1:4),STAT=ierr)
-  if(ierr.ne.0) then
-     write(stdo,*) 'ERROR in camera module: Could not allocate camera_rect_image_iquv() array'
-     stop
-  endif
-  camera_rect_image_iquv(:,:,:,:) = 0.d0
   allocate(camera_intensity_iquv(1:camera_nrfreq,1:4),STAT=ierr)
   if(ierr.ne.0) then
      write(stdo,*) 'ERROR in camera module: Could not allocate camera_intensity_iquv() array'
      stop
+  endif
+  !
+  ! Now allocate the image array for the rectangular images
+  !
+  if((camera_image_nx.ge.1).and.(camera_image_ny.ge.1)) then
+     allocate(camera_rect_image_iquv(1:camera_image_nx,1:camera_image_ny,1:camera_nrfreq,1:4),STAT=ierr)
+     if(ierr.ne.0) then
+        write(stdo,*) 'ERROR in camera module: Could not allocate camera_rect_image_iquv() array'
+        stop
+     endif
+     camera_rect_image_iquv(:,:,:,:) = 0.d0
+  endif
+  !
+  ! Now allocate the image array for the circular images
+  !
+  if((camera_image_nr.ge.1).and.(camera_image_nphi.ge.1)) then
+     allocate(camera_circ_image_iquv(1:camera_image_nr,1:camera_image_nphi,1:camera_nrfreq,1:4),STAT=ierr)
+     if(ierr.ne.0) then
+        write(stdo,*) 'ERROR in camera module: Could not allocate camera_circ_image_iquv() array'
+        stop
+     endif
+     camera_circ_image_iquv(:,:,:,:) = 0.d0
   endif
   !
   ! Some further comments:
@@ -542,6 +561,7 @@ subroutine camera_partial_cleanup()
   implicit none
   call sources_partial_cleanup()
   if(allocated(camera_rect_image_iquv)) deallocate(camera_rect_image_iquv)
+  if(allocated(camera_circ_image_iquv)) deallocate(camera_circ_image_iquv)
   if(allocated(camera_spectrum_iquv)) deallocate(camera_spectrum_iquv)
   if(allocated(camera_intensity_iquv)) deallocate(camera_intensity_iquv)
   if(allocated(camera_xstop)) deallocate(camera_xstop)
@@ -7101,8 +7121,6 @@ subroutine camera_make_circ_image(nrphiinf,nrext,dbdr,imethod,nrref)
 
 
 
-    camera_subpixeling_npixfine = 0
-    camera_subpixeling_npixtot  = 0
     !
     ! Here we decide whether to make a "normal" image or
     ! whether we find the tau=1 surface 
