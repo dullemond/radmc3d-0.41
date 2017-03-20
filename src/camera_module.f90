@@ -479,7 +479,7 @@ subroutine camera_init()
   ! Now allocate the image array for the circular images
   !
   if((camera_image_nr.ge.1).and.(camera_image_nphi.ge.1)) then
-     allocate(camera_circ_image_iquv(1:camera_image_nr,1:camera_image_nphi,1:camera_nrfreq,1:4),STAT=ierr)
+     allocate(camera_circ_image_iquv(0:camera_image_nr,1:camera_image_nphi,1:camera_nrfreq,1:4),STAT=ierr)
      if(ierr.ne.0) then
         write(stdo,*) 'ERROR in camera module: Could not allocate camera_circ_image_iquv() array'
         stop
@@ -6295,9 +6295,9 @@ subroutine camera_make_circ_image(nrphiinf,nrext,dbdr,imethod,nrref)
   use amr_module
   implicit none
   integer :: nrphiinf,nrext,dbdr,imethod,nrref
-  double precision :: x,y,z,dxx,dyy,dzz,px,py
-  integer :: inu,ix,iy,idxx,idxy,istar,ierr,inu0,inu1,ierror,ispec
-  double precision :: dz,d2,d3,factor,celldxmin,quvsq
+  double precision :: r,phi,px,py,x,y,z
+  integer :: inu,ir,iphi,istar,ierr,inu0,inu1,ierror,ispec
+  double precision :: celldxmin,quvsq
   double precision :: dirx,diry,dirz,distance,xbk,ybk,zbk,svcx,svcy,svcz
   logical :: domc
   character*80 :: strint
@@ -6330,6 +6330,19 @@ subroutine camera_make_circ_image(nrphiinf,nrext,dbdr,imethod,nrref)
      write(stdo,*) 'ERROR: local observer mode not allowed in circular images.'
      stop
   endif
+  !
+  ! For now we do not allow more than 1 star in the spherical images
+  !
+  if(nstar.gt.1) then
+     write(stdo,*) 'ERROR: In circular images at the moment only one star allowed.'
+     stop
+  endif
+  !
+  ! Set up the circular/radial pixel arrangement for the circular image
+  ! 
+  call setup_pixels_circular(irmin,irmax,nrphiinf,nrext,dbdr,imethod,nrref)
+  camera_image_nr   = cim_nr
+  camera_image_nphi = cim_np
   !
   ! If the dust emission is included, then make sure the dust data,
   ! density and temperature are read. If yes, do not read again.
@@ -6728,10 +6741,6 @@ subroutine camera_make_circ_image(nrphiinf,nrext,dbdr,imethod,nrref)
   !
   camera_warn_resolution = .false.
   !
-  ! Set up the pixels for the circular image
-  ! 
-  call setup_pixels_circular(irmin,irmax,nrphiinf,nrext,dbdr,imethod,nrref)
-  !
   ! Message
   !
   write(stdo,*) 'Rendering circular image(s)...'
@@ -7104,261 +7113,132 @@ subroutine camera_make_circ_image(nrphiinf,nrext,dbdr,imethod,nrref)
     integer :: inuu
     integer :: backup_nrrefine,backup_tracemode
     logical :: warn_tausurf_problem,flag_quv_too_big
+    double precision :: r,phi
     !
-    ! Reset some non-essential counters
+    ! *** NEAR FUTURE: PUT OPENMP DIRECTIVES HERE (START) ***
     !
-
-
-##########################################
-##########################################
-##########################################
-##########################################
-##########################################
-##########################################
-##########################################
-##########################################
-
-
-
-
-    !
-    ! Here we decide whether to make a "normal" image or
-    ! whether we find the tau=1 surface 
-    !
-    if(.not.dotausurf) then
-       !
-       ! Make a "normal" image, i.e. compute the intensity of all pixels
-       !
-       ! *** NEAR FUTURE: PUT OPENMP DIRECTIVES HERE (START) ***
-       !
-       flag_quv_too_big = .false.
-       do iy=1,camera_image_ny
-          do ix=1,camera_image_nx
+    flag_quv_too_big = .false.
+    do ir=1,camera_image_nr
+       r = cim_rc(ir)
+       do iphi=1,camera_image_nphi
+          phi = cim_pc(iphi)
+          !
+          ! Set the ray variables
+          !
+          px = r * cos(phi)
+          py = r * sin(phi)
+          !
+          ! Find the starting point and direction of this ray
+          !
+          call camera_set_ray(px,py,x,y,z,dirx,diry,dirz,distance)
+          !
+          ! Reset intensity
+          ! 
+          if(incl_extlum.eq.0) then
+             camera_intensity_iquv(inu0:inu1,1:4) = 0.d0
+          else
+             do inu=inu0,inu1
+                camera_intensity_iquv(inu,1)   = find_extlumintens_interpol(camera_frequencies(inu))
+                camera_intensity_iquv(inu,2:4) = 0.d0
+             enddo
+          endif
+          !
+          ! Call the ray-tracer 
+          !
+          call camera_serial_raytrace(nrfreq,inu0,inu1,x,y,z,dirx,diry,dirz, &
+                                      distance,celldxmin,camera_intensity_iquv)
+          !
+          ! Put the result into the image array
+          !
+          camera_circ_image_iquv(ir,iphi,inu00:inu11,1) = camera_intensity_iquv(inu00:inu11,1)
+          if(camera_stokesvector) then
              !
-             ! Set the ray variables
+             ! Copy also the other Stokes components
              !
-             px = camera_zoomcenter_x + ((ix-1)-(0.5d0*(camera_image_nx-1)))*pdx
-             py = camera_zoomcenter_y + ((iy-1)-(0.5d0*(camera_image_ny-1)))*pdy
+             camera_circ_image_iquv(ir,iphi,inu00:inu11,2) = camera_intensity_iquv(inu00:inu11,2)
+             camera_circ_image_iquv(ir,iphi,inu00:inu11,3) = camera_intensity_iquv(inu00:inu11,3)
+             camera_circ_image_iquv(ir,iphi,inu00:inu11,4) = camera_intensity_iquv(inu00:inu11,4)
              !
-             ! Now compute the intensity of this pixel
-             !
-             ! Note that if nrrefine>0 this routine will call itself
-             ! recursively until a desired spatial resolution is acquired
-             ! so as to guarantee that all flux is picked up, but this
-             ! recursion is limited to nrrefine depth levels.
-             !
-             call camera_compute_one_pixel(camera_nrfreq,inu00,inu11,px,py,pdx,pdy,    &
-                                           camera_nrrefine,camera_intensity_iquv,-1)
-             !
-             ! Put the result into the image array
-             !
-             camera_circ_image_iquv(ix,iy,inu00:inu11,1) = camera_intensity_iquv(inu00:inu11,1)
-             if(camera_stokesvector) then
-                !
-                ! Copy also the other Stokes components
-                !
-                camera_circ_image_iquv(ix,iy,inu00:inu11,2) = camera_intensity_iquv(inu00:inu11,2)
-                camera_circ_image_iquv(ix,iy,inu00:inu11,3) = camera_intensity_iquv(inu00:inu11,3)
-                camera_circ_image_iquv(ix,iy,inu00:inu11,4) = camera_intensity_iquv(inu00:inu11,4)
-                !
-                ! Self-consistency check
-                !
-                do inuu=inu00,inu11
-                   quvsq = camera_intensity_iquv(inuu,2)**2 + &
-                           camera_intensity_iquv(inuu,3)**2 + &
-                           camera_intensity_iquv(inuu,4)**2
-                   if(quvsq.gt.0.d0) then
-                      if(camera_intensity_iquv(inuu,1).eq.0.d0) then
-                         write(stdo,*) 'INTERNAL ERROR: Q^2+U^2+V^2>0 but I=0...'
-                         write(stdo,*) '    Warn author.'
-                         stop
-                      endif
-                      quvsq = quvsq / camera_intensity_iquv(inuu,1)**2
-                      if(quvsq.gt.1.000001d0) then
-                         flag_quv_too_big = .true.
-                      endif
-                   endif
-                enddo
-             endif
-             !
-          enddo
-       enddo
-       if(flag_quv_too_big) then
-          write(stdo,*) 'WARNING: While making an image, I found an instance of Q^2+U^2+V^2>I^2...'
-       endif
-       !
-       ! *** NEAR FUTURE: PUT OPENMP DIRECTIVES HERE (FINISH) ***
-       !
-    else
-       !
-       ! Find the tau=1 surface (or any tau=tausurf surface)
-       !
-       ! Set the nrrefine to 0, and set the camera_tracemode to -3
-       !
-       backup_nrrefine  = camera_nrrefine
-       backup_tracemode = camera_tracemode
-       camera_nrrefine  = 0
-       camera_tracemode = -3
-       !
-       warn_tausurf_problem = .false.
-       !
-       do iy=1,camera_image_ny
-          do ix=1,camera_image_nx
-             !
-             ! Set the ray variables
-             !
-             px = camera_zoomcenter_x + ((ix-1)-(0.5d0*(camera_image_nx-1)))*pdx
-             py = camera_zoomcenter_y + ((iy-1)-(0.5d0*(camera_image_ny-1)))*pdy
-             !
-             ! Reset the camera_xyzsstop
-             !
-             camera_taustop(inu00:inu11) = 1d91
-             camera_xstop(inu00:inu11)   = -1d91
-             camera_ystop(inu00:inu11)   = -1d91
-             camera_zstop(inu00:inu11)   = -1d91
-             camera_dstop(inu00:inu11)   = -1d91
-             !
-             ! Now do a first ray trace, to find the total optical depth
-             !
-             call camera_compute_one_pixel(camera_nrfreq,inu00,inu11,px,py,pdx,pdy,    &
-                                           camera_nrrefine,camera_intensity_iquv,-1)
-             !
-             ! Check if anywhere the optical depth goes beyond 1d14*camera_tausurface
+             ! Self-consistency check
              !
              do inuu=inu00,inu11
-                if(camera_intensity_iquv(inuu,1).gt.1d14*camera_tausurface) then
-                   warn_tausurf_problem = .true.
+                quvsq = camera_intensity_iquv(inuu,2)**2 + &
+                        camera_intensity_iquv(inuu,3)**2 + &
+                        camera_intensity_iquv(inuu,4)**2
+                if(quvsq.gt.0.d0) then
+                   if(camera_intensity_iquv(inuu,1).eq.0.d0) then
+                      write(stdo,*) 'INTERNAL ERROR: Q^2+U^2+V^2>0 but I=0...'
+                      write(stdo,*) '    Warn author.'
+                      stop
+                   endif
+                   quvsq = quvsq / camera_intensity_iquv(inuu,1)**2
+                   if(quvsq.gt.1.000001d0) then
+                      flag_quv_too_big = .true.
+                   endif
                 endif
              enddo
-             !
-             ! Compute the taustop
-             !
-             camera_taustop(inu00:inu11) = camera_intensity_iquv(inu00:inu11,1) - camera_tausurface
-             !
-             ! Reset xyzdstop (should not be necessary, but just for safety)
-             !
-             camera_xstop(inu00:inu11)   = -1d91
-             camera_ystop(inu00:inu11)   = -1d91
-             camera_zstop(inu00:inu11)   = -1d91
-             camera_dstop(inu00:inu11)   = -1d91
-             !
-             ! Now do the second ray trace, to find the tau=tausurface surface
-             !
-             call camera_compute_one_pixel(camera_nrfreq,inu00,inu11,px,py,pdx,pdy,    &
-                                           camera_nrrefine,camera_intensity_iquv,-1)
-             !
-             ! Put the resulting dstop into the image array
-             !
-             camera_circ_image_iquv(ix,iy,inu00:inu11,1) = camera_dstop(inu00:inu11)
-             !
-             ! If the big arrays for the xyz stop are available, then also store
-             ! these
-             !
-             if(allocated(camera_tausurface_x)) then
-                camera_tausurface_x(ix,iy,inu00:inu11) = camera_xstop(inu00:inu11)
-                camera_tausurface_y(ix,iy,inu00:inu11) = camera_ystop(inu00:inu11)
-                camera_tausurface_z(ix,iy,inu00:inu11) = camera_zstop(inu00:inu11)
-             endif
-             !
-          enddo
+          endif
+          !
        enddo
-       !
-       ! Print a warning if the tau exceeded the limit somewhere
-       !
-       if(warn_tausurf_problem) then
-          write(stdo,*) 'WARNING: The optical depth exceeded 1d14*tausurface, so the tau surface determination may go wrong.'
-       endif
-       !
-       ! Reset the original values of the tracemode and nrrefine
-       !
-       camera_nrrefine  = backup_nrrefine
-       camera_tracemode = backup_tracemode
+    enddo
+    !
+    ! *** NEAR FUTURE: PUT OPENMP DIRECTIVES HERE (FINISH) ***
+    !
+    if(flag_quv_too_big) then
+       write(stdo,*) 'WARNING: While making an image, I found an instance of Q^2+U^2+V^2>I^2...'
     endif
     !
-    ! Add the discrete star sources. 
-    !
-    ! NOTE: Only for the mode in which stars are treated as point-sources.
-    !
-    if((camera_incl_stars.ne.0).and.(.not.star_sphere).and.(.not.dotausurf)) then
+    ! Add the central star (star 1)
+    ! 
+    if((camera_incl_stars.ne.0).and.(nstars.ge.1)) then
        !
-       ! Do a check
+       ! The starting point of this ray is at the stellar surface
+       ! Assuming that dirx, diry and dirz are already computed above
        !
-       if(.not.allocated(star_spec).and.(nstars.gt.0)) then
-          write(stdo,*) 'WARNING in camera module: Stars not allocated.'
-          stop
-       endif
+       px = 0.d0
+       py = 0.d0
+       x  = dirx * star_r(1)
+       y  = diry * star_r(1)
+       z  = dirz * star_r(1)
        !
-       ! Now add all stars
+       ! Reset intensity to the stellar intensity
+       ! 
+       do inu=inu00,inu11
+          camera_intensity_iquv(inu,1)   =                               &
+               find_starlight_interpol(camera_frequencies(inu),istar)
+          camera_intensity_iquv(inu,2:4) = 0.d0
+       enddo
        !
-       do istar=1,nstars
-          !
-          ! Set the starting position and direction of the ray, as well as
-          ! the location in the image
-          !
-          call camera_set_ray_stars_pntsrc(istar,x,y,z,dirx,diry,dirz,px,py,distance)
-          !
-          ! Check if this star is located in the image
-          !
-          if((px.ge.camera_zoomcenter_x-camera_image_halfsize_x).and.  &
-             (px.le.camera_zoomcenter_x+camera_image_halfsize_x).and.  &
-             (py.ge.camera_zoomcenter_y-camera_image_halfsize_y).and.  &
-             (py.le.camera_zoomcenter_y+camera_image_halfsize_y)) then
+       ! Call the ray-tracer 
+       !
+       call camera_serial_raytrace(nrfreq,inu0,inu1,x,y,z,dirx,diry,dirz, &
+                                   distance,celldxmin,camera_intensity_iquv)
+       !
+       ! Put the result into the image array
+       !
+       ! Note: since the star has no phi-dependence we put this into all phi
+       !
+       do iphi=1,camera_image_nphi
+          camera_circ_image_iquv(0,iphi,inu00:inu11,1) = camera_intensity_iquv(inu00:inu11,1)
+          if(camera_stokesvector) then
              !
-             ! Find the indices of the pixel in which the star is
+             ! Copy also the other Stokes components
              !
-             idxx = floor((px-(camera_zoomcenter_x-camera_image_halfsize_x))/pdx)+1
-             idxy = floor((py-(camera_zoomcenter_y-camera_image_halfsize_y))/pdy)+1
-             if((idxx.lt.1).or.(idxx.gt.camera_image_nx).or.&
-                (idxy.lt.1).or.(idxy.gt.camera_image_ny)) stop 8309
-             !
-             ! Set the intensity to the stellar spectrum
-             ! 
-             do inu=inu00,inu11
-                camera_intensity_iquv(inu,1) =                               &
-                     find_starlight_interpol(camera_frequencies(inu),istar)
-             enddo
-             !
-             ! Do ray tracing
-             !
-             call camera_serial_raytrace(camera_nrfreq,inu00,inu11,x,y,z,dirx,diry,dirz,distance,  &
-                                  celldxmin,camera_intensity_iquv)
-             !
-             ! Compute the ratio starsurface / pixelsurface
-             !
-             if(camera_localobserver) then
-                factor = pi*(star_r(istar)/distance)**2 / (pdx*pdy)
-             else
-                factor = pi*star_r(istar)**2 / (pdx*pdy)
-             endif
-             !
-             ! Check if the point source assumption is violated. 
-             !
-!             if(factor.gt.1.d0) then
-!                write(stdo,*) 'ERROR in camera module: The image resolution is so'
-!                write(stdo,*) '      high that the stellar surface is no longer'
-!                write(stdo,*) '      small enough to be considered a point source.'
-!                write(stdo,*) '  NOTE: In the (hopefully near) future a mode will'
-!                write(stdo,*) '        be implemented to include non-point stars.'
-!                stop
-!             endif
-             !
-             ! Now modify the intensity of the pixel to include the star
-             ! Note: We always assume that the starlight is unpolarized
-             !
-             camera_circ_image_iquv(idxx,idxy,inu00:inu11,1) =                        &
-                   (1.d0-factor) * camera_circ_image_iquv(idxx,idxy,inu00:inu11,1) +  &  
-                   factor * camera_intensity_iquv(inu00:inu11,1)
-             if(camera_stokesvector) then
-                camera_circ_image_iquv(idxx,idxy,inu00:inu11,2) =                     &
-                   (1.d0-factor) * camera_circ_image_iquv(idxx,idxy,inu00:inu11,2)
-                camera_circ_image_iquv(idxx,idxy,inu00:inu11,3) =                     &
-                   (1.d0-factor) * camera_circ_image_iquv(idxx,idxy,inu00:inu11,3)
-                camera_circ_image_iquv(idxx,idxy,inu00:inu11,4) =                     &
-                   (1.d0-factor) * camera_circ_image_iquv(idxx,idxy,inu00:inu11,4)
-             endif
+             camera_circ_image_iquv(0,iphi,inu00:inu11,2) = camera_intensity_iquv(inu00:inu11,2)
+             camera_circ_image_iquv(0,iphi,inu00:inu11,3) = camera_intensity_iquv(inu00:inu11,3)
+             camera_circ_image_iquv(0,iphi,inu00:inu11,4) = camera_intensity_iquv(inu00:inu11,4)
           endif
        enddo
+    else
+       !
+       ! If there is no star, then put this to 0. 
+       !
+       camera_circ_image_iquv(0,1:camera_image_nphi,inu00:inu11,2) = 0.d0
     endif
+    !
+    ! For now we do not allow more than 1 star in the spherical images.
+    ! If I add this later, it will be here.
+    !
   end subroutine camera_make_circ_image_sub
   !
 end subroutine camera_make_circ_image
