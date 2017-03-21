@@ -7217,7 +7217,7 @@ subroutine camera_make_circ_image(nrphiinf,nrext,dbdr,imethod,nrref)
        !
        ! If there is no star, then put this to 0. 
        !
-       camera_circ_image_iquv(0,1:camera_image_nphi,inu00:inu11,2) = 0.d0
+       camera_circ_image_iquv(0,1:camera_image_nphi,inu00:inu11,:) = 0.d0
     endif
     !
     ! For now we do not allow more than 1 star in the spherical images.
@@ -7227,6 +7227,177 @@ subroutine camera_make_circ_image(nrphiinf,nrext,dbdr,imethod,nrref)
   !
 end subroutine camera_make_circ_image
 
+
+!-------------------------------------------------------------------------
+!              MAKE A SPECTRUM USING THE CIRCULAR IMAGES
+!-------------------------------------------------------------------------
+subroutine camera_make_circ_spectrum(nrphiinf,nrext,dbdr,imethod,nrref)
+  use constants_module
+  implicit none
+  integer :: nrphiinf,nrext,dbdr,imethod,nrref
+  integer :: inu,ierr,backup_nrfreq
+  integer :: backup_lines_mode
+  double precision :: pdx,pdy,factor,r_colarea,r,eps,hsx_bk,hsy_bk
+  double precision :: flux(1:4)
+  double precision :: pc
+  parameter(pc  = 3.08572d18)    ! Parsec                  [cm]
+  integer :: apinu,irout,ir,iphi
+  integer :: iact
+  logical :: redo
+  !
+  ! Check
+  !
+  if((igrid_coord.lt.100).or.(igrid_coord.ge.200)) then
+     write(stdo,*) 'ERROR: Spectrum made with circular images only possible ', &
+          'for spherical coordinates'
+     stop
+  endif
+  if(rt_incl_lines.and.(lines_maxshift.le.0.d0)) then
+     write(stdo,*) 'INTERNAL ERROR in lines: lines_maxshift variable not set'
+     stop
+  endif
+  if((camera_nrfreq.le.0).or.(.not.allocated(camera_frequencies))) then
+     write(stdo,*) 'ERROR: Somehow the frequencies for the spectrum are not set.'
+     stop
+  endif
+  if(camera_localobserver) then
+     write(stdo,*) 'ABORTING: For the moment we do not allow the making of a spectrum'
+     write(stdo,*) '          in the local observer mode. Use observer at infinity mode,'
+     write(stdo,*) '          for instance by specifying the incl and phi on the '
+     write(stdo,*) '          command line and setting the image size with sizeau or sizepc.'
+     stop
+  endif
+  if((((scattering_mode.ne.0).and.(.not.camera_scatsrc_allfreq)).or.   &
+      camera_secondorder).and.(lines_mode.lt.-1).and.rt_incl_lines) then
+     write(stdo,*)    '===> Warning: Combination of modes that may make RADMC-3D very slow... Here is why:'
+     if((scattering_mode.ne.0).and.(.not.camera_scatsrc_allfreq)) then
+        write(stdo,*) '     You are including dust scattering (doing it freq-by-freq), which means that'
+     else
+        if(camera_catch_doppler_line) then
+           write(stdo,*) '     You are using the doppler catching mode, which requires second order '
+           write(stdo,*) '     integration of the RT equation, which (for memory reasons) means that'
+        else
+           write(stdo,*) '     You are using second order integration of the RT equation,'
+           write(stdo,*) '     which (for memory reasons) means that:'
+        endif
+     endif
+     write(stdo,*) '     RADMC-3D must make one image for each frequency at a time to compute each '
+     write(stdo,*) '     point of the spectrum. At the same time you use on-the-fly computation of'
+     write(stdo,*) '     the line level populations, which are not stored. If you have 100 frequencies'
+     write(stdo,*) '     in your spectrum, this means that 100 times an image is made, and a 100 times'
+     write(stdo,*) '     the populations are RECALCULATED. If the population calculation is heavy, this'
+     write(stdo,*) '     means that you waste a huge amount of time. You may want to calculate these'
+     write(stdo,*) '     populations ONCE and store them, which can be done using a positive lines_mode'
+     write(stdo,*) '     number (see manual). This may require a lot of memory if you have a molecule'
+     write(stdo,*) '     with many levels. To overcome this, you can tell RADMC-3D to store only a subset'
+     write(stdo,*) '     of the computed level populations: Only those related to the line you wish to'
+     write(stdo,*) '     model. See manual.'
+  endif
+  !
+  ! Set some other values
+  !
+  camera_localobserver = .false.      ! Spectra only for observer at infinity for now
+  camera_tracemode = 1
+  !
+  ! Check if the aperture file is present and read if needed
+  !
+  if(camera_use_aperture_info) then
+     !
+     ! Read the file aperture_info.inp
+     ! 
+     call camera_read_aperture_info()
+     if(.not.allocated(camera_aperture_freq)) stop 8341
+     if(.not.allocated(camera_aperture_radius_collectarea)) stop 8342
+     !
+     ! Check if the current wavelengths are all within range
+     !
+     if((max(camera_frequencies(1),camera_frequencies(camera_nrfreq)).gt.           &
+         max(camera_aperture_freq(1),camera_aperture_freq(camera_aperture_nf))).or. &
+        (min(camera_frequencies(1),camera_frequencies(camera_nrfreq)).lt.           &
+         min(camera_aperture_freq(1),camera_aperture_freq(camera_aperture_nf)))) then
+        write(stdo,*) 'ERROR while making spectrum with aperture information:'
+        write(stdo,*) '      The aperture information does not cover all wavelengths'
+        write(stdo,*) '      that are to be used for the spectrum.'
+        stop
+     endif
+  endif
+  !
+  ! If the dust emission is included, then make sure the dust data,
+  ! density and temperature are read. If yes, do not read again.
+  !
+  if(rt_incl_dust) then
+     call read_dustdata(1)
+     call read_dust_density(1)
+     call read_dust_temperature(1)
+     if(alignment_mode.ne.0) then
+        call aligned_grains_init(1)
+     endif
+  endif
+  !
+  ! If line emission is included, then make sure the line data are
+  ! read. If yes, then do not read it again.
+  !
+  if(rt_incl_lines) then
+     call read_lines_all(1)
+  endif
+  !
+  ! Now make all the circular images
+  !
+  call camera_make_circ_image(nrphiinf,nrext,dbdr,imethod,nrref)
+  !
+  ! Now calculate the flux for each of these images
+  !
+  do inu=1,camera_nrfreq
+     !
+     ! First find the maximum ir up to which to integrate (aperture)
+     !
+     if(camera_use_aperture_info) then
+        !
+        ! Include only the part of the image that lies within the
+        ! aperture radius
+        !
+        call hunt(camera_aperture_freq,camera_aperture_nf, &
+                  camera_frequencies(inu),apinu)
+        if((apinu.lt.1).or.(apinu.ge.camera_aperture_nf)) then
+           write(stdo,*) 'INTERNAL ERROR in spectrum: aperture index out of range...'
+           stop 6398
+        endif
+        eps = (log(camera_frequencies(1))-log(camera_aperture_freq(apinu))) / &
+              (log(camera_aperture_freq(apinu+1))-log(camera_aperture_freq(apinu)))
+        if((eps.lt.0.d0).or.(eps.gt.1.d0)) stop 6399
+        r_colarea = exp((1.d0-eps) * log(camera_aperture_radius_collectarea(apinu)) + &
+                    eps * log(camera_aperture_radius_collectarea(apinu+1)))
+        !
+        ! Convert this radius from arcsec into cm for this image, using the
+        ! distance specified by the observer
+        !
+        r_colarea = r_colarea * AU * camera_observer_distance_pc
+        call hunt(cim_ri,cim_nr,r_colarea,irout)
+        if(irout.lt.1) irout=0
+        if(irout.gt.cim_nr) irout=cim_nr
+     else
+        !
+        ! Include the entire image
+        !
+        irout = cim_nr
+     endif
+     !
+     ! Now calculate the flux
+     !
+     flux(1:4) = 0.d0
+     do ir=0,irout
+        do iphi=1,cim_np
+           flux(1:4) = flux(1:4) + cim_surfarea(ir,iphi)*camera_circ_image_iquv(ir,iphi,inu,1:4)
+        enddo
+     enddo
+     flux(:) = flux(:) / ( fourpi * camera_observer_distance_pc**2 * pc**2)
+     !
+     ! Put this into the spectrum
+     !
+     camera_spectrum_iquv(inu,:)   = flux(:)
+  enddo
+  !
+end subroutine camera_make_circ_spectrum
 
 
 
