@@ -7188,7 +7188,7 @@ def plotSpectrum(a,ev=False,kev=False,hz=False,micron=False,jy=False,lsun=False,
    # Calculate frequency in Hz
    #
    cc    = 2.9979245800000e10     # Light speed             [cm/s]
-   freq  = 1e4*nc.cc/lam
+   freq  = 1e4*cc/lam
    #
    # Default: frequency in Hz
    #
