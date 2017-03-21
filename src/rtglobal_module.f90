@@ -143,6 +143,7 @@ module rtglobal_module
   !                                      ! does not yet write it to stdo.
   logical :: do_writescatsrc             ! If set, then the scattering source is written to a file
   logical :: writeimage_unformatted      ! If set, then use unformatter image output
+  logical :: circular_images             ! If set, images are made using circular pixel arrangement (spher coord only)
   logical :: do_writesample              ! Write values sampled at a list of points
   logical :: do_sample_dustdens          ! Sample dust density
   logical :: do_sample_dusttemp          ! Sample dust temperature
