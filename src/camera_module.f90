@@ -6045,10 +6045,19 @@ subroutine setup_pixels_circular(irmin,irmax,nrphiinf,nrext,dbdr,imethod,nrref)
      write(stdo,*) '      a central star is required (even if its luminosity is 0).'
      stop
   endif
-  if((star_pos(1,1).ne.0.d0).or.(star_pos(2,1).ne.0.d0).or.(star_pos(3,1).ne.0.d0)) then
-     write(stdo,*) 'ERROR in circular image generator: For circular images the '
-     write(stdo,*) '      first star must be the central star (i.e. pos=0,0,0).'
-     stop
+  !
+  ! Check or fix the central star
+  !
+  if(nstars.ge.1) then
+     !
+     ! Set the position of the central star 
+     !
+     if((abs(star_pos(1,1)).gt.1.d-6*amr_grid_xi(1,1)).or.&
+        (abs(star_pos(2,1)).gt.1.d-6*amr_grid_xi(1,1)).or.&
+        (abs(star_pos(3,1)).gt.1.d-6*amr_grid_xi(1,1))) then
+        write(stdo,*) 'Note: Setting position of first star to (0,0,0).'
+     endif
+     star_pos(:,1) = 0.d0
   endif
   !
   ! Default
@@ -6132,7 +6141,11 @@ subroutine setup_pixels_circular(irmin,irmax,nrphiinf,nrext,dbdr,imethod,nrref)
   iradius         = 0
   cim_ri(0)       = 0.d0
   cim_rc(0)       = 0.d0
-  cim_ri(1)       = star_r(1)
+  if(nstars.ge.1) then
+     cim_ri(1)    = star_r(1)
+  else
+     cim_ri(1)    = 0.d0
+  endif
   !     
   ! Next make the extra rays, which are the rays with impact parametes
   ! smaller than the radius of the inner edge of the (R,Theta) spatial
@@ -6154,13 +6167,13 @@ subroutine setup_pixels_circular(irmin,irmax,nrphiinf,nrext,dbdr,imethod,nrref)
            write(stdo,*) 'EROR in circular images: exceeded cim_nr'
            stop
         endif
-        if(amr_grid_xi(1,1).le.star_r(1)) then
+        if(amr_grid_xi(1,1).le.cim_ri(1)) then
            write(stdo,*) 'ERROR in circular images: Grid inner edge is not'
            write(stdo,*) '      larger than stellar radius.'
            stop
         endif
         cim_rc(iradius) = ( ix * ( amr_grid_xi(1,1) - &
-                          star_r(1) ) / (nrrextra+1.d0) ) + star_r(1)
+                          cim_ri(1) ) / (nrrextra+1.d0) ) + cim_ri(1)
         iradius = iradius + 1
      enddo
   elseif(imethod.eq.1) then
@@ -6189,20 +6202,20 @@ subroutine setup_pixels_circular(irmin,irmax,nrphiinf,nrext,dbdr,imethod,nrref)
         ! A method by which a minimal grid fineness is guaranteed,
         ! but also refinement near the inner edge is done.
         ! 
-        if(amr_grid_xi(1,1).le.star_r(1)) then
+        if(amr_grid_xi(1,1).le.cim_ri(1)) then
            write(stdo,*) 'ERROR in circular images: Grid inner edge is not'
            write(stdo,*) '      larger than stellar radius.'
            stop
         endif
         if(ix.le.nrrextra) then
            cim_rc(iradius) = ( ix * ( amr_grid_xi(1,1) - &
-                             star_r(1) ) / (nrrextra+1.d0) ) + star_r(1)
+                             cim_ri(1) ) / (nrrextra+1.d0) ) + cim_ri(1)
         else
            refdum2 = refdum2 + refdum1
            refdum1 = refdum1/2
            cim_rc(iradius) = ( ( nrrextra + refdum2 )            &
-                             * ( amr_grid_xi(1,1) - star_r(1) ) /    &
-                             (nrrextra+1.d0) ) + star_r(1)
+                             * ( amr_grid_xi(1,1) - cim_ri(1) ) /    &
+                             (nrrextra+1.d0) ) + cim_ri(1)
         endif
         iradius = iradius + 1
      enddo
