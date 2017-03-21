@@ -7427,8 +7427,6 @@ subroutine camera_make_circ_spectrum()
   integer :: backup_lines_mode
   double precision :: pdx,pdy,factor,r_colarea,r,eps,hsx_bk,hsy_bk
   double precision :: flux(1:4)
-  double precision :: pc
-  parameter(pc  = 3.08572d18)    ! Parsec                  [cm]
   integer :: apinu,irout,ir,iphi
   integer :: iact
   logical :: redo
@@ -7578,7 +7576,7 @@ subroutine camera_make_circ_spectrum()
            flux(1:4) = flux(1:4) + cim_surfarea(ir,iphi)*camera_circ_image_iquv(ir,iphi,inu,1:4)
         enddo
      enddo
-     flux(:) = flux(:) / ( fourpi * camera_observer_distance_pc**2 * pc**2)
+     flux(:) = flux(:) / ( parsec**2 )
      !
      ! Put this into the spectrum
      !
