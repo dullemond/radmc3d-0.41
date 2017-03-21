@@ -1022,8 +1022,29 @@ program radmc3d
         ! have been set in the call to set_camera_frequencies() above.
         !
         if(.not.circular_images) then
+           !
+           ! Normal way of making a spectrum: make rectangular images
+           ! and integrate over them
+           !
            call camera_make_spectrum()
         else
+           !
+           ! Special way of making a spectrum (only in spherical coordinates):
+           ! make 'circular images' and integrate over them.
+           !
+           if((igrid_coord.lt.100).or.(igrid_coord.ge.200)) then
+              write(stdo,*) 'ERROR: circular images only possible for spherical coordinates'
+              stop
+           endif
+           if((amr_ydim.eq.0).and.(amr_zdim.eq.0)) then
+              !
+              ! For 1D spherical models: no need for phi-dispered circular images
+              !
+              camera_circ_nrphiinf = 1
+           endif
+           !
+           ! Call the circular spectrum solver
+           !
            call camera_make_circ_spectrum()
         endif
         !
@@ -1113,8 +1134,28 @@ program radmc3d
         ! Call the image maker
         !
         if(.not.circular_images) then
+           !
+           ! Standard rectangular images
+           !
            call camera_make_rect_image(0)
         else
+           !
+           ! Special case: spherically arranged pixels 
+           ! (only for spherical coordinates)
+           !
+           if((igrid_coord.lt.100).or.(igrid_coord.ge.200)) then
+              write(stdo,*) 'ERROR: circular images only possible for spherical coordinates'
+              stop
+           endif
+           if((amr_ydim.eq.0).and.(amr_zdim.eq.0)) then
+              !
+              ! For 1D spherical models: no need for phi-dispered circular images
+              !
+              camera_circ_nrphiinf = 1
+           endif
+           !
+           ! Call the circular image routine
+           !
            call camera_make_circ_image()
         endif
         !
