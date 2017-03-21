@@ -6328,7 +6328,7 @@ subroutine camera_make_circ_image()
   use amr_module
   implicit none
   double precision :: r,phi,px,py,x,y,z
-  integer :: inu,ir,iphi,istar,ierr,inu0,inu1,ierror,ispec
+  integer :: inu,ir,iphi,ierr,inu0,inu1,ierror,ispec
   double precision :: celldxmin,quvsq
   double precision :: dirx,diry,dirz,distance,xbk,ybk,zbk,svcx,svcy,svcz
   logical :: domc
@@ -7209,7 +7209,7 @@ subroutine camera_make_circ_image()
        ! 
        do inu=inu00,inu11
           camera_intensity_iquv(inu,1)   =                               &
-               find_starlight_interpol(camera_frequencies(inu),istar)
+               find_starlight_interpol(camera_frequencies(inu),1)
           camera_intensity_iquv(inu,2:4) = 0.d0
        enddo
        !
@@ -7293,17 +7293,17 @@ subroutine camera_write_circ_image(noclip)
         ! Unformatted output (F77-Unformatted output, faster, more compact)
         !
         if(camera_stokesvector) then
-           if(camera_localobserver) then
-              write(fflo) 4           ! Format number: size units in radian (angular) + Stokes
-           else
+           !if(camera_localobserver) then
+           !   write(fflo) 4           ! Format number: size units in radian (angular) + Stokes
+           !else
               write(fflo) 3           ! Format number: size units in cm (spatial size) + Stokes
-           endif
+           !endif
         else
-           if(camera_localobserver) then
-              write(fflo) 2           ! Format number: size units in radian (angular)
-           else
+           !if(camera_localobserver) then
+           !   write(fflo) 2           ! Format number: size units in radian (angular)
+           !else
               write(fflo) 1           ! Format number: size units in cm (spatial size)
-           endif
+           !endif
         endif
         write(fflo) camera_image_nr,camera_image_nphi
         write(fflo) camera_nrfreq
@@ -7313,7 +7313,7 @@ subroutine camera_write_circ_image(noclip)
         do iinu=1,camera_nrfreq
            do is=1,ns
               write(fflo) ((camera_circ_image_iquv(ir,iphi,iinu,is),  &
-                          ir=1,camera_image_nr),iphi=1,camera_image_nphi)
+                          ir=0,camera_image_nr),iphi=1,camera_image_nphi)
            enddo
         enddo
      else
@@ -7345,7 +7345,7 @@ subroutine camera_write_circ_image(noclip)
         do iinu=1,camera_nrfreq
            do is=1,ns
               write(fflo) ((camera_circ_image_iquv(ir,iphi,iinu,is),  &
-                          ir=1,camera_image_nr),iphi=1,camera_image_nphi)
+                          ir=0,camera_image_nr),iphi=1,camera_image_nphi)
            enddo
         enddo
      endif
@@ -7378,7 +7378,7 @@ subroutine camera_write_circ_image(noclip)
      write(fflo,*) ' '
      do iinu=1,camera_nrfreq
         do iphi=1,camera_image_nphi
-           do ir=1,camera_image_nr
+           do ir=0,camera_image_nr
               if(ns.eq.1) then
                  if((camera_circ_image_iquv(ir,iphi,iinu,1).gt.1d-97).or.donoclip) then
                     write(fflo,333) camera_circ_image_iquv(ir,iphi,iinu,1)
