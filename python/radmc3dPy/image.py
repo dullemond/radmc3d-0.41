@@ -1753,17 +1753,24 @@ class radmc3dCircimage(object):
             self.npol = npol
             s = f.readline()
             self.ri = np.zeros(nr+2)
+            for ir in range(nr+2):
+                s = f.readline()
+                self.ri[ir] = float(s)
+            s = f.readline()
+            self.rc = np.zeros(nr+1)
             for ir in range(nr+1):
                 s = f.readline()
-                self.ri[ir+1] = float(s)
-            self.rc = 0.5*(self.ri[1:]+self.ri[0:-1])
-            self.rc[0] = 0.0
+                self.rc[ir] = float(s)
             s = f.readline()
             self.phii = np.zeros(nphi+1)
             for ip in range(nphi+1):
                 s = f.readline()
                 self.phii[ip] = float(s)
-            self.phic = 0.5*(self.phii[1:]+self.phii[0:-1])
+            s = f.readline()
+            self.phic = np.zeros(nphi)
+            for ip in range(nphi):
+                s = f.readline()
+                self.phic[ip] = float(s)
             s = f.readline()
             self.nu = np.zeros(nf)
             for inu in range(nf):

@@ -7308,7 +7308,9 @@ subroutine camera_write_circ_image(noclip)
         write(fflo) camera_image_nr,camera_image_nphi
         write(fflo) camera_nrfreq
         write(fflo) (cim_ri(ir),ir=1,cim_nr+1)
+        write(fflo) (cim_rc(ir),ir=1,cim_nr)
         write(fflo) (cim_pi(iphi),iphi=1,cim_np+1)
+        write(fflo) (cim_pc(iphi),iphi=1,cim_np)
         write(fflo) (1d4*cc/camera_frequencies(iinu),iinu=1,camera_nrfreq)
         do iinu=1,camera_nrfreq
            do is=1,ns
@@ -7340,7 +7342,9 @@ subroutine camera_write_circ_image(noclip)
         nn = camera_nrfreq
         write(fflo) nn
         write(fflo) (cim_ri(ir),ir=1,cim_nr+1)
+        write(fflo) (cim_rc(ir),ir=1,cim_nr)
         write(fflo) (cim_pi(iphi),iphi=1,cim_np+1)
+        write(fflo) (cim_pc(iphi),iphi=1,cim_np)
         write(fflo) (1d4*cc/camera_frequencies(iinu),iinu=1,camera_nrfreq)
         do iinu=1,camera_nrfreq
            do is=1,ns
@@ -7369,9 +7373,13 @@ subroutine camera_write_circ_image(noclip)
      write(fflo,*) camera_image_nr,camera_image_nphi
      write(fflo,*) camera_nrfreq
      write(fflo,*) ' '
-     write(fflo,320) (cim_ri(ir),ir=1,cim_nr+1)
+     write(fflo,320) (cim_ri(ir),ir=0,cim_nr+1)
+     write(fflo,*) ' '
+     write(fflo,320) (cim_rc(ir),ir=0,cim_nr)
      write(fflo,*) ' '
      write(fflo,320) (cim_pi(iphi),iphi=1,cim_np+1)
+     write(fflo,*) ' '
+     write(fflo,320) (cim_pc(iphi),iphi=1,cim_np)
      write(fflo,*) ' '
      write(fflo,320) (1d4*cc/camera_frequencies(iinu),iinu=1,camera_nrfreq)
 320  format(E21.14)
