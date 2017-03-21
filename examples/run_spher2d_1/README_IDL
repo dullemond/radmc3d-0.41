@@ -1,4 +1,5 @@
-This is a simple 1-D spherical envelope model.
+This is a simple 2-D envelope model with some density dependence of the
+theta-coordinate.
 
 This directory should contain the following files: 
 
@@ -6,6 +7,7 @@ This directory should contain the following files:
   Makefile                       (Only for convenient cleanmodel and cleanall)
   dustkappa_silicate.inp         (some dust opacity file)
   problem_setup.pro              (an IDL script for setting up some input files)
+  plot_session.pro               (an IDL script for making some plots)
 
 This is what the model does:
 
@@ -72,11 +74,7 @@ NOTE: As of version 0.31 of RADMC-3D this model comes with a dust opacity
       MgFeSiO4 with a specific weight of 3.71 gram/cm^3. The grain size is
       0.1 micron radius.
 
-NOTE: As of version 0.41 of RADMC-3D you can also make use of "circular
-      images" and "circular spectra". This is a new feature of RADMC-3D
-      allowing for pixel arrangements not in rows and columns, but in 
-      concentric circles. Works only for spherical coordinates. Advantage:
-      faster, more accurate (in most cases), and for 1-D spherical models
-      more convenient (yielding intensity as a function of radius instead
-      of square images).
-      21.03.17
+
+
+
+

@@ -22,7 +22,7 @@ os.system('radmc3d mctherm')
 #
 a    = readData(dtemp=True,binary=False)
 r    = a.grid.x[:]
-temp = a.dusttemp[:,0,0,0]
+temp = a.dusttemp[:,-1,0,0]
 plt.figure(1)
 plt.plot(r/au,temp)
 plt.xlabel('r [au]')
@@ -32,9 +32,9 @@ plt.show()
 #
 # Now make sure to have run 
 #
-#   radmc3d sed
+#   radmc3d sed incl 60
 #
-os.system('radmc3d sed')
+os.system('radmc3d sed incl 60')
 #
 # to get the spectral energy distribution
 #
@@ -56,9 +56,9 @@ plt.show()
 #
 # Now make sure to have run 
 #
-#   radmc3d image lambda 10
+#   radmc3d image lambda 10 incl 60
 #
-os.system('radmc3d image lambda 10')
+os.system('radmc3d image lambda 10 incl 60')
 #
 # to get the image
 #
@@ -70,9 +70,9 @@ plt.show()
 #
 # Now make sure to have run 
 #
-#   radmc3d image circ lambda 10
+#   radmc3d image circ lambda 10 incl 60
 #
-os.system('radmc3d image circ lambda 10')
+os.system('radmc3d image circ lambda 10 incl 60')
 #
 # to get the "circular image". Circular images (available only for
 # models in spherical coordinates) are pixel arrangements that are
@@ -116,9 +116,9 @@ plt.show()
 #   radmc3d sed
 #   cp spectrum.out spectrum_rect.out
 #
-os.system('radmc3d sed circ')
+os.system('radmc3d sed circ incl 60')
 os.system('cp spectrum.out spectrum_circ.out')
-os.system('radmc3d sed')
+os.system('radmc3d sed incl 60')
 os.system('cp spectrum.out spectrum_rect.out')
 #
 # and notice the difference in speed. The results should be 
