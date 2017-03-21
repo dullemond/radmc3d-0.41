@@ -70,7 +70,11 @@ plt.axis([1e-1,1e4,1e-8,1])
 q     = readData(dtemp=True,binary=False)
 fig5  = plt.figure()
 ay    = fig5.gca(projection='3d')
-xx    = q.grid.xx[:,:,16]
-yy    = q.grid.yy[:,:,16]
+qq    = np.meshgrid(q.grid.x,q.grid.y,q.grid.z,indexing='ij')
+xx    = qq[0][:,:,16]
+yy    = qq[1][:,:,16]
 dd    = q.dusttemp[:,:,16,0]  # The extra "0" is because of possible multiple dust species; here only 1 dust species
 ay.plot_surface(xx, yy, dd, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=1)
+
+
+plt.show()
