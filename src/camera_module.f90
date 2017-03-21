@@ -275,6 +275,11 @@ module camera_module
   integer :: cim_nr,cim_np
   double precision, allocatable :: cim_rc(:),cim_ri(:),cim_pc(:),cim_pi(:)
   double precision, allocatable :: cim_surfarea(:,:)
+  integer :: camera_circ_nrphiinf = 128
+  integer :: camera_circ_nrext    = 10
+  integer :: camera_circ_dbdr     = 1
+  integer :: camera_circ_imethod  = 1
+  integer :: camera_circ_nrref    = 1
   !
   !    A new mode for scattering images: the lambda single scattering mode. Default
   !    is 0 (i.e. normal Monte Carlo scattering). If set to 1, then use the
@@ -6283,33 +6288,32 @@ end subroutine setup_pixels_circular
 ! The method used for setting up the pixels is the "tangent ray method",
 ! with several additions. 
 !
-! ARGUMENTS:
-!    nrphiinf       The number of pixels arranged in each circle (i.e.
-!                   the number of phi-pixels). For 1-D spherically symmetric
-!                   models this can be set to 1, because we do not expect 
-!                   any differences in the image along the phi-direction 
-!                   for spherically symmetric models. Recommended value
-!                   for 2-D axisymmetric and 3-D models: something of the
-!                   order of 128. 
-!    nrext          The number of extra rays inside of the inner edge
-!                   between the stellar surface and the grid inner edge.
-!                   Recommended value: something like 10.
-!    dbdr           For the original tangent-ray method this should be 
-!                   set to 1. If set to 2 or higher, then for each radial
-!                   coordinate in the spherical coordinates, extra rays
-!                   are inserted. For dbdr=2 there will be 2 radial 
-!                   pixel circles for each radial coordinate grid point. 
-!                   More accurate but substantially slower. Reccomended
-!                   value is 1.
-!    imethod        Set this to 1 (the other methods are for backward
-!                   compatibility with older radiative transfer programs).
-!    nrref          Further refinement near inner grid edge. Recommended
-!                   value is 1 (no further refinement).
+! DEPENDENCE ON SETTINGS:
+!    camera_circ_nrphiinf  The number of pixels arranged in each circle (i.e.
+!                          the number of phi-pixels). For 1-D spherically symmetric
+!                          models this can be set to 1, because we do not expect 
+!                          any differences in the image along the phi-direction 
+!                          for spherically symmetric models. Recommended value
+!                          for 2-D axisymmetric and 3-D models: something of the
+!                          order of 128. 
+!    camera_circ_nrext     The number of extra rays inside of the inner edge
+!                          between the stellar surface and the grid inner edge.
+!                          Recommended value: something like 10.
+!    camera_circ_dbdr      For the original tangent-ray method this should be 
+!                          set to 1. If set to 2 or higher, then for each radial
+!                          coordinate in the spherical coordinates, extra rays
+!                          are inserted. For dbdr=2 there will be 2 radial 
+!                          pixel circles for each radial coordinate grid point. 
+!                          More accurate but substantially slower. Reccomended
+!                          value is 1.
+!    camera_circ_imethod   Set this to 1 (the other methods are for backward
+!                          compatibility with older radiative transfer programs).
+!    camera_circ_nrref     Further refinement near inner grid edge. Recommended
+!                          value is 1 (no further refinement).
 !-------------------------------------------------------------------------
-subroutine camera_make_circ_image(nrphiinf,nrext,dbdr,imethod,nrref)
+subroutine camera_make_circ_image()
   use amr_module
   implicit none
-  integer :: nrphiinf,nrext,dbdr,imethod,nrref
   double precision :: r,phi,px,py,x,y,z
   integer :: inu,ir,iphi,istar,ierr,inu0,inu1,ierror,ispec
   double precision :: celldxmin,quvsq
@@ -6355,7 +6359,10 @@ subroutine camera_make_circ_image(nrphiinf,nrext,dbdr,imethod,nrref)
   !
   ! Set up the circular/radial pixel arrangement for the circular image
   ! 
-  call setup_pixels_circular(irmin,irmax,nrphiinf,nrext,dbdr,imethod,nrref)
+  call setup_pixels_circular(irmin,irmax,                            &
+                             camera_circ_nrphiinf,camera_circ_nrext, &
+                             camera_circ_dbdr,camera_circ_imethod,   &
+                             camera_circ_nrref)
   !
   ! If the dust emission is included, then make sure the dust data,
   ! density and temperature are read. If yes, do not read again.
@@ -7392,10 +7399,9 @@ end subroutine camera_write_circ_image
 !-------------------------------------------------------------------------
 !              MAKE A SPECTRUM USING THE CIRCULAR IMAGES
 !-------------------------------------------------------------------------
-subroutine camera_make_circ_spectrum(nrphiinf,nrext,dbdr,imethod,nrref)
+subroutine camera_make_circ_spectrum()
   use constants_module
   implicit none
-  integer :: nrphiinf,nrext,dbdr,imethod,nrref
   integer :: inu,ierr,backup_nrfreq
   integer :: backup_lines_mode
   double precision :: pdx,pdy,factor,r_colarea,r,eps,hsx_bk,hsy_bk
@@ -7504,7 +7510,7 @@ subroutine camera_make_circ_spectrum(nrphiinf,nrext,dbdr,imethod,nrref)
   !
   ! Now make all the circular images
   !
-  call camera_make_circ_image(nrphiinf,nrext,dbdr,imethod,nrref)
+  call camera_make_circ_image()
   !
   ! Now calculate the flux for each of these images
   !
