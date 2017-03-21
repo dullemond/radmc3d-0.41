@@ -7229,6 +7229,167 @@ end subroutine camera_make_circ_image
 
 
 !-------------------------------------------------------------------------
+!                       WRITE CIRCULAR IMAGE
+!-------------------------------------------------------------------------
+subroutine camera_write_circ_image(noclip)
+  implicit none
+  integer :: ns,iinu,ir,iphi,is,nn,kk,iformat
+  logical, optional :: noclip
+  logical :: donoclip
+  double precision :: dummy(1:4)
+  !
+  ! Interpret the noclip
+  !
+  donoclip = .false.
+  if(present(noclip)) then
+     donoclip = noclip
+  endif
+  !
+  ! Open the file
+  !
+  if(writeimage_unformatted) then
+     if(rto_style.eq.2) then
+        open(unit=fflo,file='circimage.uout',form='unformatted')
+     else
+        open(unit=fflo,file='circimage.bout',status='replace',access='stream')
+     endif
+  else
+     open(unit=fflo,file='circimage.out')
+  endif
+  !
+  ! Decide how many of the Stokes components we have to write
+  !
+  if(camera_stokesvector) then
+     ns=4
+  else
+     ns=1
+  endif
+  !
+  ! Now decide whether unformatted or formatted
+  !
+  if(writeimage_unformatted) then
+     if (rto_style.eq.2) then
+        !
+        ! Unformatted output (F77-Unformatted output, faster, more compact)
+        !
+        if(camera_stokesvector) then
+           if(camera_localobserver) then
+              write(fflo) 4           ! Format number: size units in radian (angular) + Stokes
+           else
+              write(fflo) 3           ! Format number: size units in cm (spatial size) + Stokes
+           endif
+        else
+           if(camera_localobserver) then
+              write(fflo) 2           ! Format number: size units in radian (angular)
+           else
+              write(fflo) 1           ! Format number: size units in cm (spatial size)
+           endif
+        endif
+        write(fflo) camera_image_nr,camera_image_nphi
+        write(fflo) camera_nrfreq
+        write(fflo) (cim_ri(ir),ir=1,cim_nr+1)
+        write(fflo) (cim_pi(iphi),iphi=1,cim_np+1)
+        write(fflo) (1d4*cc/camera_frequencies(iinu),iinu=1,camera_nrfreq)
+        do iinu=1,camera_nrfreq
+           do is=1,ns
+              write(fflo) ((camera_circ_image_iquv(ir,iphi,iinu,is),  &
+                          ir=1,camera_image_nr),iphi=1,camera_image_nphi)
+           enddo
+        enddo
+     else
+        !
+        ! Unformatted output (C-compliant binary output, faster, more compact)
+        !
+        if(camera_stokesvector) then
+           if(camera_localobserver) then
+              iformat = 4           ! Format number: size units in radian (angular) + Stokes
+           else
+              iformat = 3           ! Format number: size units in cm (spatial size) + Stokes
+           endif
+        else
+           if(camera_localobserver) then
+              iformat = 2           ! Format number: size units in radian (angular)
+           else
+              iformat = 1           ! Format number: size units in cm (spatial size)
+           endif
+        endif
+        write(fflo) iformat
+        nn = camera_image_nr
+        kk = camera_image_nphi
+        write(fflo) nn, kk
+        nn = camera_nrfreq
+        write(fflo) nn
+        write(fflo) (cim_ri(ir),ir=1,cim_nr+1)
+        write(fflo) (cim_pi(iphi),iphi=1,cim_np+1)
+        write(fflo) (1d4*cc/camera_frequencies(iinu),iinu=1,camera_nrfreq)
+        do iinu=1,camera_nrfreq
+           do is=1,ns
+              write(fflo) ((camera_circ_image_iquv(ir,iphi,iinu,is),  &
+                          ir=1,camera_image_nr),iphi=1,camera_image_nphi)
+           enddo
+        enddo
+     endif
+  else
+     !
+     ! Standard: write it formatted way
+     !
+     if(camera_stokesvector) then
+        if(camera_localobserver) then
+           write(fflo,*) 4           ! Format number: size units in radian (angular)
+        else
+           write(fflo,*) 3           ! Format number: size units in cm (spatial size)
+        endif
+     else
+        if(camera_localobserver) then
+           write(fflo,*) 2           ! Format number: size units in radian (angular)
+        else
+           write(fflo,*) 1           ! Format number: size units in cm (spatial size)
+        endif
+     endif
+     write(fflo,*) camera_image_nr,camera_image_nphi
+     write(fflo,*) camera_nrfreq
+     write(fflo,*) ' '
+     write(fflo,320) (cim_ri(ir),ir=1,cim_nr+1)
+     write(fflo,*) ' '
+     write(fflo,320) (cim_pi(iphi),iphi=1,cim_np+1)
+     write(fflo,*) ' '
+     write(fflo,320) (1d4*cc/camera_frequencies(iinu),iinu=1,camera_nrfreq)
+320  format(E21.14)
+     write(fflo,*) ' '
+     do iinu=1,camera_nrfreq
+        do iphi=1,camera_image_nphi
+           do ir=1,camera_image_nr
+              if(ns.eq.1) then
+                 if((camera_circ_image_iquv(ir,iphi,iinu,1).gt.1d-97).or.donoclip) then
+                    write(fflo,333) camera_circ_image_iquv(ir,iphi,iinu,1)
+333                 format(E21.14)
+                 else
+                    write(fflo,*) 0.d0
+                 endif
+              else
+                 dummy(1:4) = camera_circ_image_iquv(ir,iphi,iinu,1:4)
+                 do is=1,ns
+                    if((abs(dummy(is)).le.1d-97).and.(.not.donoclip)) then
+                       dummy(is) = 0.d0
+                    endif
+                 enddo
+                 write(fflo,334) dummy(1:4)
+334              format(4(E21.14,1X))
+              endif
+           enddo
+        enddo
+        write(fflo,*) ' '
+     enddo
+  endif
+  !
+  ! Close file
+  !
+  close(1)
+  !
+end subroutine camera_write_circ_image
+
+
+!-------------------------------------------------------------------------
 !              MAKE A SPECTRUM USING THE CIRCULAR IMAGES
 !-------------------------------------------------------------------------
 subroutine camera_make_circ_spectrum(nrphiinf,nrext,dbdr,imethod,nrref)
