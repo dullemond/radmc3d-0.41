@@ -8214,3 +8214,15 @@ finetuning: I noticed during some testing with a supersimple annulus model
             branch. Anyway: it is already in amrray_module.f90. See the
             maxdeltasina keyword.
 
+20.03.2017  It seems that the maxdphi stuff is now finished and works.
+      !!    I now make this the default! As of now the angle of the 
+            head of the ray w.r.t. the origin of the (spherical) 
+            coordinate system can not swap too much within a single
+            ray segment. 
+
+21.03.2017  Re-implemented the circular images stuff. Finally... This is
+            particularly useful for 1-D models as well as for making 
+            spectra of 2-D axially symmetric models. But I need to add
+            some stuff about this in the manual. Still to do. I added
+            it to the run_spher* examples, though. For now that should
+            be enough.
