@@ -1378,6 +1378,12 @@ end function find_extlumintens_interpol
 
 !-------------------------------------------------------------------------
 !                    JITTER THE STARS A TINY BIT
+!
+! Note: Tiny bug: for spherical coordinates the jitter in theta and
+!       phi does not go correctly (because star_pos is always in 
+!       cartesian). But so far this has not caused problems, and
+!       since I don't want (for now) to break the automatic test suite,
+!       I'll keep it for now. 2017.03.21
 !-------------------------------------------------------------------------
 subroutine jitter_stars(fact)
   implicit none

@@ -25,15 +25,17 @@ nphot    = 100000
 # Grid parameters
 #
 nx       = 100
-ny       = 1
+ny       = 120
 nz       = 1
 #
 # Model parameters
 #
 rin      = 5*au
 rout     = 100*au
-rho0     = 1e-16 * 10
+zmaxr    = 0.5e0
+rho0     = 1e-16 * 10000
 prho     = -2.e0
+hpr      = 0.1e0
 #
 # Star parameters
 #
@@ -48,14 +50,17 @@ pstar    = [0.,0.,0.]
 #       done this way to be consistent with problem_setup.pro (the IDL version)
 #
 xi       = rin * (rout/rin)**(np.linspace(0.,nx,nx+1)/(nx-1.0))
-yi       = np.array([0.,math.pi])
+yi       = math.pi/2.0 - zmaxr*np.linspace(ny*0.5,-ny*0.5,ny+1)/(ny*0.5)
 zi       = np.array([0.,math.pi*2])
 xc       = 0.5e0 * ( xi[0:nx] + xi[1:nx+1] )
+yc       = 0.5e0 * ( yi[0:ny] + yi[1:ny+1] )
 #
 # Make the dust density model
 #
-rr       = xc
+rr,tt    = np.meshgrid(xc,yc,indexing='ij')
+zzr      = math.pi/2.0 - tt
 rhod     = rho0 * (rr/au)**prho
+rhod     = rhod * np.exp(-0.50*(zzr/hpr)**2)
 #
 # Write the wavelength_micron.inp file
 #
@@ -95,7 +100,7 @@ with open('amr_grid.inp','w+') as f:
     f.write('0\n')                       # AMR grid style  (0=regular grid, no AMR)
     f.write('100\n')                     # Coordinate system
     f.write('0\n')                       # gridinfo
-    f.write('1 0 0\n')                   # Include x,y,z coordinate
+    f.write('1 1 0\n')                   # Include x,y,z coordinate
     f.write('%d %d %d\n'%(nx,ny,nz))     # Size of grid
     np.savetxt(f,xi.T,fmt=['%13.6e'])    # X coordinates (cell walls)
     np.savetxt(f,yi.T,fmt=['%13.6e'])    # Y coordinates (cell walls)

@@ -5323,6 +5323,22 @@ Here are some additional issues to keep in mind:
   way to test is to use the doppler catching method and vary the doppler
   catching resolution (using the {\small\tt catch\_doppler\_resolution}
   keyword in {\small\tt radmc3d.inp}).
+\item If using line transfer in spherical coordinates using doppler
+  catching, the linear interpolation of the line shift between the beginning
+  and the end of a segment may not always be enough to accurately prevent
+  doppler jumps. This is because in addition to the physical gradient of gas
+  velocity, the projected gas velocity along a ray changes also along the
+  ray due to the geometry (the use of spherical coordinates). Example: a
+  spherically symmetric radially outflowing wind with constant outward
+  velocity $v_r=$const. Although $v_r$ is constant, the 3-D {\em vector}
+  $\vec v$ is not constant, since it always points outward. A ray through
+  this wind will thus have a varying $\vec n\cdot \vec v$ along the ray.  In
+  the cell where the ray reaches its closest approach to the origin of the
+  coordinate system the $\vec n\cdot \vec v$ will vary the strongest.  This
+  may be such a strong effect that it could affect the reliability of the
+  code. {\em As of version 0.41 of this code a method is in place to prevent
+    this}. It is switched on by default, but it can be switched off manually
+  for testing purposes. See Section \ref{sec-secord-spher} for details.
 \end{itemize}
 
 
@@ -6547,6 +6563,32 @@ second order integration for the images and spectra will, however, smear the
 sources a bit out. This then leads to ``leaking'' of emissivity from
 optically thick cells into optically thin cells. These optically thin cells
 can then become too bright.
+
+\subsection{Second order integration in spherical coordinates: a subtle issue}
+\label{sec-secord-spher}
+%
+The second order integration (as well as the doppler-catching method, see
+Section \ref{sec-doppler-catching}) work in cartesian coordinates as well as
+in spherical coordinates. In spherical coordinates in 1-D (spherical
+symmetry) or 2-D (axial symmetry) there is, however, a very subtle issue
+that can lead to inaccuracies, in particular with line transfer. The problem
+arises in the cell where a ray reaches its closest approach to the origin of
+the coordinate system (or closest approach to the symmetry axis). There the
+ray segment can become fairly long, and its angle with respect to the
+symmetry axis and/or the origin can drastically change within this single
+ray-segment. This can sometimes lead to inaccuracies. 
+
+As of version 0.41 of {\small\tt RADMC-3D} a new global variable is
+introduced, {\small\tt camera\_maxdphi}, which has as default the value 0.1,
+but which can be set to another value in the {\small\tt radmc3d.inp} file.
+It sets the maximum angle (in radian) which a ray segment in spherical
+coordinates is allowed to span with respect to the origin of the coordinate
+system. If a ray segment spans an angle larger than that, the ray-segment 
+is cut into smaller segments. This means that in that cell the ray will
+consist of more than one segment. 
+
+If {\small\tt camera\_maxdphi=0} this segment cutting is switched off (for
+backward compatibility to earlier versions of {\small\tt RADMC-3d}). 
 
 
 \section{Visualizing the $\tau=1$ surface}

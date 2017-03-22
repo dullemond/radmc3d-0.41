@@ -175,6 +175,10 @@ module camera_module
   !
   integer :: camera_image_nx,camera_image_ny
   !
+  !   The number of pixels in r and phi image-plane directions (for circular images)
+  !
+  integer :: camera_image_nr,camera_image_nphi
+  !
   !   Flags and variables for the setting of the camera_frequencies array
   !
   integer :: camera_theinu,camera_range_nlam
@@ -248,6 +252,7 @@ module camera_module
   !
   double precision, allocatable :: camera_intensity_iquv(:,:)
   double precision, allocatable :: camera_rect_image_iquv(:,:,:,:)
+  double precision, allocatable :: camera_circ_image_iquv(:,:,:,:)
   logical :: camera_warn_resolution
   !
   !    Flag to force RADMC-3D to precompute the source function for all frequencies
@@ -265,10 +270,16 @@ module camera_module
   !
   double precision :: camera_starsphere_nrpix = 20
   !
-  !    For backward compatibility with RADMC, here is the circular image stuff
+  ! The data for the circular images
   !
   integer :: cim_nr,cim_np
   double precision, allocatable :: cim_rc(:),cim_ri(:),cim_pc(:),cim_pi(:)
+  double precision, allocatable :: cim_surfarea(:,:)
+  integer :: camera_circ_nrphiinf = 128
+  integer :: camera_circ_nrext    = 10
+  integer :: camera_circ_dbdr     = 1
+  integer :: camera_circ_imethod  = 1
+  integer :: camera_circ_nrref    = 1
   !
   !    A new mode for scattering images: the lambda single scattering mode. Default
   !    is 0 (i.e. normal Monte Carlo scattering). If set to 1, then use the
@@ -408,13 +419,11 @@ subroutine camera_init()
   !
   ! Check some stuff
   !
-  if(camera_image_nx.le.0) then 
-     write(stdo,*) 'ERROR in camera module: image_nx = ',camera_image_nx
-     stop
-  endif
-  if(camera_image_ny.le.0) then 
-     write(stdo,*) 'ERROR in camera module: image_ny = ',camera_image_ny
-     stop
+  if((camera_image_nx.le.0).or.(camera_image_ny.le.0)) then 
+     if((camera_image_nr.le.0).or.(camera_image_nphi.le.0)) then
+        write(stdo,*) 'ERROR in camera module: Zero number of pixels...'
+        stop
+     endif
   endif
   if(rt_incl_dust) then
      if(.not.allocated(dust_kappa_abs)) then
@@ -456,16 +465,46 @@ subroutine camera_init()
      write(stdo,*) 'ERROR in camera module: Could not allocate spectrum array.'
      stop
   endif
-  allocate(camera_rect_image_iquv(1:camera_image_nx,1:camera_image_ny,1:camera_nrfreq,1:4),STAT=ierr)
-  if(ierr.ne.0) then
-     write(stdo,*) 'ERROR in camera module: Could not allocate camera_rect_image_iquv() array'
-     stop
-  endif
-  camera_rect_image_iquv(:,:,:,:) = 0.d0
   allocate(camera_intensity_iquv(1:camera_nrfreq,1:4),STAT=ierr)
   if(ierr.ne.0) then
      write(stdo,*) 'ERROR in camera module: Could not allocate camera_intensity_iquv() array'
      stop
+  endif
+  !
+  ! Now allocate the image array for the rectangular images
+  !
+  if((camera_image_nx.ge.1).and.(camera_image_ny.ge.1)) then
+     allocate(camera_rect_image_iquv(1:camera_image_nx,1:camera_image_ny,1:camera_nrfreq,1:4),STAT=ierr)
+     if(ierr.ne.0) then
+        write(stdo,*) 'ERROR in camera module: Could not allocate camera_rect_image_iquv() array'
+        stop
+     endif
+     camera_rect_image_iquv(:,:,:,:) = 0.d0
+  endif
+  !
+  ! Now allocate the image array for the circular images
+  !
+  if((camera_image_nr.ge.1).and.(camera_image_nphi.ge.1)) then
+     allocate(camera_circ_image_iquv(0:camera_image_nr,1:camera_image_nphi,1:camera_nrfreq,1:4),STAT=ierr)
+     if(ierr.ne.0) then
+        write(stdo,*) 'ERROR in camera module: Could not allocate camera_circ_image_iquv() array'
+        stop
+     endif
+     camera_circ_image_iquv(:,:,:,:) = 0.d0
+  endif
+  !
+  ! Some further comments:
+  !
+  ! If using second order integration in spherical coordinates, then
+  ! better set the camera_maxdphi to a reasonably small value.
+  !
+  if((igrid_coord.ge.100).and.(igrid_coord.lt.200).and.camera_secondorder) then
+     if(camera_maxdphi.eq.0d0) then
+        write(stdo,*) 'WARNING: camera_maxdphi set to 0. Could be dangerous. Better set it to e.g. 0.1.'
+     elseif(camera_maxdphi.le.0.01d0) then
+        write(stdo,*) 'WARNING: camera_maxdphi set to very small value >0. ',&
+             'This is OK, but it may make the code slow.'
+     endif
   endif
   !
 end subroutine camera_init
@@ -513,6 +552,7 @@ subroutine camera_cleanup()
   if(allocated(cim_ri)) deallocate(cim_ri)
   if(allocated(cim_pc)) deallocate(cim_pc)
   if(allocated(cim_pi)) deallocate(cim_pi)
+  if(allocated(cim_surfarea)) deallocate(cim_surfarea)
   !
 end subroutine camera_cleanup
 
@@ -528,6 +568,7 @@ subroutine camera_partial_cleanup()
   implicit none
   call sources_partial_cleanup()
   if(allocated(camera_rect_image_iquv)) deallocate(camera_rect_image_iquv)
+  if(allocated(camera_circ_image_iquv)) deallocate(camera_circ_image_iquv)
   if(allocated(camera_spectrum_iquv)) deallocate(camera_spectrum_iquv)
   if(allocated(camera_intensity_iquv)) deallocate(camera_intensity_iquv)
   if(allocated(camera_xstop)) deallocate(camera_xstop)
@@ -1436,9 +1477,15 @@ subroutine camera_serial_raytrace(nrfreq,inu0,inu1,x,y,z,dx,dy,dz,distance,   &
            !
            ! We use spherical coordinates
            !
-           if(camera_maxdphi.le.0.d0) then
+           if((camera_maxdphi.le.0.d0).or.((.not.camera_secondorder).and. &
+                (.not.dust_2daniso))) then
               !
-              ! Normal case
+              ! If camera_maxdphi is not set to a positive value, then
+              ! do not cut segments (always go from one cell wall to the
+              ! next in one segment). 
+              !
+              ! Same is true if first order integration is used, and the 2-D
+              ! anisotropic scattering mode is not used. 
               !
               call amrray_find_next_location_spher(ray_dsend,           &
                    ray_cart_x,ray_cart_y,ray_cart_z,                    &
@@ -3632,7 +3679,12 @@ subroutine camera_make_rect_image(img,tausurf)
         ! thereby skipping intermediate angles. That is bad for the 
         ! interpolation of the scattering source function.
         !
-        camera_maxdphi = twopi / dust_2daniso_nphi
+        if(camera_maxdphi.eq.0.d0) then
+           write(stdo,*) 'WARNING: 2-D anisotropic scattering without camera_maxdphi set... Dangerous.'
+        endif
+        if(camera_maxdphi.gt.twopi/dust_2daniso_nphi) then
+           camera_maxdphi = twopi / dust_2daniso_nphi
+        endif
         if(camera_maxdphi.ge.0.5d0) camera_maxdphi=0.5d0
         !
         ! Message
@@ -5975,7 +6027,7 @@ subroutine setup_pixels_circular(irmin,irmax,nrphiinf,nrext,dbdr,imethod,nrref)
   implicit none
   integer :: irmin,irmax,nrphiinf,nrext,dbdr
   integer :: imethod,nrref
-  integer :: ix,ir,iins,i
+  integer :: ix,ir,iins,i,iphi
   integer :: iradius,nrrextra
   doubleprecision :: epsrrr,refdum1,refdum2,telesc_eps,dr
   parameter(telesc_eps=1d-10)
@@ -5993,10 +6045,19 @@ subroutine setup_pixels_circular(irmin,irmax,nrphiinf,nrext,dbdr,imethod,nrref)
      write(stdo,*) '      a central star is required (even if its luminosity is 0).'
      stop
   endif
-  if((star_pos(1,1).ne.0.d0).or.(star_pos(2,1).ne.0.d0).or.(star_pos(3,1).ne.0.d0)) then
-     write(stdo,*) 'ERROR in circular image generator: For circular images the '
-     write(stdo,*) '      first star must be the central star (i.e. pos=0,0,0).'
-     stop
+  !
+  ! Check or fix the central star
+  !
+  if(nstars.ge.1) then
+     !
+     ! Set the position of the central star 
+     !
+     if((abs(star_pos(1,1)).gt.1.d-6*amr_grid_xi(1,1)).or.&
+        (abs(star_pos(2,1)).gt.1.d-6*amr_grid_xi(1,1)).or.&
+        (abs(star_pos(3,1)).gt.1.d-6*amr_grid_xi(1,1))) then
+        write(stdo,*) 'Note: Setting position of first star to (0,0,0).'
+     endif
+     star_pos(:,1) = 0.d0
   endif
   !
   ! Default
@@ -6030,8 +6091,10 @@ subroutine setup_pixels_circular(irmin,irmax,nrphiinf,nrext,dbdr,imethod,nrref)
   if(allocated(cim_ri)) deallocate(cim_ri)
   if(allocated(cim_pc)) deallocate(cim_pc)
   if(allocated(cim_pi)) deallocate(cim_pi)
+  if(allocated(cim_surfarea)) deallocate(cim_surfarea)
   allocate(cim_rc(0:cim_nr),cim_ri(0:cim_nr+1))  ! Note: cell 0 = star
   allocate(cim_pc(1:cim_np),cim_pi(1:cim_np+1))
+  allocate(cim_surfarea(0:cim_nr,1:cim_np))
   !
   ! Do some checks
   !
@@ -6065,7 +6128,7 @@ subroutine setup_pixels_circular(irmin,irmax,nrphiinf,nrext,dbdr,imethod,nrref)
      cim_pc(i) = twopi * (i-0.5d0)/cim_np
   enddo
   do i=1,cim_np+1
-     cim_pc(i) = twopi * (i-1.d0)/cim_np
+     cim_pi(i) = twopi * (i-1.d0)/cim_np
   enddo
   !
   ! Now make the r-grid, which must be adapted to the r-grid of the
@@ -6078,7 +6141,11 @@ subroutine setup_pixels_circular(irmin,irmax,nrphiinf,nrext,dbdr,imethod,nrref)
   iradius         = 0
   cim_ri(0)       = 0.d0
   cim_rc(0)       = 0.d0
-  cim_ri(1)       = star_r(1)
+  if(nstars.ge.1) then
+     cim_ri(1)    = star_r(1)
+  else
+     cim_ri(1)    = 0.d0
+  endif
   !     
   ! Next make the extra rays, which are the rays with impact parametes
   ! smaller than the radius of the inner edge of the (R,Theta) spatial
@@ -6100,13 +6167,13 @@ subroutine setup_pixels_circular(irmin,irmax,nrphiinf,nrext,dbdr,imethod,nrref)
            write(stdo,*) 'EROR in circular images: exceeded cim_nr'
            stop
         endif
-        if(amr_grid_xi(1,1).le.star_r(1)) then
+        if(amr_grid_xi(1,1).le.cim_ri(1)) then
            write(stdo,*) 'ERROR in circular images: Grid inner edge is not'
            write(stdo,*) '      larger than stellar radius.'
            stop
         endif
         cim_rc(iradius) = ( ix * ( amr_grid_xi(1,1) - &
-                          star_r(1) ) / (nrrextra+1.d0) ) + star_r(1)
+                          cim_ri(1) ) / (nrrextra+1.d0) ) + cim_ri(1)
         iradius = iradius + 1
      enddo
   elseif(imethod.eq.1) then
@@ -6135,20 +6202,20 @@ subroutine setup_pixels_circular(irmin,irmax,nrphiinf,nrext,dbdr,imethod,nrref)
         ! A method by which a minimal grid fineness is guaranteed,
         ! but also refinement near the inner edge is done.
         ! 
-        if(amr_grid_xi(1,1).le.star_r(1)) then
+        if(amr_grid_xi(1,1).le.cim_ri(1)) then
            write(stdo,*) 'ERROR in circular images: Grid inner edge is not'
            write(stdo,*) '      larger than stellar radius.'
            stop
         endif
         if(ix.le.nrrextra) then
            cim_rc(iradius) = ( ix * ( amr_grid_xi(1,1) - &
-                             star_r(1) ) / (nrrextra+1.d0) ) + star_r(1)
+                             cim_ri(1) ) / (nrrextra+1.d0) ) + cim_ri(1)
         else
            refdum2 = refdum2 + refdum1
            refdum1 = refdum1/2
            cim_rc(iradius) = ( ( nrrextra + refdum2 )            &
-                             * ( amr_grid_xi(1,1) - star_r(1) ) /    &
-                             (nrrextra+1.d0) ) + star_r(1)
+                             * ( amr_grid_xi(1,1) - cim_ri(1) ) /    &
+                             (nrrextra+1.d0) ) + cim_ri(1)
         endif
         iradius = iradius + 1
      enddo
@@ -6161,7 +6228,9 @@ subroutine setup_pixels_circular(irmin,irmax,nrphiinf,nrext,dbdr,imethod,nrref)
   ! spatial object. These rays will contain most of the information of 
   ! the image, once the telescope imaging routine has done it's job.
   !
-  irmax = max(irmax,amr_grid_nx)
+  ! irmax = max(irmax,amr_grid_nx)   ! Bugfix 20.03.2017
+  irmax = min(irmax,amr_grid_nx)
+  if(irmax.eq.0) irmax=amr_grid_nx   ! 0 means: till the end of the grid
   do ix=irmin,irmax-1
      if(iradius.gt.cim_nr) then
         write(stdo,*) 'BUG setup_pixels_circular(): exceed limits'
@@ -6205,38 +6274,108 @@ subroutine setup_pixels_circular(irmin,irmax,nrphiinf,nrext,dbdr,imethod,nrref)
   camera_image_halfsize_y = cim_ri(cim_nr+1)
   camera_image_nx = 0
   camera_image_ny = 0
+  camera_image_nr   = cim_nr
+  camera_image_nphi = cim_np
+  !
+  ! Calculate the surface areas of these "pixels"
+  !
+  do ir=0,camera_image_nr
+     do iphi=1,camera_image_nphi
+        cim_surfarea(ir,iphi) = 0.5d0 * ( cim_ri(ir+1)**2 - cim_ri(ir)**2 ) * &
+             ( cim_pi(iphi+1) - cim_pi(iphi) )
+     enddo
+  enddo
   !
 end subroutine setup_pixels_circular
 
 !-------------------------------------------------------------------------
 !                         MAKE A CIRCULAR IMAGE
-!                  (BACKWARD COMPATIBILITY WITH RADMC)
+! 
+! In parcicular for models in spherical coordinates it can be useful to
+! arrange the pixels not in x and y, but instead in r and phi. This allows
+! one to automatically adapt to the refining grid toward the origin. It
+! also makes it easier to analyze the results of 1-D models, because you
+! will then merely get intensity as a function of radius instead of the
+! overkill of a full x,y image.
+!
+! The method used for setting up the pixels is the "tangent ray method",
+! with several additions. 
+!
+! DEPENDENCE ON SETTINGS:
+!    camera_circ_nrphiinf  The number of pixels arranged in each circle (i.e.
+!                          the number of phi-pixels). For 1-D spherically symmetric
+!                          models this can be set to 1, because we do not expect 
+!                          any differences in the image along the phi-direction 
+!                          for spherically symmetric models. Recommended value
+!                          for 2-D axisymmetric and 3-D models: something of the
+!                          order of 128. 
+!    camera_circ_nrext     The number of extra rays inside of the inner edge
+!                          between the stellar surface and the grid inner edge.
+!                          Recommended value: something like 10.
+!    camera_circ_dbdr      For the original tangent-ray method this should be 
+!                          set to 1. If set to 2 or higher, then for each radial
+!                          coordinate in the spherical coordinates, extra rays
+!                          are inserted. For dbdr=2 there will be 2 radial 
+!                          pixel circles for each radial coordinate grid point. 
+!                          More accurate but substantially slower. Reccomended
+!                          value is 1.
+!    camera_circ_imethod   Set this to 1 (the other methods are for backward
+!                          compatibility with older radiative transfer programs).
+!    camera_circ_nrref     Further refinement near inner grid edge. Recommended
+!                          value is 1 (no further refinement).
 !-------------------------------------------------------------------------
 subroutine camera_make_circ_image()
   use amr_module
   implicit none
-  double precision :: x,y,z,dxx,dyy,dzz,px,py
-  integer :: inu,ix,iy,idxx,idxy,istar,ierr,inu0,inu1,ierror
-  double precision :: pdx,pdy,dz,d2,d3,factor,celldxmin
-  double precision :: dirx,diry,dirz,distance,xbk,ybk,zbk
+  double precision :: r,phi,px,py,x,y,z
+  integer :: inu,ir,iphi,ierr,inu0,inu1,ierror,ispec
+  double precision :: celldxmin,quvsq
+  double precision :: dirx,diry,dirz,distance,xbk,ybk,zbk,svcx,svcy,svcz
   logical :: domc
+  character*80 :: strint
+  integer :: iact,icnt,ilinesub
+  logical :: redo
+  integer :: irmin,irmax
   !
-  ! Some checks
+  ! Set some defaults
+  !
+  irmin = 1
+  irmax = amr_grid_nx
+  !
+  ! Circular images are only possible if you use spherical coordinates
+  !
+  if((igrid_coord.lt.100).or.(igrid_coord.ge.200)) then
+     write(stdo,*) 'ERROR: Circular images only allowed for spherical coordinates.'
+     stop
+  endif
+  !
+  ! Subpixeling not allowed in spherical images
+  !
+  if(camera_diagnostics_subpix) then
+     write(stdo,*) 'ERROR: Subpixeling is not allowed in circular images.'
+     stop
+  endif
+  !
+  ! Local observer not allowed in circular images
   !
   if(camera_localobserver) then
-     write(stdo,*) 'ERROR: In circular images no local observer perspective allowed'
-     stop
-  endif
-  if(.not.allocated(cim_ri)) then
-     write(stdo,*) 'ERROR in circular image generator: please set up pixels first.'
+     write(stdo,*) 'ERROR: local observer mode not allowed in circular images.'
      stop
   endif
   !
-  ! Let the Monte Carlo module know what mode we have (local observer
-  ! or not)
+  ! For now we do not allow more than 1 star in the spherical images
   !
-  mcscat_localobserver = .false.
-  camera_localobserver = .false.
+  if(nstars.gt.1) then
+     write(stdo,*) 'ERROR: In circular images at the moment only one star allowed.'
+     stop
+  endif
+  !
+  ! Set up the circular/radial pixel arrangement for the circular image
+  ! 
+  call setup_pixels_circular(irmin,irmax,                            &
+                             camera_circ_nrphiinf,camera_circ_nrext, &
+                             camera_circ_dbdr,camera_circ_imethod,   &
+                             camera_circ_nrref)
   !
   ! If the dust emission is included, then make sure the dust data,
   ! density and temperature are read. If yes, do not read again.
@@ -6257,6 +6396,13 @@ subroutine camera_make_circ_image()
      call read_lines_all(1)
   endif
   !
+  ! Do a check
+  !
+  if(rt_incl_lines.and.(lines_maxshift.le.0.d0)) then
+     write(stdo,*) 'INTERNAL ERROR in lines: lines_maxshift variable not set'
+     stop
+  endif
+  !
   ! If gas continuum is included, then make sure the gas continuum
   ! data are read. If yes, then do not read it again.
   !
@@ -6266,11 +6412,71 @@ subroutine camera_make_circ_image()
   !
   ! If lines are active, and if the level populations are to be calculated
   ! beforehand and stored in the big array, then compute them now, if not
-  ! already done.
+  ! already done. 
+  !
+  ! Note: it only stores those levels which are selected in the "subset"
+  ! (see lines_module.f90). The idea of the subset is that to save memory
+  ! you may not want to store all level populations.  Example: A molecule
+  ! may have 30 relevant levels. If you need to store all populations
+  ! globally, then you need 30 x 8 bytes x nrcells of memory. For large
+  ! grids that could be very much. If, however, you wish to only model one
+  ! of the lines, then only 2 level populations have to be stored at each
+  ! point (the upper and the lower level belonging to that line). If you
+  ! select these 2 levels as your "subset" then only these 2 levels will be
+  ! stored in the global lines_levelpop() array, saving a lot of memory. For
+  ! the LVG method all levels are needed *locally* to compute the
+  ! populations, but once these populations are computed, only the 2
+  ! relevant ones are then stored in the *global* array lines_levelpop().
+  !
+  ! You can select this subset manually (in the lines.inp file) or
+  ! automatically (by calling the subroutine
+  ! lines_automatic_subset_selection() in the lines_module.f90).  The latter
+  ! is done just above here.
   !
   if(rt_incl_lines) then
      if((lines_mode.ge.1).and.(lines_mode.le.9)) then
-        call lines_compute_and_store_local_populations(2)
+        !
+        ! Level subset selection
+        !
+        if(lines_autosubset) then
+           !
+           ! If requested, do an automatic subset selection of the
+           ! molecular levels
+           ! 
+           call lines_automatic_subset_selection(camera_nrfreq,     &
+                camera_frequencies,1,camera_nrfreq,lines_maxshift,  &
+                redo)
+           !
+           ! Now force a recomputation of the populations, unless
+           ! "redo" is .false., meaning that we have the same
+           ! levels as before (and thus the population as computed
+           ! before must be still correct). Note that if there
+           ! exists no lines_levelpop() array, then redo will also
+           ! be .true.
+           !
+           if(redo) then
+              iact=2
+           else
+              iact=1
+           endif
+           call lines_compute_and_store_local_populations(iact)
+        else
+           !
+           ! Subset is not automatically selected. So either it has
+           ! been selected manually or not at all (in which case the
+           ! "subset" is the full set of levels).
+           !
+           write(stdo,*) 'Will store level populations for all levels or ',   &
+                'for a manually (in lines.inp) selected subset of levels.'
+           !
+           ! Now compute the populations only if they have not yet been
+           ! computed. If the lines_popul() array is present, we know that
+           ! it contains the correct populations, because the subset
+           ! is fixed by the user (or is the complete set). 
+           !
+           call lines_compute_and_store_local_populations(1)
+           !
+        endif
      endif
   endif
   !
@@ -6278,21 +6484,32 @@ subroutine camera_make_circ_image()
   !
   call camera_init()
   !
+  ! Warnings
+  !
+  if(rt_incl_lines.and.(lines_mode.lt.0).and.(scattering_mode.ne.0)) then
+     write(stdo,*) 'WARNING: Using dust scattering AND line transfer with '
+     write(stdo,*) '         on-the-fly level population determination can'
+     write(stdo,*) '         make RADMC-3D very slow, because dust scattering'
+     write(stdo,*) '         means that the transfer must be done freq-by-freq,'
+     write(stdo,*) '         and thus the populations must be recalculated'
+     write(stdo,*) '         at each freq, which is slowing down the code.'
+     write(stdo,*) '         Various possible solutions:'
+     write(stdo,*) '          1. If possible, switch off dust scattering'
+     write(stdo,*) '             (for instance for far-IR or mm wavelengths)'
+     write(stdo,*) '             by setting scattering_mode_max=0 in radmc3d.inp'
+     write(stdo,*) '          2. Use not-on-the-fly populations (lines_mode>0)'
+     write(stdo,*) '             [at the moment this mode is still in prep]'
+  endif
+  !
   ! Check
   !
   if(camera_nrfreq.lt.1) then
      write(stdo,*) 'ERROR in camera module: camera frequency array'
-     write(stdo,*) '      not set when calling camera_make_rect_image()'
+     write(stdo,*) '      not set when calling camera_make_circ_image()'
      stop
   endif
   !
-  ! Check
-  !
-  if((camera_image_halfsize_x.le.0.d0).or.(camera_image_halfsize_y.le.0.d0)) then
-     write(stdo,*) 'ERROR in camera module: zero image scale'
-     stop
-  endif
-  !
+  ! Pre-compute cosines and sines
   ! For the camera-at-infinity view the angles are given and the
   ! cos and sin can be calculated easily
   !
@@ -6315,23 +6532,91 @@ subroutine camera_make_circ_image()
   domc = .false.
   if(scattering_mode.ge.1) then
      !
+     ! For now scattering is not allowed in local observer mode
+     !
+     if(camera_localobserver) then
+        write(stdo,*) 'ERROR: At the moment scattering is not'
+        write(stdo,*) '       allowed for local observer mode.'
+        stop
+     endif
+     !
      ! Compute the direction vector of the observer. Start with (0,0,1).
-     ! Actually this is only necessary for scattering_mode.gt.1, but alas.
+     ! Actually this is only necessary for scattering_mode.ge.2, but alas.
      !
      dirx = 0.d0
      diry = 0.d0
      dirz = 1.d0
+     !
+     ! A rotation in the y,z plane, i.e. going from pole-on
+     ! to more face-on (if a disk is assumed to be present in the x-y plane)
+     !
      ybk  = diry
      zbk  = dirz
      diry = camera_observer_cos_theta * ybk - camera_observer_sin_theta * zbk
      dirz = camera_observer_sin_theta * ybk + camera_observer_cos_theta * zbk
+     !
+     ! Then a rotation in the x,y plane, rotating horizontally around
+     ! the object. If the camera looks toward the object, then the
+     ! camera now moves to the left (clockwise around the object).
+     !
      xbk  = dirx
      ybk  = diry
      dirx = camera_observer_cos_phi * xbk + camera_observer_sin_phi * ybk
      diry =-camera_observer_sin_phi * xbk + camera_observer_cos_phi * ybk
+     !
+     ! Checks
+     !
      if(abs(dirx**2+diry**2+dirz**2-1.d0).gt.1d-6) then
         write(stdo,*) 'ERROR in camera module: direction vector not OK.'
         write(stdo,*) dirx,diry,dirz
+        stop
+     endif
+     !
+     ! Compute the S-vector of observer for polarization. Start with (0,1,0).
+     ! Actually this is only necessary for scattering_mode.ge.4, but it
+     ! never hurts.
+     !
+     svcx = 0.d0
+     svcy = 1.d0
+     svcz = 0.d0
+     !
+     ! Rotate camera along its axis 
+     !
+     ! Note that the camera is rotated in clockwise direction, so any
+     ! image is rotated in counter-clockwise direction on the CCD
+     !
+     xbk  = svcx
+     ybk  = svcy
+     svcx = camera_pointing_cos_posang * xbk + camera_pointing_sin_posang * ybk
+     svcy =-camera_pointing_sin_posang * xbk + camera_pointing_cos_posang * ybk
+     !
+     ! Then a rotation in the y,z plane, i.e. going from pole-on
+     ! to more face-on (if a disk is assumed to be present in the x-y plane)
+     !
+     ybk  = svcy
+     zbk  = svcz
+     svcy = camera_observer_cos_theta * ybk - camera_observer_sin_theta * zbk
+     svcz = camera_observer_sin_theta * ybk + camera_observer_cos_theta * zbk
+     !
+     ! Then a rotation in the x,y plane, rotating horizontally around
+     ! the object. If the camera looks toward the object, then the
+     ! camera now moves to the left (clockwise around the object).
+     !
+     xbk  = svcx
+     ybk  = svcy
+     svcx = camera_observer_cos_phi * xbk + camera_observer_sin_phi * ybk
+     svcy =-camera_observer_sin_phi * xbk + camera_observer_cos_phi * ybk
+     !
+     ! Checks
+     !
+     if(abs(svcx**2+svcy**2+svcz**2-1.d0).gt.1d-6) then
+        write(stdo,*) 'ERROR in camera module: S-vector not OK.'
+        write(stdo,*) svcx,svcy,svcz
+        stop
+     endif
+     if(abs(svcx*dirx+svcy*diry+svcz*dirz).gt.1d-6) then
+        write(stdo,*) 'INTERNAL ERROR: Somehow the S-vector is not '
+        write(stdo,*) '  perpendicular to the direction vector... Warn author.'
         stop
      endif
      !
@@ -6371,26 +6656,119 @@ subroutine camera_make_circ_image()
   ! For now allow only one single direction (i.e. one single vantage point)
   !
   if(domc.and.(scattering_mode.gt.1)) then
+     if((igrid_coord.ge.100).and.(amr_dim.ne.3)) then
+        !
+        ! Special case: 2D axisymmetric model in spherical coordinate
+        ! but with full scattering mode (only possible for scattering_mode.ge.5).
+        !
+        if(amr_dim.eq.1) then
+           write(stdo,*) 'ERROR: scattering_mode.ge.2 is incompatible with'
+           write(stdo,*) '       1-D spherical coordinates.'
+           stop
+        endif
+        if(scattering_mode.lt.5) then
+           write(stdo,*) 'ERROR: scattering_mode.lt.5 is incompatible with'
+           write(stdo,*) '       2-D spherical coordinates.'
+           stop
+        endif
+        if(camera_secondorder) then
+           write(stdo,*) 'ERROR: At the moment the 2-D axisymmetric full-scattering mode is not yet'
+           write(stdo,*) '       compatible with second order ray-tracing... :-('
+           stop
+        endif
+        !
+        ! Switch on the special treatment
+        !
+        dust_2daniso = .true.
+        !
+        ! Extend the scattering source array to dust_2daniso_nphi + 1 phi-angle
+        ! points starting with phi=0 and ending with phi=360 degrees
+        !
+        mcscat_nrdirs = dust_2daniso_nphi + 1
+        !
+        ! Make sure that the ray tracing cannot make larger steps
+        ! than a maximum angle wrt the origin. Reason: for near edge-on
+        ! views a ray could otherwise pass through a cell (=annulus) 
+        ! almost along the annulus tube, and change phi angle too much,
+        ! thereby skipping intermediate angles. That is bad for the 
+        ! interpolation of the scattering source function.
+        !
+        if(camera_maxdphi.eq.0.d0) then
+           write(stdo,*) 'WARNING: 2-D anisotropic scattering without camera_maxdphi set... Dangerous.'
+        endif
+        if(camera_maxdphi.gt.twopi/dust_2daniso_nphi) then
+           camera_maxdphi = twopi / dust_2daniso_nphi
+        endif
+        if(camera_maxdphi.ge.0.5d0) camera_maxdphi=0.5d0
+        !
+        ! Message
+        !
+        write(stdo,*) 'Note: Using 2-D full-phase scattering mode. This requires a bit of extra memory.'
+     else
+        !
+        ! Normal case (3-D)
+        !
+        mcscat_nrdirs = 1
+     endif
+     !
+     ! Make the scattering direction the same as the direction of
+     ! viewing. 
+     ! For now allow only one single direction (i.e. one single vantage point)
+     !
+     ! NOTE: For 2-D axisymmetric models in spherical coordinates, we
+     !       do things in a special way: we reserve mcscat_nrdirs 
+     !       "directions", which are in fact all the same, but for
+     !       the scattering source function we will set the scattering
+     !       event at different positions. 
+     !
      if(allocated(mcscat_dirs)) deallocate(mcscat_dirs)
-     allocate(mcscat_dirs(1:3,1:1),STAT=ierr)
+     allocate(mcscat_dirs(1:3,1:mcscat_nrdirs),STAT=ierr)
      if(ierr.gt.0) then
         write(stdo,*) 'ERROR: Could not allocate mcscat_dirs()'
         stop
      endif
-     mcscat_nrdirs = 1
      mcscat_current_dir = 1
-     mcscat_dirs(1,1:1) = dirx
-     mcscat_dirs(2,1:1) = diry
-     mcscat_dirs(3,1:1) = dirz
+     mcscat_dirs(1,1:mcscat_nrdirs) = dirx
+     mcscat_dirs(2,1:mcscat_nrdirs) = diry
+     mcscat_dirs(3,1:mcscat_nrdirs) = dirz
+     !
+     ! For convenience, store this also here in the camera module
+     ! (works only for a single vantage point)
+     !
+     camera_dir(1) = dirx
+     camera_dir(2) = diry
+     camera_dir(3) = dirz
+     !
+     ! In case you want to include polarization, we set also the
+     ! S-vectors, which will be perpendicular to the direction 
+     ! vector, and pointing vertically upward in the image plane.
+     !
+     if(allocated(mcscat_svec)) deallocate(mcscat_svec)
+     allocate(mcscat_svec(1:3,1:mcscat_nrdirs),STAT=ierr)
+     if(ierr.gt.0) then
+        write(stdo,*) 'ERROR: Could not allocate mcscat_svec()'
+        stop
+     endif
+     mcscat_svec(1,1:mcscat_nrdirs) = svcx
+     mcscat_svec(2,1:mcscat_nrdirs) = svcy
+     mcscat_svec(3,1:mcscat_nrdirs) = svcz
+     !
+     ! For convenience, store this also here in the camera module
+     ! (works only for a single vantage point)
+     !
+     camera_svec(1) = svcx
+     camera_svec(2) = svcy
+     camera_svec(3) = svcz
+     !
+     ! But mirror symmetry is not allowed for anisotropic scattering
+     !
+     if((igrid_coord.ge.100).and.(igrid_coord.le.199)) then
+        if(igrid_mirror.ne.0) then
+           write(stdo,*) 'ERROR: Mirror symmetry not compatible with anisotropic scattering.'
+           stop
+        endif
+     endif
   endif
-  !
-  ! Compute pixel size.
-  !
-  ! NOTE: For the observer-at-infinity mode this is in centimeters.
-  !       For the local-observer mode this is in radian.
-  !
-  pdx = 2*camera_image_halfsize_x / (1.d0*camera_image_nx)
-  pdy = 2*camera_image_halfsize_y / (1.d0*camera_image_ny)
   !
   ! Reset flag
   !
@@ -6398,7 +6776,7 @@ subroutine camera_make_circ_image()
   !
   ! Message
   !
-  write(stdo,*) 'Rendering image(s)...'
+  write(stdo,*) 'Rendering circular image(s)...'
   !
   ! Now make the image. We can do so in two different ways. The first is to
   ! do all frequencies (wavelengths) at once. If scattering is included this
@@ -6457,6 +6835,17 @@ subroutine camera_make_circ_image()
                                           scatsrc=.true.)
            write(stdo,*) 'Average number of scattering events per photon package = ', &
                       ieventcounttot/(1.d0*rt_mcparams%nphot_scat)
+           !
+           ! If the Monte Carlo settings are very conservative, then give a warning
+           ! that you may want to change this (but at your own risk). 
+           !
+           if(mc_scat_maxtauabs.gt.5.d0) then
+              write(stdo,*) 'Tip for speed-up: By default the settings of RADMC-3D are conservative (i.e. safe but slow).'
+              write(stdo,*) '   A photon package in monochromatic Monte Carlo is only destroyed after tau_abs = ',mc_scat_maxtauabs
+              write(stdo,*) '   In most cases, however, an optical depth limit of 5 is enough.'
+              write(stdo,*) '   You can (though at your own risk) speed this up by adding the following line to radmc3d.inp:'
+              write(stdo,*) '   mc_scat_maxtauabs = 5.d0'
+           endif
         elseif(camera_lambda_starlight_single_scat_mode.eq.1) then
            call do_lambda_starlight_single_scattering(rt_mcparams,ierror,scatsrc=.true.)
         else
@@ -6471,15 +6860,15 @@ subroutine camera_make_circ_image()
      ! nevertheless, as it will not hurt.
      !
      if(rt_incl_lines) then
-     ! ------------------------------------------------------------------
-     ! Attila Juhasz
-     ! lines_find_active_lines_leves -> if all energy levels are known - leiden
-     ! format for line data
-     ! lines_find_active_lines_linelist -> for linelist mode
-     ! ------------------------------------------------------------------
-     !   call lines_find_active_lines_levels(camera_nrfreq,             &
-     !                   camera_frequencies,inu0,inu1,lines_maxshift)
-     !
+        ! ------------------------------------------------------------------
+        ! Attila Juhasz
+        ! lines_find_active_lines_leves -> if all energy levels are known - leiden
+        ! format for line data
+        ! lines_find_active_lines_linelist -> for linelist mode
+        ! ------------------------------------------------------------------
+        !   call lines_find_active_lines_levels(camera_nrfreq,             &
+        !                   camera_frequencies,inu0,inu1,lines_maxshift)
+        !
         if(lines_maxnrlevels.gt.0) then
            call lines_find_active_lines_levels(camera_nrfreq,             &
                 camera_frequencies,inu0,inu1,lines_maxshift)
@@ -6487,8 +6876,17 @@ subroutine camera_make_circ_image()
            call lines_find_active_lines_linelist(camera_nrfreq,             &
                 camera_frequencies,inu0,inu1,lines_maxshift)
         endif
-
-     ! ------------------------------------------------------------------
+        ! ------------------------------------------------------------------
+     endif
+     !
+     ! Message
+     !
+     if(inu0.eq.inu1) then
+        write(stdo,*) 'Ray-tracing image for lambda = ', &
+                1d4*cc/camera_frequencies(inu0),' micron...'
+     else
+        call integer_to_string(abs(inu1-inu0)+1,strint)
+        write(stdo,*) 'Ray-tracing images: all '//trim(strint)//' wavelength at once...'
      endif
      !
      ! Now make the image at all wavelengths simultaneously
@@ -6499,8 +6897,8 @@ subroutine camera_make_circ_image()
      !
      ! Multi-wavelength Method 2:
      !
-     ! Scattering is included, so we need the scattering source function. Since this 
-     ! array is easily too big to be stored for all wavelengths. In this method we
+     ! If scattering is included, we need the scattering source function. Since this 
+     ! array is easily too big to be stored for all wavelengths: In this method we
      ! compute the scattering source function for each frequency separately, and then
      ! make the corresponding image, and then go to the next frequency.
      !
@@ -6526,24 +6924,61 @@ subroutine camera_make_circ_image()
      ! Do a loop over all camera frequencies
      !
      do inu0=1,camera_nrfreq
+        !
+        ! Set this by default
+        !
         inu1=inu0
         !
-        ! Set the wavelength for the Monte Carlo scattering simulation
+        ! If we must do Monte Carlo, then do this
         !
-        mc_frequencies(1) = camera_frequencies(inu0)
-        !
-        ! Message
-        !
-        write(stdo,*) 'Doing scattering Monte Carlo simulation for lambda = ', &
+        if(domc) then
+           !
+           ! Set the wavelength for the Monte Carlo scattering simulation
+           !
+           mc_frequencies(1) = camera_frequencies(inu0)
+           !
+           ! Message
+           !
+           write(stdo,*) 'Doing scattering Monte Carlo simulation for lambda = ', &
                 1d4*cc/mc_frequencies(1),' micron...'
-        call flush(stdo)
-        !
-        ! Call the single wavelength Monte Carlo module
-        !
-        call do_monte_carlo_scattering(rt_mcparams,ierror,do_resetseed,&
-                                       scatsrc=.true.)
-        write(stdo,*) 'Average number of scattering events per photon package = ', &
+           call flush(stdo)
+           !
+           ! Call the single wavelength Monte Carlo module
+           !
+           if(camera_lambda_starlight_single_scat_mode.eq.0) then
+              call do_monte_carlo_scattering(rt_mcparams,ierror,do_resetseed,&
+                                             scatsrc=.true.)
+              write(stdo,*) 'Average number of scattering events per photon package = ', &
                       ieventcounttot/(1.d0*rt_mcparams%nphot_scat)
+              !
+              ! If the Monte Carlo settings are very conservative, then give a warning
+              ! that you may want to change this (but at your own risk). 
+              !
+              if(mc_scat_maxtauabs.gt.5.d0) then
+                 write(stdo,*) 'Tip for speed-up: By default the settings of RADMC-3D are conservative ', &
+                      '(i.e. safe but slow).'
+                 write(stdo,'(A68,A16,F6.2)') '   A photon package in monochromatic Monte Carlo is only destroyed ', &
+                      'after tau_abs = ',mc_scat_maxtauabs
+                 write(stdo,*) '   In most cases, however, an optical depth limit of 5 is enough.'
+                 write(stdo,*) '   You can (though at your own risk) speed this up by adding the following ', &
+                      'line to radmc3d.inp:'
+                 write(stdo,*) '   mc_scat_maxtauabs = 5.d0'
+              else
+                 if(mc_scat_maxtauabs.gt.2.d0) then
+                    write(stdo,'(A36,F6.2,A36)') ' Warning: Using mc_scat_maxtauabs = ',mc_scat_maxtauabs, &
+                         ' (this is fine, but be aware of it).'
+                 else
+                    write(stdo,'(A36,F6.2,A34)') ' ERROR: Using mc_scat_maxtauabs = ',mc_scat_maxtauabs, &
+                         ': This is too low...'
+                 endif
+              endif
+           elseif(camera_lambda_starlight_single_scat_mode.eq.1) then
+              call do_lambda_starlight_single_scattering(rt_mcparams,ierror,scatsrc=.true.)
+           else
+              write(stdo,*) 'Lambda single scattering mode cannot be other than 0 or 1 for now.'
+              stop 8762
+           endif
+        endif
         !
         ! Pre-compute which lines and which levels for line transfer may
         ! contribute to these wavelengths. Note that this only has to be
@@ -6551,6 +6986,9 @@ subroutine camera_make_circ_image()
         ! nevertheless, as it will not hurt.
         !
         if(rt_incl_lines) then
+           !
+           ! Check which lines to include
+           !
            ! ------------------------------------------------------------------
            ! Attila Juhasz
            ! lines_find_active_lines_leves -> if all energy levels are known - leiden
@@ -6569,27 +7007,103 @@ subroutine camera_make_circ_image()
             endif
 
            ! ------------------------------------------------------------------
-
+           !
+           ! If camera_catch_doppler_line.eq..true., then allocate the
+           ! corner-based line quantities
+           !
+           if(camera_catch_doppler_line) then
+              if(allocated(sources_vertex_line_nup)) then
+                 deallocate(sources_local_line_ndown_curr)
+                 deallocate(sources_local_line_nup_curr)
+                 deallocate(sources_local_line_ndown_prev)
+                 deallocate(sources_local_line_nup_prev)
+                 deallocate(sources_local_line_ndown_end)
+                 deallocate(sources_local_line_nup_end)
+                 deallocate(sources_cell_line_ndown)
+                 deallocate(sources_cell_line_nup)
+                 deallocate(sources_vertex_line_ndown)
+                 deallocate(sources_vertex_line_nup)
+              endif
+              sources_vertex_lines_nractivetot = 0
+              do ispec=1,lines_nr_species
+                 sources_vertex_lines_nractivetot = sources_vertex_lines_nractivetot + &
+                      active_nrlines(ispec)
+              enddo
+              allocate(sources_vertex_line_nup(1:sources_vertex_lines_nractivetot,1:amr_nr_vertices_max))
+              allocate(sources_vertex_line_ndown(1:sources_vertex_lines_nractivetot,1:amr_nr_vertices_max))
+              allocate(sources_cell_line_nup(1:sources_vertex_lines_nractivetot,1:amr_nr_vertices_max))
+              allocate(sources_cell_line_ndown(1:sources_vertex_lines_nractivetot,1:amr_nr_vertices_max))
+              allocate(sources_local_line_nup_curr(1:sources_vertex_lines_nractivetot))
+              allocate(sources_local_line_ndown_curr(1:sources_vertex_lines_nractivetot))
+              allocate(sources_local_line_nup_prev(1:sources_vertex_lines_nractivetot))
+              allocate(sources_local_line_ndown_prev(1:sources_vertex_lines_nractivetot))
+              allocate(sources_local_line_nup_end(1:sources_vertex_lines_nractivetot))
+              allocate(sources_local_line_ndown_end(1:sources_vertex_lines_nractivetot))
+           endif
+        endif
+        !
+        ! Message
+        !
+        write(stdo,*) 'Ray-tracing image for lambda = ', &
+                1d4*cc/camera_frequencies(inu0),' micron...'
+        !
+        ! If we do second order integration of the transfer equation,
+        ! we must compute the emissivities at the corner points of the
+        ! cells (the vertex grid). 
+        !
+        if(camera_secondorder) then
+           !
+           ! Set some flags and values
+           !
+           sources_localobserver = camera_localobserver
+           !
+           ! Do some preparations 
+           !
+           if(.not.camera_localobserver) then
+              !
+              ! Set the direction vector, if observer is at infinity
+              ! 
+              ! Note: this is necessary only for the inclusion of the scattering
+              !       source function from the Monte Carlo module. This is
+              !       anyway unavailable for local observer mode. 
+              !
+              dirx = 0.d0
+              diry = 0.d0
+              dirz = 1.d0
+              ybk  = diry
+              zbk  = dirz
+              diry = camera_observer_cos_theta * ybk - camera_observer_sin_theta * zbk
+              dirz = camera_observer_sin_theta * ybk + camera_observer_cos_theta * zbk
+              xbk  = dirx
+              ybk  = diry
+              dirx = camera_observer_cos_phi * xbk + camera_observer_sin_phi * ybk
+              diry =-camera_observer_sin_phi * xbk + camera_observer_cos_phi * ybk
+              if(abs(dirx**2+diry**2+dirz**2-1.d0).gt.1d-6) then
+                 write(stdo,*) 'ERROR in camera module: direction vector not OK.'
+                 write(stdo,*) dirx,diry,dirz
+                 stop
+              endif
+              ray_cart_dirx = dirx
+              ray_cart_diry = diry
+              ray_cart_dirz = dirz
+           else
+              !
+              ! Local observer mode, so set the observer position
+              !
+              sources_observer_position(:) = camera_observer_position(:)
+           endif
+           !
+           ! Then call the subroutine
+           !
+           call sources_compute_snualphanu_at_vertices(inu0,camera_stokesvector)
         endif
         !
         ! Now make the image for this wavelength only
         !
-        write(stdo,*) 'Making image for lambda = ', &
-                1d4*cc/mc_frequencies(1),' micron...'
         call camera_make_circ_image_sub(inu0,inu1)
         !
      enddo
      !
-  endif
-  !
-  ! Check if refinement was sufficient
-  !
-  if(camera_warn_resolution) then
-     write(stdo,*) 'WARNING: The currently produced image is not '
-     write(stdo,*) '         guaranteed to have the correct flux '
-     write(stdo,*) '         because it does not use the flux'
-     write(stdo,*) '         conserving recursive pixeling.'
-     write(stdo,*) '    Tip: Use fluxcons argument in command line.'
   endif
   !
   !--------------------------------------------------------------
@@ -6600,132 +7114,476 @@ subroutine camera_make_circ_image()
   subroutine camera_make_circ_image_sub(inu00,inu11)
     implicit none
     integer :: inu00,inu11
+    integer :: inuu
+    integer :: backup_nrrefine,backup_tracemode
+    logical :: warn_tausurf_problem,flag_quv_too_big
+    double precision :: r,phi
     !
-    ! Reset some non-essential counters
+    ! *** NEAR FUTURE: PUT OPENMP DIRECTIVES HERE (START) ***
     !
-    camera_subpixeling_npixfine = 0
-    camera_subpixeling_npixtot  = 0
-    !
-    ! Compute the intensity of all pixels
-    !
-    do iy=1,camera_image_ny
-       do ix=1,camera_image_nx
+    flag_quv_too_big = .false.
+    do ir=1,camera_image_nr
+       r = cim_rc(ir)
+       do iphi=1,camera_image_nphi
+          phi = cim_pc(iphi)
           !
           ! Set the ray variables
           !
-          px = camera_zoomcenter_x + ((ix-1)-(0.5d0*(camera_image_nx-1)))*pdx
-          py = camera_zoomcenter_y + ((iy-1)-(0.5d0*(camera_image_ny-1)))*pdy
+          px = r * cos(phi)
+          py = r * sin(phi)
           !
-          ! Now compute the intensity of this pixel
+          ! Find the starting point and direction of this ray
           !
-          ! Note that if nrrefine>0 this routine will call itself
-          ! recursively until a desired spatial resolution is acquired
-          ! so as to guarantee that all flux is picked up, but this
-          ! recursion is limited to nrrefine depth levels.
+          call camera_set_ray(px,py,x,y,z,dirx,diry,dirz,distance)
           !
-          call camera_compute_one_pixel(camera_nrfreq,inu00,inu11,px,py,pdx,pdy,    &
-                                        camera_nrrefine,camera_intensity_iquv,-1)
+          ! Reset intensity
+          ! 
+          if(incl_extlum.eq.0) then
+             camera_intensity_iquv(inu00:inu11,1:4) = 0.d0
+          else
+             do inu=inu00,inu11
+                camera_intensity_iquv(inu,1)   = find_extlumintens_interpol(camera_frequencies(inu))
+                camera_intensity_iquv(inu,2:4) = 0.d0
+             enddo
+          endif
+          !
+          ! Call the ray-tracer 
+          !
+          call camera_serial_raytrace(camera_nrfreq,inu00,inu11,x,y,z,dirx,diry,dirz, &
+                                      distance,celldxmin,camera_intensity_iquv)
           !
           ! Put the result into the image array
           !
-          camera_rect_image_iquv(ix,iy,inu00:inu11,1) = camera_intensity_iquv(inu00:inu11,1)
+          camera_circ_image_iquv(ir,iphi,inu00:inu11,1) = camera_intensity_iquv(inu00:inu11,1)
           if(camera_stokesvector) then
-             camera_rect_image_iquv(ix,iy,inu00:inu11,2) = camera_intensity_iquv(inu00:inu11,2)
-             camera_rect_image_iquv(ix,iy,inu00:inu11,3) = camera_intensity_iquv(inu00:inu11,3)
-             camera_rect_image_iquv(ix,iy,inu00:inu11,4) = camera_intensity_iquv(inu00:inu11,4)
+             !
+             ! Copy also the other Stokes components
+             !
+             camera_circ_image_iquv(ir,iphi,inu00:inu11,2) = camera_intensity_iquv(inu00:inu11,2)
+             camera_circ_image_iquv(ir,iphi,inu00:inu11,3) = camera_intensity_iquv(inu00:inu11,3)
+             camera_circ_image_iquv(ir,iphi,inu00:inu11,4) = camera_intensity_iquv(inu00:inu11,4)
+             !
+             ! Self-consistency check
+             !
+             do inuu=inu00,inu11
+                quvsq = camera_intensity_iquv(inuu,2)**2 + &
+                        camera_intensity_iquv(inuu,3)**2 + &
+                        camera_intensity_iquv(inuu,4)**2
+                if(quvsq.gt.0.d0) then
+                   if(camera_intensity_iquv(inuu,1).eq.0.d0) then
+                      write(stdo,*) 'INTERNAL ERROR: Q^2+U^2+V^2>0 but I=0...'
+                      write(stdo,*) '    Warn author.'
+                      stop
+                   endif
+                   quvsq = quvsq / camera_intensity_iquv(inuu,1)**2
+                   if(quvsq.gt.1.000001d0) then
+                      flag_quv_too_big = .true.
+                   endif
+                endif
+             enddo
           endif
           !
        enddo
     enddo
     !
-    ! Add the discrete star sources. 
+    ! *** NEAR FUTURE: PUT OPENMP DIRECTIVES HERE (FINISH) ***
     !
-    ! NOTE: Only for the mode in which stars are treated as point-sources.
+    if(flag_quv_too_big) then
+       write(stdo,*) 'WARNING: While making an image, I found an instance of Q^2+U^2+V^2>I^2...'
+    endif
     !
-    if((camera_incl_stars.ne.0).and.(.not.star_sphere)) then
+    ! Add the central star (star 1)
+    ! 
+    if((camera_incl_stars.ne.0).and.(nstars.ge.1)) then
        !
-       ! Do a check
+       ! The starting point of this ray is at the stellar surface
+       ! Assuming that dirx, diry and dirz are already computed above
        !
-       if(.not.allocated(star_spec)) then
-          write(stdo,*) 'WARNING in camera module: Stars not allocated.'
-!          stop
-       endif
+       px = 0.d0
+       py = 0.d0
+       x  = dirx * star_r(1)
+       y  = diry * star_r(1)
+       z  = dirz * star_r(1)
        !
-       ! Now add all stars
+       ! Reset intensity to the stellar intensity
+       ! 
+       do inu=inu00,inu11
+          camera_intensity_iquv(inu,1)   =                               &
+               find_starlight_interpol(camera_frequencies(inu),1)
+          camera_intensity_iquv(inu,2:4) = 0.d0
+       enddo
        !
-       do istar=1,nstars
-          !
-          ! Set the starting position and direction of the ray, as well as
-          ! the location in the image
-          !
-          call camera_set_ray_stars_pntsrc(istar,x,y,z,dirx,diry,dirz,px,py,distance)
-          !
-          ! Check if this star is located in the image
-          !
-          if((px.ge.camera_zoomcenter_x-camera_image_halfsize_x).and.  &
-             (px.le.camera_zoomcenter_x+camera_image_halfsize_x).and.  &
-             (py.ge.camera_zoomcenter_y-camera_image_halfsize_y).and.  &
-             (py.le.camera_zoomcenter_y+camera_image_halfsize_y)) then
+       ! Call the ray-tracer 
+       !
+       call camera_serial_raytrace(camera_nrfreq,inu00,inu11,x,y,z,dirx,diry,dirz, &
+                                   distance,celldxmin,camera_intensity_iquv)
+       !
+       ! Put the result into the image array
+       !
+       ! Note: since the star has no phi-dependence we put this into all phi
+       !
+       do iphi=1,camera_image_nphi
+          camera_circ_image_iquv(0,iphi,inu00:inu11,1) = camera_intensity_iquv(inu00:inu11,1)
+          if(camera_stokesvector) then
              !
-             ! Find the indices of the pixel in which the star is
+             ! Copy also the other Stokes components
              !
-             idxx = floor((px-(camera_zoomcenter_x-camera_image_halfsize_x))/pdx)+1
-             idxy = floor((py-(camera_zoomcenter_y-camera_image_halfsize_y))/pdy)+1
-             if((idxx.lt.1).or.(idxx.gt.camera_image_nx).or.&
-                (idxy.lt.1).or.(idxy.gt.camera_image_ny)) stop 8309
-             !
-             ! Set the intensity to the stellar spectrum
-             ! 
-             do inu=inu00,inu11
-                camera_intensity_iquv(inu,1) =                               &
-                     find_starlight_interpol(camera_frequencies(inu),istar)
-             enddo
-             !
-             ! Do ray tracing
-             !
-             call camera_serial_raytrace(camera_nrfreq,inu00,inu11,x,y,z,dirx,diry,dirz,distance,  &
-                                  celldxmin,camera_intensity_iquv)
-             !
-             ! Compute the ratio starsurface / pixelsurface
-             !
-             if(camera_localobserver) then
-                factor = pi*(star_r(istar)/distance)**2 / (pdx*pdy)
-             else
-                factor = pi*star_r(istar)**2 / (pdx*pdy)
-             endif
-             !
-             ! Check if the point source assumption is violated. 
-             !
-!             if(factor.gt.1.d0) then
-!                write(stdo,*) 'ERROR in camera module: The image resolution is so'
-!                write(stdo,*) '      high that the stellar surface is no longer'
-!                write(stdo,*) '      small enough to be considered a point source.'
-!                write(stdo,*) '  NOTE: In the (hopefully near) future a mode will'
-!                write(stdo,*) '        be implemented to include non-point stars.'
-!                stop
-!             endif
-             !
-             ! Now modify the intensity of the pixel to include the star
-             ! Note: We always assume the starlight to be unpolarized
-             !
-             camera_rect_image_iquv(idxx,idxy,inu00:inu11,1) =                       &
-                   (1.d0-factor) * camera_rect_image_iquv(idxx,idxy,inu00:inu11,1) + &  
-                   factor * camera_intensity_iquv(inu00:inu11,1)
-             if(camera_stokesvector) then
-                camera_rect_image_iquv(idxx,idxy,inu00:inu11,2) =                       &
-                     (1.d0-factor) * camera_rect_image_iquv(idxx,idxy,inu00:inu11,2)
-                camera_rect_image_iquv(idxx,idxy,inu00:inu11,3) =                       &
-                     (1.d0-factor) * camera_rect_image_iquv(idxx,idxy,inu00:inu11,3)
-                camera_rect_image_iquv(idxx,idxy,inu00:inu11,4) =                       &
-                     (1.d0-factor) * camera_rect_image_iquv(idxx,idxy,inu00:inu11,4)
-             endif
+             camera_circ_image_iquv(0,iphi,inu00:inu11,2) = camera_intensity_iquv(inu00:inu11,2)
+             camera_circ_image_iquv(0,iphi,inu00:inu11,3) = camera_intensity_iquv(inu00:inu11,3)
+             camera_circ_image_iquv(0,iphi,inu00:inu11,4) = camera_intensity_iquv(inu00:inu11,4)
           endif
        enddo
+    else
+       !
+       ! If there is no star, then put this to 0. 
+       !
+       camera_circ_image_iquv(0,1:camera_image_nphi,inu00:inu11,:) = 0.d0
     endif
+    !
+    ! For now we do not allow more than 1 star in the spherical images.
+    ! If I add this later, it will be here.
+    !
   end subroutine camera_make_circ_image_sub
   !
 end subroutine camera_make_circ_image
 
+
+!-------------------------------------------------------------------------
+!                       WRITE CIRCULAR IMAGE
+!-------------------------------------------------------------------------
+subroutine camera_write_circ_image(noclip)
+  implicit none
+  integer :: ns,iinu,ir,iphi,is,nn,kk,iformat
+  logical, optional :: noclip
+  logical :: donoclip
+  double precision :: dummy(1:4)
+  !
+  ! Interpret the noclip
+  !
+  donoclip = .false.
+  if(present(noclip)) then
+     donoclip = noclip
+  endif
+  !
+  ! Open the file
+  !
+  if(writeimage_unformatted) then
+     if(rto_style.eq.2) then
+        open(unit=fflo,file='circimage.uout',form='unformatted')
+     else
+        open(unit=fflo,file='circimage.bout',status='replace',access='stream')
+     endif
+  else
+     open(unit=fflo,file='circimage.out')
+  endif
+  !
+  ! Decide how many of the Stokes components we have to write
+  !
+  if(camera_stokesvector) then
+     ns=4
+  else
+     ns=1
+  endif
+  !
+  ! Now decide whether unformatted or formatted
+  !
+  if(writeimage_unformatted) then
+     if (rto_style.eq.2) then
+        !
+        ! Unformatted output (F77-Unformatted output, faster, more compact)
+        !
+        if(camera_stokesvector) then
+           !if(camera_localobserver) then
+           !   write(fflo) 4           ! Format number: size units in radian (angular) + Stokes
+           !else
+              write(fflo) 3           ! Format number: size units in cm (spatial size) + Stokes
+           !endif
+        else
+           !if(camera_localobserver) then
+           !   write(fflo) 2           ! Format number: size units in radian (angular)
+           !else
+              write(fflo) 1           ! Format number: size units in cm (spatial size)
+           !endif
+        endif
+        write(fflo) camera_image_nr,camera_image_nphi
+        write(fflo) camera_nrfreq
+        write(fflo) (cim_ri(ir),ir=1,cim_nr+1)
+        write(fflo) (cim_rc(ir),ir=1,cim_nr)
+        write(fflo) (cim_pi(iphi),iphi=1,cim_np+1)
+        write(fflo) (cim_pc(iphi),iphi=1,cim_np)
+        write(fflo) (1d4*cc/camera_frequencies(iinu),iinu=1,camera_nrfreq)
+        do iinu=1,camera_nrfreq
+           do is=1,ns
+              write(fflo) ((camera_circ_image_iquv(ir,iphi,iinu,is),  &
+                          ir=0,camera_image_nr),iphi=1,camera_image_nphi)
+           enddo
+        enddo
+     else
+        !
+        ! Unformatted output (C-compliant binary output, faster, more compact)
+        !
+        if(camera_stokesvector) then
+           if(camera_localobserver) then
+              iformat = 4           ! Format number: size units in radian (angular) + Stokes
+           else
+              iformat = 3           ! Format number: size units in cm (spatial size) + Stokes
+           endif
+        else
+           if(camera_localobserver) then
+              iformat = 2           ! Format number: size units in radian (angular)
+           else
+              iformat = 1           ! Format number: size units in cm (spatial size)
+           endif
+        endif
+        write(fflo) iformat
+        nn = camera_image_nr
+        kk = camera_image_nphi
+        write(fflo) nn, kk
+        nn = camera_nrfreq
+        write(fflo) nn
+        write(fflo) (cim_ri(ir),ir=1,cim_nr+1)
+        write(fflo) (cim_rc(ir),ir=1,cim_nr)
+        write(fflo) (cim_pi(iphi),iphi=1,cim_np+1)
+        write(fflo) (cim_pc(iphi),iphi=1,cim_np)
+        write(fflo) (1d4*cc/camera_frequencies(iinu),iinu=1,camera_nrfreq)
+        do iinu=1,camera_nrfreq
+           do is=1,ns
+              write(fflo) ((camera_circ_image_iquv(ir,iphi,iinu,is),  &
+                          ir=0,camera_image_nr),iphi=1,camera_image_nphi)
+           enddo
+        enddo
+     endif
+  else
+     !
+     ! Standard: write it formatted way
+     !
+     if(camera_stokesvector) then
+        if(camera_localobserver) then
+           write(fflo,*) 4           ! Format number: size units in radian (angular)
+        else
+           write(fflo,*) 3           ! Format number: size units in cm (spatial size)
+        endif
+     else
+        if(camera_localobserver) then
+           write(fflo,*) 2           ! Format number: size units in radian (angular)
+        else
+           write(fflo,*) 1           ! Format number: size units in cm (spatial size)
+        endif
+     endif
+     write(fflo,*) camera_image_nr,camera_image_nphi
+     write(fflo,*) camera_nrfreq
+     write(fflo,*) ' '
+     write(fflo,320) (cim_ri(ir),ir=0,cim_nr+1)
+     write(fflo,*) ' '
+     write(fflo,320) (cim_rc(ir),ir=0,cim_nr)
+     write(fflo,*) ' '
+     write(fflo,320) (cim_pi(iphi),iphi=1,cim_np+1)
+     write(fflo,*) ' '
+     write(fflo,320) (cim_pc(iphi),iphi=1,cim_np)
+     write(fflo,*) ' '
+     write(fflo,320) (1d4*cc/camera_frequencies(iinu),iinu=1,camera_nrfreq)
+320  format(E21.14)
+     write(fflo,*) ' '
+     do iinu=1,camera_nrfreq
+        do iphi=1,camera_image_nphi
+           do ir=0,camera_image_nr
+              if(ns.eq.1) then
+                 if((camera_circ_image_iquv(ir,iphi,iinu,1).gt.1d-97).or.donoclip) then
+                    write(fflo,333) camera_circ_image_iquv(ir,iphi,iinu,1)
+333                 format(E21.14)
+                 else
+                    write(fflo,*) 0.d0
+                 endif
+              else
+                 dummy(1:4) = camera_circ_image_iquv(ir,iphi,iinu,1:4)
+                 do is=1,ns
+                    if((abs(dummy(is)).le.1d-97).and.(.not.donoclip)) then
+                       dummy(is) = 0.d0
+                    endif
+                 enddo
+                 write(fflo,334) dummy(1:4)
+334              format(4(E21.14,1X))
+              endif
+           enddo
+        enddo
+        write(fflo,*) ' '
+     enddo
+  endif
+  !
+  ! Close file
+  !
+  close(1)
+  !
+end subroutine camera_write_circ_image
+
+
+!-------------------------------------------------------------------------
+!              MAKE A SPECTRUM USING THE CIRCULAR IMAGES
+!-------------------------------------------------------------------------
+subroutine camera_make_circ_spectrum()
+  use constants_module
+  implicit none
+  integer :: inu,ierr,backup_nrfreq
+  integer :: backup_lines_mode
+  double precision :: pdx,pdy,factor,r_colarea,r,eps,hsx_bk,hsy_bk
+  double precision :: flux(1:4)
+  integer :: apinu,irout,ir,iphi
+  integer :: iact
+  logical :: redo
+  !
+  ! Check
+  !
+  if((igrid_coord.lt.100).or.(igrid_coord.ge.200)) then
+     write(stdo,*) 'ERROR: Spectrum made with circular images only possible ', &
+          'for spherical coordinates'
+     stop
+  endif
+  if(rt_incl_lines.and.(lines_maxshift.le.0.d0)) then
+     write(stdo,*) 'INTERNAL ERROR in lines: lines_maxshift variable not set'
+     stop
+  endif
+  if((camera_nrfreq.le.0).or.(.not.allocated(camera_frequencies))) then
+     write(stdo,*) 'ERROR: Somehow the frequencies for the spectrum are not set.'
+     stop
+  endif
+  if(camera_localobserver) then
+     write(stdo,*) 'ABORTING: For the moment we do not allow the making of a spectrum'
+     write(stdo,*) '          in the local observer mode. Use observer at infinity mode,'
+     write(stdo,*) '          for instance by specifying the incl and phi on the '
+     write(stdo,*) '          command line and setting the image size with sizeau or sizepc.'
+     stop
+  endif
+  if((((scattering_mode.ne.0).and.(.not.camera_scatsrc_allfreq)).or.   &
+      camera_secondorder).and.(lines_mode.lt.-1).and.rt_incl_lines) then
+     write(stdo,*)    '===> Warning: Combination of modes that may make RADMC-3D very slow... Here is why:'
+     if((scattering_mode.ne.0).and.(.not.camera_scatsrc_allfreq)) then
+        write(stdo,*) '     You are including dust scattering (doing it freq-by-freq), which means that'
+     else
+        if(camera_catch_doppler_line) then
+           write(stdo,*) '     You are using the doppler catching mode, which requires second order '
+           write(stdo,*) '     integration of the RT equation, which (for memory reasons) means that'
+        else
+           write(stdo,*) '     You are using second order integration of the RT equation,'
+           write(stdo,*) '     which (for memory reasons) means that:'
+        endif
+     endif
+     write(stdo,*) '     RADMC-3D must make one image for each frequency at a time to compute each '
+     write(stdo,*) '     point of the spectrum. At the same time you use on-the-fly computation of'
+     write(stdo,*) '     the line level populations, which are not stored. If you have 100 frequencies'
+     write(stdo,*) '     in your spectrum, this means that 100 times an image is made, and a 100 times'
+     write(stdo,*) '     the populations are RECALCULATED. If the population calculation is heavy, this'
+     write(stdo,*) '     means that you waste a huge amount of time. You may want to calculate these'
+     write(stdo,*) '     populations ONCE and store them, which can be done using a positive lines_mode'
+     write(stdo,*) '     number (see manual). This may require a lot of memory if you have a molecule'
+     write(stdo,*) '     with many levels. To overcome this, you can tell RADMC-3D to store only a subset'
+     write(stdo,*) '     of the computed level populations: Only those related to the line you wish to'
+     write(stdo,*) '     model. See manual.'
+  endif
+  !
+  ! Set some other values
+  !
+  camera_localobserver = .false.      ! Spectra only for observer at infinity for now
+  camera_tracemode = 1
+  !
+  ! Check if the aperture file is present and read if needed
+  !
+  if(camera_use_aperture_info) then
+     !
+     ! Read the file aperture_info.inp
+     ! 
+     call camera_read_aperture_info()
+     if(.not.allocated(camera_aperture_freq)) stop 8341
+     if(.not.allocated(camera_aperture_radius_collectarea)) stop 8342
+     !
+     ! Check if the current wavelengths are all within range
+     !
+     if((max(camera_frequencies(1),camera_frequencies(camera_nrfreq)).gt.           &
+         max(camera_aperture_freq(1),camera_aperture_freq(camera_aperture_nf))).or. &
+        (min(camera_frequencies(1),camera_frequencies(camera_nrfreq)).lt.           &
+         min(camera_aperture_freq(1),camera_aperture_freq(camera_aperture_nf)))) then
+        write(stdo,*) 'ERROR while making spectrum with aperture information:'
+        write(stdo,*) '      The aperture information does not cover all wavelengths'
+        write(stdo,*) '      that are to be used for the spectrum.'
+        stop
+     endif
+  endif
+  !
+  ! If the dust emission is included, then make sure the dust data,
+  ! density and temperature are read. If yes, do not read again.
+  !
+  if(rt_incl_dust) then
+     call read_dustdata(1)
+     call read_dust_density(1)
+     call read_dust_temperature(1)
+     if(alignment_mode.ne.0) then
+        call aligned_grains_init(1)
+     endif
+  endif
+  !
+  ! If line emission is included, then make sure the line data are
+  ! read. If yes, then do not read it again.
+  !
+  if(rt_incl_lines) then
+     call read_lines_all(1)
+  endif
+  !
+  ! Now make all the circular images
+  !
+  call camera_make_circ_image()
+  !
+  ! Now calculate the flux for each of these images
+  !
+  do inu=1,camera_nrfreq
+     !
+     ! First find the maximum ir up to which to integrate (aperture)
+     !
+     if(camera_use_aperture_info) then
+        !
+        ! Include only the part of the image that lies within the
+        ! aperture radius
+        !
+        call hunt(camera_aperture_freq,camera_aperture_nf, &
+                  camera_frequencies(inu),apinu)
+        if((apinu.lt.1).or.(apinu.ge.camera_aperture_nf)) then
+           write(stdo,*) 'INTERNAL ERROR in spectrum: aperture index out of range...'
+           stop 6398
+        endif
+        eps = (log(camera_frequencies(1))-log(camera_aperture_freq(apinu))) / &
+              (log(camera_aperture_freq(apinu+1))-log(camera_aperture_freq(apinu)))
+        if((eps.lt.0.d0).or.(eps.gt.1.d0)) stop 6399
+        r_colarea = exp((1.d0-eps) * log(camera_aperture_radius_collectarea(apinu)) + &
+                    eps * log(camera_aperture_radius_collectarea(apinu+1)))
+        !
+        ! Convert this radius from arcsec into cm for this image, using the
+        ! distance specified by the observer
+        !
+        r_colarea = r_colarea * AU * camera_observer_distance_pc
+        call hunt(cim_ri,cim_nr,r_colarea,irout)
+        if(irout.lt.1) irout=0
+        if(irout.gt.cim_nr) irout=cim_nr
+     else
+        !
+        ! Include the entire image
+        !
+        irout = cim_nr
+     endif
+     !
+     ! Now calculate the flux
+     !
+     flux(1:4) = 0.d0
+     do ir=0,irout
+        do iphi=1,cim_np
+           flux(1:4) = flux(1:4) + cim_surfarea(ir,iphi)*camera_circ_image_iquv(ir,iphi,inu,1:4)
+        enddo
+     enddo
+     flux(:) = flux(:) / ( parsec**2 )
+     !
+     ! Put this into the spectrum
+     !
+     camera_spectrum_iquv(inu,:)   = flux(:)
+  enddo
+  !
+end subroutine camera_make_circ_spectrum
 
 
 

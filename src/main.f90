@@ -81,6 +81,7 @@ program radmc3d
   ! Defaults for the camera position and orientation. 
   !
   writeimage_unformatted     = .false.
+  circular_images            = .false.
   camera_observer_degr_theta = 0.d0          ! View pole-on
   camera_observer_degr_phi   = 0.d0
   camera_observer_distance_pc= 0.d0
@@ -124,6 +125,7 @@ program radmc3d
   camera_stokesvector        = .false.
   lines_autosubset           = .true.
   camera_lambda_starlight_single_scat_mode    = 0
+  camera_maxdphi             = 0.1d0   ! New as of March 2017
   !
   ! Line wavelength grid parameter settings
   ! 
@@ -1019,7 +1021,32 @@ program radmc3d
         ! Make the spectrum. The camera frequency grid should already
         ! have been set in the call to set_camera_frequencies() above.
         !
-        call camera_make_spectrum()
+        if(.not.circular_images) then
+           !
+           ! Normal way of making a spectrum: make rectangular images
+           ! and integrate over them
+           !
+           call camera_make_spectrum()
+        else
+           !
+           ! Special way of making a spectrum (only in spherical coordinates):
+           ! make 'circular images' and integrate over them.
+           !
+           if((igrid_coord.lt.100).or.(igrid_coord.ge.200)) then
+              write(stdo,*) 'ERROR: circular images only possible for spherical coordinates'
+              stop
+           endif
+           if((amr_ydim.eq.0).and.(amr_zdim.eq.0)) then
+              !
+              ! For 1D spherical models: no need for phi-dispered circular images
+              !
+              camera_circ_nrphiinf = 1
+           endif
+           !
+           ! Call the circular spectrum solver
+           !
+           call camera_make_circ_spectrum()
+        endif
         !
         ! Messages
         !
@@ -1106,7 +1133,31 @@ program radmc3d
         !
         ! Call the image maker
         !
-        call camera_make_rect_image(0)
+        if(.not.circular_images) then
+           !
+           ! Standard rectangular images
+           !
+           call camera_make_rect_image(0)
+        else
+           !
+           ! Special case: spherically arranged pixels 
+           ! (only for spherical coordinates)
+           !
+           if((igrid_coord.lt.100).or.(igrid_coord.ge.200)) then
+              write(stdo,*) 'ERROR: circular images only possible for spherical coordinates'
+              stop
+           endif
+           if((amr_ydim.eq.0).and.(amr_zdim.eq.0)) then
+              !
+              ! For 1D spherical models: no need for phi-dispered circular images
+              !
+              camera_circ_nrphiinf = 1
+           endif
+           !
+           ! Call the circular image routine
+           !
+           call camera_make_circ_image()
+        endif
         !
         ! Check for warnings
         !
@@ -1120,7 +1171,11 @@ program radmc3d
         if(.not.radmc_as_child) then
            write(stdo,*) 'Writing image to file...'
            call flush(stdo)
-           call camera_write_image(0,0)
+           if(.not.circular_images) then
+              call camera_write_image(0,0)
+           else
+              call camera_write_circ_image(.false.)
+           endif
         endif
         !
         ! Make statement about the scattering mode used
@@ -1170,7 +1225,7 @@ program radmc3d
         !
         ! If sub-pixeling done, then include diagnostics
         !
-        if(camera_nrrefine.gt.0) then
+        if((camera_nrrefine.gt.0).and.(.not.circular_images)) then
            write(stdo,*) 'Diagnostics of flux-conservation (sub-pixeling):'
            write(stdo,*) '    Nr of main pixels (nx*ny)   = ',camera_image_nx*camera_image_ny
            write(stdo,*) '    Nr of (sub)pixels raytraced = ',camera_subpixeling_npixtot
@@ -2285,6 +2340,7 @@ subroutine read_radmcinp_file()
      call parse_input_double ('camera_max_dangle@            ',camera_max_dangle)
      call parse_input_double ('camera_min_drr@               ',mindrr)
      call parse_input_integer('camera_interpol_jnu@          ',interpoljnu)
+     call parse_input_double ('camera_maxdphi@               ',camera_maxdphi)
      call parse_input_integer('sources_interpol_jnu@         ',interpoljnu)
 !     call parse_input_double ('lines_maxdoppler@             ',lines_maxdoppler)
      call parse_input_integer('lines_mode@                   ',lines_mode)
@@ -2644,6 +2700,12 @@ subroutine interpet_command_line_options(gotit,fromstdi,quit)
         iarg = iarg+1
         read(buffer,*) camera_tausurface
         do_raytrace_tausurf  = .true.
+        gotit = .true.
+     elseif(buffer(1:4).eq.'circ') then
+        !
+        ! Make an image
+        !
+        circular_images    = .true.
         gotit = .true.
      elseif(buffer(1:6).eq.'stokes') then
         !

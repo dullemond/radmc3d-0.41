@@ -1719,3 +1719,76 @@ def cmask(im=None, rad=0.0, au=False, arcsec=False, dpc=None):
 
     return res
 
+
+
+class radmc3dCircimage(object):
+    def __init__(self):
+        self.ri    = np.zeros(0, dtype=np.float64)
+        self.phii  = np.zeros(0, dtype=np.float64)
+        self.rc    = np.zeros(0, dtype=np.float64)
+        self.phic  = np.zeros(0, dtype=np.float64)
+        self.nu    = np.zeros(0, dtype=np.float64)
+        self.image = np.zeros((0,0), dtype=np.float64)
+        self.file  = 'circimage.out'
+        self.nr    = 0
+        self.nphi  = 0
+        self.nf    = 0
+        self.npol  = 0
+
+    def read(self,file='circimage.out'):
+        self.file = file
+        with open(file,'r') as f:
+            iformat = int(f.readline())
+            if iformat==1:
+                npol = 1
+            elif iformat==3:
+                npol = 4
+            s = f.readline().split()
+            nr = int(s[0])
+            nphi = int(s[1])
+            nf = int(f.readline())
+            self.nr = nr
+            self.np = nphi
+            self.nf = nf
+            self.npol = npol
+            s = f.readline()
+            self.ri = np.zeros(nr+2)
+            for ir in range(nr+2):
+                s = f.readline()
+                self.ri[ir] = float(s)
+            s = f.readline()
+            self.rc = np.zeros(nr+1)
+            for ir in range(nr+1):
+                s = f.readline()
+                self.rc[ir] = float(s)
+            s = f.readline()
+            self.phii = np.zeros(nphi+1)
+            for ip in range(nphi+1):
+                s = f.readline()
+                self.phii[ip] = float(s)
+            s = f.readline()
+            self.phic = np.zeros(nphi)
+            for ip in range(nphi):
+                s = f.readline()
+                self.phic[ip] = float(s)
+            s = f.readline()
+            self.nu = np.zeros(nf)
+            for inu in range(nf):
+                s = f.readline()
+                self.nu[inu] = float(s)
+            s = f.readline()
+            self.image = np.zeros((nr+1,nphi,npol,nf), dtype=np.float64)
+            for inu in range(nf):
+                for iphi in range(nphi):
+                    for ir in range(nr+1):
+                        s = f.readline().split()
+                        self.image[ir,iphi,0,inu] = float(s[0])
+                        if npol > 1:
+                            self.image[ir,iphi,1,inu] = float(s[1])
+                            self.image[ir,iphi,2,inu] = float(s[2])
+                            self.image[ir,iphi,3,inu] = float(s[3])
+        
+def readcircimage(file='circimage.out'):
+    dum = radmc3dCircimage()
+    dum.read(file)
+    return(dum)
