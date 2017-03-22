@@ -10,7 +10,11 @@ from radmc3dPy.analyze import *
 from radmc3dPy.natconst import * 
 
 #
-# Make sure to have run
+# First set up the model with
+#
+#   python problem_setup.py
+#
+# Then make sure to have run
 #
 #   radmc3d mctherm
 #
