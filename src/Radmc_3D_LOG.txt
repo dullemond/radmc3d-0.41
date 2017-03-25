@@ -8226,3 +8226,7 @@ finetuning: I noticed during some testing with a supersimple annulus model
             some stuff about this in the manual. Still to do. I added
             it to the run_spher* examples, though. For now that should
             be enough.
+
+25.03.2017  Trying to re-implement the PAH / quantum-heating stuff. 
+            This was part of the old RADMC. But I have not yet built
+            it in in RADMC-3D. Now working on this.

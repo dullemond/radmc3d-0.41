@@ -3838,15 +3838,7 @@ subroutine walk_full_path_bjorkmanwood(params,ierror)
         ! is likely to be fine.
         !
         if(incl_quantum.ne.0) then
-           if((incl_quantum.lt.0).and.(incl_quantum.gt.-10)) then
-              iqactive = 1
-           elseif(incl_quantum.eq.-10) then
-              iqactive = -1
-           elseif(incl_quantum.eq.-11) then
-              iqactive = 2
-           else
-              iqactive = 0
-           endif
+           iqactive = 1
         else
            iqactive = 0
         endif
@@ -4053,15 +4045,7 @@ subroutine walk_full_path_bjorkmanwood(params,ierror)
         ! is likely to be fine.
         !
         if(incl_quantum.ne.0) then
-           if((incl_quantum.lt.0).and.(incl_quantum.gt.-10)) then
-              iqactive = 1
-           elseif(incl_quantum.eq.-10) then
-              iqactive = -1
-           elseif(incl_quantum.eq.-11) then
-              iqactive = 2
-           else
-              iqactive = 0
-           endif
+           iqactive = 1
         else
            iqactive = 0
         endif
@@ -4479,15 +4463,7 @@ subroutine walk_full_path_bjorkmanwood(params,ierror)
      ! So switch off quantum (in old quantum mode).
      ! For new quantum mode, quantum is always active.
      !
-     if((incl_quantum.lt.0).and.(incl_quantum.gt.-10)) then
-        iqactive = 0
-     elseif(incl_quantum.eq.-10) then
-        iqactive = -1
-     elseif(incl_quantum.eq.-11) then
-        iqactive = 2
-     else
-        iqactive = 0
-     endif
+     iqactive = 0
      mc_photon_destroyed = .false.
      !
   endif
