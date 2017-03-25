@@ -3827,6 +3827,123 @@ aligned dust grains for thermal emission.
 {\em This is, currently, not yet implemented.}
 
 
+\section{Quantum-heated grains: PAHs and VSGs}
+\label{sec-quantum-heated-grains}
+%
+Very small dust grains are like very large molecules: they are partly
+classical objects, partly quantum objects. Polycyclic aromatic hydrocarbons
+(PAHs) are examples of such grains. The very smallest PAHs (such as
+naphtalene or anthracene) are still so small that they behave more in a
+molecular fashion: their vibrational states should be described as
+individual quantum energy levels. PAHs with many rings, however, have so
+many vibrational energy levels, that their vibrational state can be
+described with a temperature, making them pseudo-classic objects. However,
+they are still too small to be treated as ``normal'' dust grains in a
+radiative transfer model, because when they are exposed to UV photons, their
+temperature fluctuates. The reason is because a single UV photon contains
+enough energy to heat such a tiny grain from 0 K all the way up to hundreds
+of Kelvins. The heat capacity of these tiny grains is simply too small to
+allow for a steady equilibrium temperature to be attained. They therefore
+require a special radiative transfer treatment. 
+
+PAHs are one class of such grains. The opacities of such grains show
+characteristic peaks in the near- and mid-infrared, among which are the 3.3
+$\mu$m C-H stretching mode, the 6.2 $\mu$m and 7.7 $\mu$m C-C stretching
+mode, the 8.6 $\mu$m in-plane C-H bending mode and the 11.3 $\mu$m
+out-of-plane C-H bending mode. The diversity of possible PAHs, however,
+means that no single ``PAH opacity'' exists. In space there is presumably a
+plethora of different polycyclic grains mixed together. An ab-initio
+prediction for the radiative-transfer appearance of an object containing
+PAHs is therefore impossible. Instead, ``effective models'' such as the
+Drude profile model of Li \& Draine (2001, ApJ 554, 778) are a pragmatic
+way to compute useful PAH opacities.
+
+In the interstellar medium there are also somewhat bigger carbonaceous
+grains which do not show the typical PAH spectral peaks, yet they are still
+small enough that in very cold environments they might still display
+fluctuating temperatures. These are often called ``Very Small Grains''
+(VSGs). 
+
+The RADMC-3D code can treat the temperature-fluctuating aspect of PAHs and
+VSGs. This is called ``quantum heating'' because a single (or a few)
+individual photons (quantums) can cause the temperature of these grains to
+change drastically. In RADMC-3D the {\small\tt quantum\_module.f90} is the
+module taking care of this.
+
+We follow the ``temperature distribution function'' approach to treat these
+temperature fluctuations (Guharthakurta \& Draine 1989, ApJ, 345, 230;
+Siebenmorgen, Kruegel \& Mathis 1992, A\&A, 266, 501). In this model 
+the grain has an opacity $\kappa_\nu$ like any other grain. But instead of
+a given (non-changing) temperature $T$, it has a temperature distribution
+function as $P(T)$, which is normalized as
+\begin{equation}
+\int_0^\infty P(T) dT = 1
+\end{equation}
+The grain will have, at any given time, a well-defined temperature $T$,
+but this varies strongly with time. Most of the time the grain is 
+receiving no photons, but is emitting infrared radiation and thus cools.
+Every now and then it absorbs a photon
+
+
+
+
+
+Once we have computed $P(T)$, we can compute the emissivity $j_\nu$
+(in erg s$^{-1}$ cm$^{-2}$ Hz$^{-1}$ ster$^{-1}$) as
+\begin{equation}
+j_\nu = \int_0^\infty \kappa_\nu B_\nu(T)P(T) dT
+\end{equation}
+
+
+\subsection{Approximations to quantum-heating in RADMC-3D}
+In RADMC-3D we only treat stellar photons or external photons as being
+capable of quantum-heating the grains. The thermal photons re-emitted by the
+dust (and the PAHs/VSGs) are assumed to behave as classical light. This
+means that in the thermal Monte Carlo simulation a photon emitted by a star,
+a stellar source or by the external interstellar radiation field, will (for
+the quantum grains) not contribute to the usual absorbed energy in each
+cell, because this radiation will (at another stage in the algorithm) be
+used to compute the temperature distribution function of that dust in the
+quantum way. However, PAHs and VSGs can also contribute to the thermal
+radiative diffusion deep into optically thick regions. There they behave
+entirely classically. To make sure that they indeed do so in RADMC-3D, the
+code will treat these grains after the first absorption/re-emission event as
+any other (thermal) grain. These grains will then also acquire a ``normal''
+temperature (in addition to the temperature distribution
+function). Physically speaking this is the low-end peak in the $P(T)$
+function. But it is algorithmically more stable to treat this
+low-temperature peak in the $P(T)$ distribution simply as the usual
+equilibrium temperature like for the normal ``thermal'' grains. So the
+``quantum'' part only treats the effect of the absorption by stellar or
+external photons. Strictly speaking the $P(T)$ can (and often will)
+have a low-$T$ tail that goes even below the equilibrium temperature.
+
+
+
+XXXXXXXXXXXXXXXXXXXXXXXXX
+XXXXXXXXXXXXXXXXXXXXXXXXX
+XXXXXXXXXXXXXXXXXXXXXXXXX
+XXXXXXXXXXXXXXXXXXXXXXXXX
+
+
+
+
+
+
+\subsection{Dust opacities for PAHs and VSGs}
+In order to treat a dust species in RADMC-3D as a quantum-heated grain, the
+opacity input files must specify that this grain is indeed quantum-heated.
+This is one in the {\small\tt dustopac.inp} file (see Section
+\ref{sec-opacities}).
+
+
+XXXXXXXXXXXXXXXXXXXXXXXXX
+XXXXXXXXXXXXXXXXXXXXXXXXX
+XXXXXXXXXXXXXXXXXXXXXXXXX
+XXXXXXXXXXXXXXXXXXXXXXXXX
+
+
+
 
 
 
