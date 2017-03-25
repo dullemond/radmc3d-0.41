@@ -6,7 +6,6 @@ doubleprecision,allocatable :: emisquant(:,:)
 doubleprecision,allocatable :: emisquant_loccum(:,:)
 doubleprecision,allocatable :: emisquant_loctot(:)
 doubleprecision,allocatable :: emisquant_cum(:)
-doubleprecision,allocatable :: miquant(:,:)
 doubleprecision :: emisquanttot
 doubleprecision,allocatable :: quantum_frequencies(:)
 doubleprecision,allocatable :: quantum_dnu(:)
@@ -45,11 +44,6 @@ if(ierr.ne.0) then
    write(stdo,*) 'ERROR: Could not allocate emisquant_cum.'
    stop
 endif
-allocate(miquant(1:freq_nr,1:nrcellsmax),STAT=ierr)
-if(ierr.ne.0) then
-   write(stdo,*) 'ERROR: Could not allocate miquant.'
-   stop
-endif
 end subroutine quantum_init
 
 
@@ -62,7 +56,6 @@ if(allocated(emisquant)) deallocate(emisquant)
 if(allocated(emisquant_loccum)) deallocate(emisquant_loccum)
 if(allocated(emisquant_loctot)) deallocate(emisquant_loctot)
 if(allocated(emisquant_cum)) deallocate(emisquant_cum)
-if(allocated(miquant)) deallocate(miquant)
 if(allocated(quantum_frequencies)) deallocate(quantum_frequencies)
 if(allocated(quantum_dnu)) deallocate(quantum_dnu)
 end subroutine quantum_cleanup
@@ -160,7 +153,5 @@ subroutine quantum_read_wavelengths(action)
   !
   deallocate(freq)
 end subroutine quantum_read_wavelengths
-
-
 
 end module quantum_module

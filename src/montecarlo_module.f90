@@ -2293,12 +2293,11 @@ subroutine do_monte_carlo_bjorkmanwood(params,ierror,resetseed)
   ! Put to zero various arrays 
   !
   if(incl_quantum.ne.0) then
-     if((.not.(allocated(emisquant))).or.(.not.(allocated(miquant))).or. &
+     if((.not.(allocated(emisquant))).or. &
         (.not.(allocated(emisquant_cum)))) then
         write(stdo,*) 'INTERNAL ERROR: Including quantum, but quantum not initalized.'
         stop
      endif
-     miquant(:,:)       = 0.d0
      emisquant(:,:)     = 0.d0
      emisquant_cum(:)   = 0.d0
   endif
@@ -6202,16 +6201,6 @@ subroutine walk_cells_thermal(params,taupath,iqactive,arrived, &
            endif
         endif
         !
-        ! Add photons to mean intensity of 
-        ! primary (quantum-heating) photons
-        !
-        if(iqactive.ne.0) then
-           miquant(ray_inu,ray_index) = miquant(ray_inu,ray_index) +               &
-                   (taupath-tau) * energy /                                        &
-                   ( cellvolume(ray_index) * freq_dnu(ray_inu) *                   &
-                     alpha_tot * 12.566371d0 )
-        endif
-        !
         ! Compute the location of this point
         !
         ray_cart_x = prev_x + fr * ( ray_cart_x - prev_x )
@@ -6398,16 +6387,6 @@ subroutine walk_cells_thermal(params,taupath,iqactive,arrived, &
               enddo
               !
            endif
-        endif
-        !
-        ! Add photons to mean intensity of 
-        ! primary (quantum-heating) photons
-        !             
-        if(iqactive.ne.0) then
-           miquant(ray_inu,ray_index) = miquant(ray_inu,ray_index) +   &
-                   dtau * energy /                                     &
-                   ( cellvolume(ray_index) * freq_dnu(ray_inu) *       &
-                     alpha_tot * 12.566371d0 )
         endif
      endif
      !
@@ -10548,5 +10527,82 @@ subroutine modified_random_walk(cellx0,cellx1,pos,dir,energy,enerphot,     &
      endif
   enddo
 end subroutine modified_random_walk
+
+
+!=========================================================================
+!          BELOW ARE SUBROUTINES FOR QUANTUM-HEATED GRAINS
+!=========================================================================
+
+
+!---------------------------------------------------------------------
+!           COMPUTE THE QUANTUM-HEATING RADIATION FIELD
+!---------------------------------------------------------------------
+subroutine montecarlo_compute_quantum_radiation_field()
+  implicit none
+  integer :: ierr,inu
+  !
+  ! Make checks
+  !
+  if(.not.allocated(quantum_frequencies)) then
+     write(stdo,*) 'ERROR: No quantum wavelength grid read into RADMC-3D.'
+     write(stdo,*) '       This is necessary to do quantum-heated grains.'
+     write(stdo,*) '       Please prepare a file quantum_wavelength_micron.inp'
+     stop
+  endif
+  if(nrcells.le.0) stop 3377
+  !
+  ! Deallocate any pre-existing Monte Carlo frequencies
+  !
+  if(allocated(mc_frequencies)) deallocate(mc_frequencies)
+  !
+  ! Now reallocate this array
+  !
+  mc_nfreq = quantum_nf
+  allocate(mc_frequencies(mc_nrfreq),STAT=ierr)
+  if(ierr.ne.0) then
+     write(stdo,*) 'ERROR in montecarlo module: Could not allocate '
+     write(stdo,*) '      mc_frequencies(:).'
+     stop
+  endif
+  !
+  ! Copy the frequency array of the quantum module here
+  !
+  do inu=1,mc_nrfreq
+     mc_frequencies(inu) = quantum_frequencies(inu)
+  enddo
+  !
+  ! If the dust emission is included, then make sure the dust data,
+  ! density and temperature are read. If yes, do not read again.
+  !
+  if(rt_incl_dust) then
+     call read_dustdata(1)
+     call read_dust_density(1)
+     call read_dust_temperature(1)
+  endif
+  !
+  ! If line emission is included, then make sure the line data are
+  ! read. If yes, then do not read it again.
+  !
+  if(rt_incl_lines) then
+     call read_lines_all(1)
+  endif
+  !
+  ! If gas continuum is included, then make sure the gas continuum
+  ! data are read. If yes, then do not read it again.
+  !
+  if(rt_incl_gascont) then
+     call gascont_init(1)
+  endif
+  !
+  ! Now compute the mean intensity, and store it in
+  ! the mcscat_meanint(:,:)
+  !
+  call do_monte_carlo_scattering(rt_mcparams,ierr, &
+       resetseed=do_resetseed,meanint=.true.)
+  !
+end subroutine montecarlo_compute_quantum_radiation_field
+
+
+
 
 end module montecarlo_module
