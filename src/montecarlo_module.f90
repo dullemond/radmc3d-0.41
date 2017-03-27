@@ -5086,7 +5086,7 @@ subroutine walk_full_path_scat(params,inu,ierror)
   double precision :: dir(1:3),enold,albedo,dum,g,rn
   double precision :: pdirx,pdiry,pdirz,dirnewx,dirnewy,dirnewz
   double precision :: dir_perp,dir_planex,dir_planey,dummy
-  integer :: ispec,iqactive,istar,icell,itemplate,iscatevent
+  integer :: ispec,istar,icell,itemplate,iscatevent
   integer :: ibnd,bc_idir,bc_ilr,ix,iy,iz,illum,ierr
   logical :: ok,arrived,usesphere,todo_photpkg
   type(amr_branch), pointer :: acell
@@ -5106,7 +5106,6 @@ subroutine walk_full_path_scat(params,inu,ierror)
   !
   ! Reset
   !
-  iqactive = 0
   mc_photon_destroyed = .false.
   ray_inu  = inu
   todo_photpkg = .true.
