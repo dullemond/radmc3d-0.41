@@ -7,6 +7,7 @@
 !======================================================================
 module quantum_module
 use rtglobal_module
+use dust_module
 use constants_module
 
 doubleprecision,allocatable :: emisquant(:,:)
@@ -24,16 +25,17 @@ integer :: quantum_nrquantum=0
 integer :: quantum_ntemp=100
 doubleprecision :: quantum_temp0=1d0
 doubleprecision :: quantum_temp1=1d4
+doubleprecision,allocatable :: quantum_kappa(:,:)
 
 contains
 
 !---------------------------------------------------------------------
 !                 Initialize the quantum mode
 !---------------------------------------------------------------------
-subroutine quantum_init(set_tempgrid,incl_emisquant)
+subroutine quantum_init(set_opacities,set_tempgrid,incl_emisquant)
 implicit none
 integer :: ierr,itemp,ispec,isq
-logical :: incl_emisquant,set_tempgrid
+logical :: set_opacities,incl_emisquant,set_tempgrid
 !
 ! Message and check
 !
@@ -47,10 +49,54 @@ if(dust_nr_species.le.0) then
    stop
 endif
 !
+! Find which of the dust species are quantum
+!
+if(allocated(quantum_ispec)) deallocate(quantum_ispec)
+quantum_nrquantum = 0
+do ispec=1,dust_nr_species
+   if(dust_quantum(ispec).ne.0) then
+      quantum_nrquantum = quantum_nrquantum + 1
+   endif
+enddo
+allocate(quantum_ispec(quantum_nrquantum))
+isq = 0
+do ispec=1,dust_nr_species
+   if(dust_quantum(ispec).ne.0) then
+      isq = isq + 1
+      quantum_ispec(isq) = ispec
+   endif
+enddo
+if(isq.ne.quantum_nrquantum) stop 123
+!
+! Get the opacities for the quantum wavelength grid
+!
+if(set_opacities) then
+   !
+   ! Allocate the opacity arrays
+   !
+   if(allocated(quantum_kappa)) deallocate(quantum_kappa)
+   allocate(quantum_kappa(quantum_nf,quantum_nrquantum))
+   !
+   ! Fill these opacity arrays
+   ! 
+   do isq=1,quantum_nrquantum
+      ispec = quantum_ispec(isq)
+      do inu=1,quantum_nf
+         quantum_kappa(inu,isq) = find_dust_kappa_interpol(  &
+              quantum_frequencies(inu),ispec,100.d0,1,0,0)
+      enddo
+   enddo
+endif
+!
 ! Allocate the temperature grid. Note that the parameters can be
 ! fine-tuned in radmc3d.inp
 !
 if(set_tempgrid) then
+   !
+   ! Cleanup stuff before allocating
+   !
+   if(allocated(quantum_temp_grid)) deallocate(quantum_temp_grid)
+   if(allocated(quantum_temp_distr)) deallocate(quantum_temp_distr)
    !
    ! The temperature grid itself
    !
@@ -59,23 +105,6 @@ if(set_tempgrid) then
       quantum_temp(itemp) = quantum_temp0 *     &
            (quantum_temp1/quantum_temp0)**      &
            ((itemp-1.d0)/(quantum_ntemp-1.d0))
-   enddo
-   !
-   ! Find which of the dust species are quantum
-   !
-   quantum_nrquantum = 0
-   do ispec=1,dust_nr_species
-      if(dust_quantum(ispec).ne.0) then
-         quantum_nrquantum = quantum_nrquantum + 1
-      endif
-   enddo
-   allocate(quantum_ispec(quantum_nrquantum))
-   isq = 0
-   do ispec=1,dust_nr_species
-      if(dust_quantum(ispec).ne.0) then
-         isq = isq + 1
-         quantum_ispec(isq) = ispec
-      endif
    enddo
    !
    ! Allocate the array for the temperature distribution
@@ -131,6 +160,7 @@ if(allocated(quantum_dnu)) deallocate(quantum_dnu)
 if(allocated(quantum_temp_grid)) deallocate(quantum_temp_grid)
 if(allocated(quantum_temp_distr)) deallocate(quantum_temp_distr)
 if(allocated(quantum_ispec)) deallocate(quantum_ispec)
+if(allocated(quantum_kappa)) deallocate(quantum_kappa)
 end subroutine quantum_cleanup
 
 
@@ -463,5 +493,128 @@ subroutine quantum_solve_temp_distrib(isq,nf,ntemp,freq,meanint,tdist)
   endif
   !
 end subroutine quantum_solve_temp_distrib
+
+
+!-----------------------------------------------------------------
+!          FILL THE MATRIX, FOR A GIVEN RADIATION FIELD
+!-----------------------------------------------------------------
+subroutine fill_matrix(isq,meanint)
+  implicit none
+  integer :: isq
+  doubleprecision :: kappa(FRSIZE_FREQ),meanint(FRSIZE_FREQ)
+      doubleprecision dnu(FRSIZE_FREQ)
+      doubleprecision find_dust_kappa,epspeak,nphot,dum,pi,dt,hh
+      integer inu,itemp,itpeak,ispec,it
+      parameter(pi=3.1415926535897932385d0)
+      parameter(hh=6.6262d-27)
+c
+#include "common_dust.h"
+#include "common_grid.h"
+#include "common_pah_radmc.h"
+!
+! Make dnu
+c
+      dnu(1)       = 0.5 * ( freq_nu(2) - freq_nu(1) )
+      dnu(freq_nr) = 0.5 * ( freq_nu(freq_nr) - freq_nu(freq_nr-1) )
+      do inu=2,freq_nr-1
+          dnu(inu) = 0.5 * ( freq_nu(inu+1) - freq_nu(inu-1) )
+      enddo
+c
+!Get the kappa
+c
+      do inu=1,freq_nr
+          kappa(inu) = find_dust_kappa(inu,1,ispec,10.d0,1,0)
+      enddo
+c
+!First clear the matrix
+c
+      do itemp=1,ntempgrid
+          do it=1,ntempgrid
+              mat(itemp,it) = 0.d0
+          enddo
+      enddo
+c
+!Fill matrix for the cooling
+!
+      do itemp=ntempgrid,2,-1
+c
+!    Compute the time it takes to cool from itemp to itemp-1
+c
+!    We do this in an explicit way, i.e. the time scale for
+!    cooling from itemp to itemp-1 is computed using the 
+!    infrared-emission cooling rate at itemp. In this way
+!    we make sure that the shift of the material to lower 
+!    temperature over an explicit time step delta t corresponds
+!    to the cooling rate at the beginning of the time step
+!    multiplied by delta t.
+c
+          dt = cooltime(itemp-1) - cooltime(itemp)
+c
+!    Compute the matrix contribution
+c
+          dum = 1.d0 / dt
+c
+!    Add this to the matrix, such that mass is conserved
+c
+          mat(itemp,itemp)   = mat(itemp,itemp)   - dum
+          mat(itemp-1,itemp) = mat(itemp-1,itemp) + dum
+      enddo
+c
+!Fill the matrix for the heating
+c
+      do itemp=1,ntempgrid-1
+c
+!    Excite from temperature level itemp to the temperature
+!    level given by the input photon energy. So make a loop
+!    over all incoming photons
+c
+          do inu=1,freq_nr
+c
+!        Find where the energy is dumped
+c
+              itpeak  = peak_itemp(itemp,inu)
+              epspeak = peak_eps(itemp,inu)
+c
+!        Find out how many photons are absorbed per second
+!        by 1 gram of PAHs 
+c
+              nphot = 4 * pi * meanint(inu) * dnu(inu) * 
+     %                kappa(inu) / ( hh * freq_nu(inu) )
+c
+!        Convert this into how many photons are absorbed per
+!        second by 1 PAH molecule
+c
+              nphot = nphot * dust_mgrain(ispec)
+c
+!        This is the excitation rate...
+c
+!        Put this in the matrix
+c
+              if(itpeak.lt.ntempgrid) then
+c
+!            Normal case
+c
+                  mat(itemp,itemp)    = mat(itemp,itemp) - nphot
+                  mat(itpeak,itemp)   = mat(itpeak,itemp) +
+     %                                  (1.d0-epspeak)*nphot
+                  mat(itpeak+1,itemp) = mat(itpeak+1,itemp) +
+     %                                  epspeak*nphot
+              elseif(itpeak.eq.ntempgrid) then
+c
+!            Excited to upper bin
+c
+                  mat(itemp,itemp)    = mat(itemp,itemp) - nphot
+                  mat(itpeak,itemp)   = mat(itpeak,itemp) + nphot
+              else
+c
+!            Internal error...
+c
+                  stop 93971
+              endif
+          enddo
+      enddo
+c
+      end
+
 
 end module quantum_module
