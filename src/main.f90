@@ -75,8 +75,16 @@ program radmc3d
   rt_incl_gascont_freefree   = .true.
   rt_incl_userdef_srcalp     = .false.
   !
+  ! Defaults for dust anisotropic scattering
+  !
   dust_2daniso               = .false.
   dust_2daniso_nphi          = 360 
+  !
+  ! Defaults for quantum-heated grains
+  !
+  quantum_ntemp              = 100
+  quantum_temp0              = 1d0
+  quantum_temp1              = 1d4
   !
   ! Defaults for the camera position and orientation. 
   !
@@ -2283,6 +2291,9 @@ subroutine read_radmcinp_file()
      call parse_input_integer('scat_munr@                    ',scat_munr)
      !call parse_input_integer('scat_phinr@                   ',scat_phinr)
      call parse_input_integer('dust_2daniso_nphi@            ',dust_2daniso_nphi)
+     call parse_input_integer('quantum_ntemp@                ',quantum_ntemp)
+     call parse_input_double ('quantum_temp0@                ',quantum_temp0)
+     call parse_input_double ('quantum_temp1@                ',quantum_temp1)
      call parse_input_integer('mc_weighted_photons@          ',wghtphot)
      call parse_input_integer('optimized_motion@             ',ioptmot)
      call parse_input_double ('optim_dtau@                   ',rt_mcparams%optim_dtau)
