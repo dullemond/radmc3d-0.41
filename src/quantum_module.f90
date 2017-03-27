@@ -614,5 +614,70 @@ subroutine quantum_fill_matrix(isq,nf,ntemp,meanint)
   !
 end subroutine quantum_fill_matrix
 
+!-----------------------------------------------------------------
+!               COMPUTE THE COOLING TIME LINE
+!
+! This routine returns the time the PAH reaches each of the 
+! temperatures of the given temperature grid, starting from the
+! highest temperature (i.e. the last temperature in the array),
+! and cooling down to the lowest.
+! For this, the routine uses dust opacity nr ispec.
+!-----------------------------------------------------------------
+subroutine quantum_cooling(isq)
+  implicit none
+  integer :: isq,ispec
+  doubleprecision :: temp,dtime,cv_pah_gram
+  doubleprecision :: dum,qcool
+  doubleprecision :: enthalpy_pah_gram,kappa
+  integer :: itemp,inu
+  !
+  ! Get the dust ispec from isq
+  !
+  if(isq.gt.quantum_nrquantum) stop 8310
+  ispec = quantum_ispec(isq)
+  !
+  ! Test
+  !
+  if(quantum_temp(quantum_ntemp).le.quantum_temp(1)) then
+     write(*,*) 'Quantum Tempeature grid must be in ascending order'
+     stop
+  endif
+  !
+  ! Time at max temp = 0
+  ! 
+  quantum_cooltime(quantum_ntemp,isq) = 0.d0
+  !
+  ! Now let's cool!
+  !
+  do itemp=quantum_ntemp-1,1,-1 
+     !
+     ! Use the temperature of itemp+1, which is important for
+     ! the energy conservation of the multi-photon algorithm...
+     !
+     temp = quantum_temp(itemp+1)
+     !
+     ! Compute cooling rate per gram of dust
+     !
+     dum = 0.d0
+     do inu=1,freq_nr
+        kappa = find_dust_kappa_interpol(                   &
+                        freq_nu(inu),ispec,100.d0,1,0,0)
+        dum   = dum + bplanck(temp,freq_nu(inu)) * kappa *  &
+                        freq_dnu(inu)
+     enddo
+     qcool = 4 * pi * dum
+     !
+     ! Compute the time it takes to cool...
+     !
+     dtime = ( enthalpy_pah_gram(tempgrid(itemp+1)) -    &
+               enthalpy_pah_gram(tempgrid(itemp)) ) /    &
+             qcool
+     !
+     ! Compute the new time
+     !
+     quantum_cooltime(itemp,isq) = quantum_cooltime(itemp+1,isq) + dtime 
+  enddo
+  !
+end subroutine quantum_cooling
 
 end module quantum_module
