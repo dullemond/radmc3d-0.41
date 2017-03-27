@@ -20,6 +20,8 @@ doubleprecision,allocatable :: quantum_dnu(:)
 integer :: quantum_nf
 doubleprecision,allocatable :: quantum_temp_grid(:)
 doubleprecision,allocatable :: quantum_temp_distr(:,:,:)
+doubleprecision,allocatable :: quantum_mat(:,:)
+doubleprecision,allocatable :: quantum_cooltime(:,:)
 integer,allocatable :: quantum_ispec(:)
 integer :: quantum_nrquantum=0
 integer :: quantum_ntemp=100
@@ -97,6 +99,8 @@ if(set_tempgrid) then
    !
    if(allocated(quantum_temp_grid)) deallocate(quantum_temp_grid)
    if(allocated(quantum_temp_distr)) deallocate(quantum_temp_distr)
+   if(allocated(quantum_mat)) deallocate(quantum_mat)
+   if(allocated(quantum_cooltime)) deallocate(quantum_cooltime)
    !
    ! The temperature grid itself
    !
@@ -106,6 +110,15 @@ if(set_tempgrid) then
            (quantum_temp1/quantum_temp0)**      &
            ((itemp-1.d0)/(quantum_ntemp-1.d0))
    enddo
+   !
+   ! Allocate the matrix required for the temperature
+   ! distribution solution
+   !
+   allocate(quantum_mat(quantum_ntemp,quantum_ntemp))
+   !
+   ! Allocate the cooling time arrays
+   !
+   allocate(quantum_cooltime(quantum_ntemp,quantum_nrquantum))
    !
    ! Allocate the array for the temperature distribution
    ! function, but only for the quantum grains...
@@ -159,6 +172,8 @@ if(allocated(quantum_frequencies)) deallocate(quantum_frequencies)
 if(allocated(quantum_dnu)) deallocate(quantum_dnu)
 if(allocated(quantum_temp_grid)) deallocate(quantum_temp_grid)
 if(allocated(quantum_temp_distr)) deallocate(quantum_temp_distr)
+if(allocated(quantum_mat)) deallocate(quantum_mat)
+if(allocated(quantum_cooltime)) deallocate(quantum_cooltime)
 if(allocated(quantum_ispec)) deallocate(quantum_ispec)
 if(allocated(quantum_kappa)) deallocate(quantum_kappa)
 end subroutine quantum_cleanup
@@ -532,7 +547,7 @@ subroutine quantum_fill_matrix(isq,nf,ntemp,meanint)
      ! to the cooling rate at the beginning of the time step
      ! multiplied by delta t.
      !
-     dt = quantum_cooltime(itemp-1) - quantum_cooltime(itemp)
+     dt = quantum_cooltime(itemp-1,isq) - quantum_cooltime(itemp,isq)
      !
      ! Compute the matrix contribution
      !
