@@ -7844,16 +7844,21 @@ subroutine do_absorption_event(params,iqactive,ierror)
         !
      endif
      !
-     ! If quantum heating active:
-     ! Original method:
-     !    If the photon is absorbed by a quantum heated grain, then 
-     !    destroy photon (because the quantum heating is done elsewhere)
-     ! New method (NEW QUANTUM: 28.04.06):
-     !    The photon is re-emitted according to the quantum source
+     ! If quantum heating active (meaning that this photon package
+     ! is directly from a star or some hot source), and if the quantum 
+     ! emission is not (yet) computed, we must destroy the photon package 
+     ! if it hits a quantum grain, because rather than being re-emitted
+     ! as a thermal photon, it will be processed by the quantum-heating
+     ! subroutines.
      !
-     if(iqactive.eq.1) then
-        !
-        ! ORIGINAL METHOD
+     ! NOTE: If emisquant is set, then we will also include the
+     !       re-absorbtion of quantum-heated grain emission by other grains.
+     !       This is a more self-consistent treatment of quantum-heated
+     !       grains, but in the simple treatment of quantum-heated grains
+     !       this is not taken into account (only thermal grains can heat
+     !       thermal grains).
+     !
+     if((iqactive.eq.1).and.(allocated(emisquant))) then
         !
         ! Determine what is the chance that the photon is absorbed
         ! by a quantum-heated grain
@@ -7866,18 +7871,41 @@ subroutine do_absorption_event(params,iqactive,ierror)
         enddo
         fracquant = fracquant / energy
         !
-        ! SMALL BUGFIX (06.07.05): 1.d0 --> 1.d0+1d-10
+        ! Check: fracquant should not exceed 1
         !
         if(fracquant.gt.1.d0+MINIEPS) stop 92091
         !
         ! Now pick a random number and determine what happens.
         ! If absorbed by a quantum heated grain, then destroy the
-        ! photon.
+        ! photon and return.
         !     
         rn = ran2(iseed)
         if(rn.le.fracquant) then
            mc_photon_destroyed = .true.
            return
+        endif
+        !
+        ! If not destroyed, then we proceed with the 
+        ! thermal grains, but exclude the quantum grains.
+        ! Essentially we have to do the mc_enerpart all over.
+        !
+        alpha_a_nu = 0.d0
+        do ispec=1,dust_nr_species
+           if(dust_quantum(ispec).eq.0) then
+              mc_enerpart(ispec) = dustdens(ispec,ray_index) *       &
+                                   kappa_a(ray_inu,ispec) 
+              alpha_a_nu         = alpha_a_nu + mc_enerpart(ispec)
+           else
+              mc_enerpart(ispec) = 0.d0  ! Quantum grain, so ignore here
+           endif
+        enddo
+        if(alpha_a_nu.gt.0.d0) then
+           do ispec=1,dust_nr_species
+              mc_enerpart(ispec) = energy * mc_enerpart(ispec) / alpha_a_nu
+           enddo
+        else
+           write(stdo,*) 'Error in quantum-heating: warn author.'
+           stop
         endif
      endif
   elseif(ray_inu.eq.-1) then
@@ -8005,35 +8033,35 @@ subroutine do_absorption_event(params,iqactive,ierror)
            dusttemp(ispec,ray_index) = tempav
         enddo
      endif
-     !
-     ! Do some testing, if required
-     !
-!     if(debug_check_all.eq.1) then
-!        do ispec=1,dust_nr_species
-!           if(number_invalid(dusttemp(ispec,ray_index)).ne.0) then
-!              if(number_invalid(dusttemp(ispec,ray_index)).eq.1) then
-!                 write(stdo,*) 'ERROR: Discovered INF dust temperature at ', &
-!                      'ispec=',ispec,' index=',ray_index
-!                 stop
-!              else
-!                 write(stdo,*) 'ERROR: Discovered NAN dust temperature at ', &
-!                      'ispec=',ispec,' index=',ray_index
-!                 stop
-!              endif
-!           endif
-!        enddo
-!     endif
   endif
   !
   ! Now pick a new frequency, according to dB_nu(T)/dT
   !
-  ! NOTE: This must be mc_enerpart and not mc_cumulener, because
-  !       suppose we have two dust species, with spec 2 having 0 opacity
-  !       in the optical. If an optical photon is absorbed, it must
-  !       have been by spec 1, and thus also spec 1 must re-emit!
-  !
-  call pick_randomfreq_db(dust_nr_species,dusttemp(1,ray_index), &
-                          mc_enerpart,ray_inu)
+  if((iqactive.eq.1).and.(allocated(emisquant))) then
+     !
+     ! NOTE: If quantum-heated emission is allowed to also
+     !       heat the thermal grains, then we must (for picking
+     !       the correct new frequency) also include the
+     !       quantum-heated emission. This has to be done
+     !       with a special version of the subroutine
+     !       pick_randomfreq_db(). 
+     !
+     !       For now (27.03.2017) not yet finished.
+     !
+     write(stdo,*) 'STOPPING: Full quantum mode with inclusion '
+     write(stdo,*) '   of quantum-emission into the thermal '
+     write(stdo,*) '   Monte Carlo is not yet implemented.'
+     stop
+  else
+     !
+     ! Normal case: only emission by thermal grains
+     !
+     ! Note: Quantum grains are treated as thermal if iqactive.eq.0
+     !       and are ignored if iqactive.eq.1 (see mc_enerpart above).
+     !
+     call pick_randomfreq_db(dust_nr_species,dusttemp(1,ray_index), &
+                             mc_enerpart,ray_inu)
+  endif
   !
   ! If the temperature(s) and the freqdist have been recomputed,
   ! then we must reset the backup cumulative energy to the present
@@ -8053,11 +8081,9 @@ subroutine do_absorption_event(params,iqactive,ierror)
   !
   ! Now reset the iqactive, since from now on all the events for
   ! this photon package are thermal (i.e. no quantum-heating
-  ! events anymore). ONLY IN ORIGINAL PAH METHOD. NEW QUANTUM: 28.04.06
+  ! events anymore). 
   !
-  if(iqactive.eq.1) then 
-     iqactive = 0
-  endif
+  iqactive = 0
   !
   ! Done...
   !
