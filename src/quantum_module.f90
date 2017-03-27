@@ -680,4 +680,28 @@ subroutine quantum_cooling(isq)
   !
 end subroutine quantum_cooling
 
+!-----------------------------------------------------------------
+!               ENTHALPY FOR PAH MOLECULES PER GRAM 
+!
+! According to Siebenmorgen & Kruegel (1992) the enthalpy of 
+! PAH molecules in erg/atom is (formula by Chase et al 1985):
+!-----------------------------------------------------------------
+function enthalpy_pah_gram(temp)
+  implicit none
+  doubleprecision :: temp,enthalpy_pah_gram
+  !
+  ! The formula of Chase
+  !
+  enthalpy_pah_gram = 4.15D-22 * (temp**3.3) /            &
+              ( 1.D0 + 6.51D-3*temp + 1.5D-6*temp**2 +    &
+                      8.3D-7*(temp**2.3) )
+  !
+  ! Normalize to gram^(-1)
+  !
+  enthalpy_pah_gram = enthalpy_pah_gram / (12*mp)      
+  !
+  return
+end function enthalpy_pah_gram
+
+
 end module quantum_module
