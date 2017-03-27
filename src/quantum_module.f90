@@ -1,3 +1,10 @@
+!======================================================================
+!             PAH / VSG MODULE: QUANTUM-HEATED GRAINS
+!
+! This is a port of a code that was originally made for use with the
+! original RADMC code. That's why there are comments from before the
+! RADMC-3D code in there. 
+!======================================================================
 module quantum_module
 use rtglobal_module
 use constants_module
@@ -219,5 +226,242 @@ subroutine quantum_read_wavelengths(action)
   !
   deallocate(freq)
 end subroutine quantum_read_wavelengths
+
+
+!-----------------------------------------------------------------
+!            SOLVE FOR THE TEMPERATURE DISTRIBUTION
+!-----------------------------------------------------------------
+subroutine quantum_solve_temp_distrib(isq,nf,ntemp,freq,meanint,tdist)
+  implicit none
+  integer :: nf,ntemp
+  doubleprecision :: freq(nf),meanint(nf),dummy,tdist(ntemp)
+  doubleprecision :: matbk(quantum_ntemp)
+  doubleprecision :: matwork(quantum_ntemp,quantum_ntemp)
+  doubleprecision :: tdtmp(quantum_ntemp),res(quantum_ntemp)
+  integer :: isq,ispec,ievap,itemp,it
+  integer :: indx(quantum_ntemp)
+  !
+  ! Check
+  !
+  if(ntemp.ne.quantum_ntemp) stop 2317
+  !
+  ! Get the dust ispec from isq
+  !
+  if(isq.gt.quantum_nrquantum) stop 8310
+  ispec = quantum_ispec(isq)
+  !
+  ! Fill the matrix
+  !
+  call quantum_fill_matrix(ispec,meanint)
+  !
+  ! This matrix obviously has one zero eigenvalue because all the
+  ! temperature bins are converted into each other. This cannot be
+  ! inverted.
+  !
+  ! So replace last line with normalization
+  ! But remember the original line for later in this routine.
+  !
+  do itemp=1,quantum_ntemp
+     matbk(itemp)             = mat(quantum_ntemp,itemp)
+     mat(quantum_ntemp,itemp) = 1.d0
+  enddo
+  !
+  ! Put (0,0,...,0,1) as right-hand size
+  !
+  do itemp=1,quantum_ntemp-1
+     tdist(itemp) = 0.d0
+  enddo
+  tdist(quantum_ntemp) = 1.d0
+  !
+  ! Precondition this matrix 
+  !
+  do itemp=1,quantum_ntemp-1
+     dummy = 0.d0
+     do it=1,quantum_ntemp
+        if(abs(mat(itemp,it)).gt.dummy) dummy=abs(mat(itemp,it))
+     enddo
+     do it=1,quantum_ntemp
+        mat(itemp,it) = mat(itemp,it) / dummy
+     enddo
+  enddo
+  !
+  ! Solve this matrix equation
+  !
+  dummy = 1.d0
+  do itemp=1,quantum_ntemp
+     do it=1,quantum_ntemp
+        matwork(itemp,it) = mat(itemp,it)
+     enddo
+  enddo
+  call ludcmp(matwork,quantum_ntemp,quantum_ntemp,indx,dummy)
+  call lubksb(matwork,quantum_ntemp,quantum_ntemp,indx,tdist)
+  !
+  ! Solution has been obtained...
+  !
+  ! Check if it is indeed a solution
+  !
+  dummy = 0.d0
+  do itemp=1,quantum_ntemp
+     tdtmp(itemp)  = 0.d0
+     do it=1,quantum_ntemp
+        tdtmp(itemp) = tdtmp(itemp) + mat(itemp,it) * tdist(it)
+     enddo
+     if(itemp.lt.quantum_ntemp) then
+        dummy = dummy + abs(tdtmp(itemp))
+     else
+        dummy = dummy + abs(tdtmp(itemp)-1.d0)
+     endif
+  enddo
+  if(dummy.gt.1d-10) then
+     write(*,*) 'ERROR in matix inversion quantum: Error = ',dummy
+     stop
+  endif
+  !
+  ! Check if the solution makes any sense...
+  !
+  dummy = 0.d0
+  do itemp=1,quantum_ntemp
+     dummy = dummy + tdist(itemp)
+  enddo
+  if(abs(dummy-1.d0).gt.1d-7) then 
+     write(*,*) 'ERROR: Distribution does not add up to 1,'
+     write(*,*) '   at ir,it = ',irr,itt
+     write(*,*) (tdist(itemp),itemp=1,quantum_ntemp)
+     write(*,*) dummy
+     stop 9564
+  endif
+  !
+  ! Some values may be <0 due to numerical errors
+  ! Put to 0 those values
+  !
+  do itemp=1,quantum_ntemp
+     if(tdist(itemp).lt.0.d0) then
+        tdist(itemp) = 0.d0
+     endif
+  enddo
+  !
+  ! Check again if the norm is not too much compromised
+  !
+  dummy = 0.d0
+  do itemp=1,quantum_ntemp
+     dummy = dummy + tdist(itemp)
+  enddo
+  if(abs(dummy-1.d0).gt.1d-2) then 
+     write(*,*) 'ERROR: Distribution does not add up to 1,'
+     write(*,*) (tdist(itemp),itemp=1,quantum_ntemp)
+     write(*,*) dummy
+     open(unit=2,file='matrix.dat')
+     write(2,*) quantum_ntemp
+     do itemp=1,quantum_ntemp
+        do it=1,quantum_ntemp
+           write(2,*) mat(itemp,it)
+        enddo
+     enddo
+     close(2)
+     stop 9565
+  endif
+  !
+  ! Renormalize, to make sure that the norm is exactly 1
+  !
+  do itemp=1,quantum_ntemp
+     tdist(itemp) = tdist(itemp) / dummy
+  enddo
+  !    
+  ! The next part of this routine is only for computing
+  ! the typical life time of the PAHs
+  !
+  ! Compute the typical life time of the grains
+  !   
+  if(pahdes_temp(ispec).gt.0.d0) then
+     if(pahdes_pcrit(ispec).eq.0.d0) then
+        !
+        ! The original method of Kees
+        !
+        ! Find the index of the temperature grid 
+        !
+        call hunt(quantum_temp,quantum_ntemp,pahdes_temp(ispec),ievap)
+        if(ievap.ge.quantum_ntemp) stop 90934
+        if(ievap.lt.1) then
+           write(*,*) pahdes_temp(ispec)
+           stop 90935
+        endif
+        !      
+        ! Select all stuff below this temperature
+        !     
+        do itemp=1,ievap
+           tdtmp(itemp) = tdist(itemp)
+        enddo
+        do itemp=ievap+1,quantum_ntemp
+           tdtmp(itemp) = 0.d0
+        enddo
+        !
+        ! Normalize
+        !
+        dummy = 0.d0
+        do itemp=1,quantum_ntemp
+           dummy = dummy + tdtmp(itemp)
+        enddo
+        do itemp=1,quantum_ntemp
+           tdtmp(itemp) = tdtmp(itemp) / dummy
+        enddo
+        !
+        ! Restore last line of the matrix
+        !             
+        do itemp=1,quantum_ntemp
+           mat(quantum_ntemp,itemp) = matbk(itemp)
+        enddo
+        !             
+        ! Do matrix multip
+        !
+        do itemp=1,quantum_ntemp
+           res(itemp) = 0.d0
+           do it=1,quantum_ntemp
+              res(itemp) = res(itemp) + mat(itemp,it) * tdtmp(it)
+           enddo
+        enddo
+        !
+        ! Check out how much has exceeded the tevap
+        ! BUGFIX-13-07-5: use res(itemp) instead of tdtmp(itemp)
+        !
+        dummy = 0.d0
+        do itemp=ievap+1,quantum_ntemp
+           dummy = dummy + res(itemp)
+        enddo
+        pahdes_time(ispec) = 1.d0 / ( abs(dummy) + 1d-99 )
+     else
+        !
+        ! The Habart method, slightly generalized
+        ! [ADDED: 25.11.06]
+        !
+        ! Find the index of the temperature grid 
+        !
+        call hunt(quantum_temp,quantum_ntemp,pahdes_temp(ispec),ievap)
+        if(ievap.ge.quantum_ntemp) stop 90934
+        if(ievap.lt.1) then
+           write(*,*) pahdes_temp(ispec)
+           stop 90935
+        endif
+        !
+        ! Do the integral from T_crit to infty
+        !
+        dummy = 0.d0
+        do itemp=ievap+1,quantum_ntemp
+           dummy = dummy + tdist(itemp)
+        enddo
+        !
+        ! For Habart, if this exceeds 1e-8, she destroys it
+        ! Here I assume this 1e-8 to correspond to 1 Myr 
+        ! (any correction to this assumtion is reflected in 
+        ! another value of pahdes_pcrit read in from the dust
+        ! opacity files).
+        !
+        pahdes_time(ispec) = 3.1536d+13 * ( pahdes_pcrit(ispec) / dummy )
+        !
+     endif
+  else
+     pahdes_time(ispec) = 1d99
+  endif
+  !
+end subroutine quantum_solve_temp_distrib
 
 end module quantum_module
