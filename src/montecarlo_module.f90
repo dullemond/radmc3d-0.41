@@ -4261,6 +4261,20 @@ subroutine walk_full_path_bjorkmanwood(params,ierror)
      ! ----- We have a photon emitted by the continuous stellar source -----
      !       (for simulations of galaxies and such)
      !
+     ! Switch on the quantum flag if quantum heating is on.
+     !
+     ! This is because in the quick quantum mode we treat stellar
+     ! photons differently from dust emission photons. This quick 
+     ! method does not include quantum heating by thermal emission.
+     ! For PAHs, however, this is rarely the case, so this approximation
+     ! is likely to be fine.
+     !
+     if(incl_quantum.ne.0) then
+        iqactive = 1
+     else
+        iqactive = 0
+     endif
+     !
      ! First determine which cell to emit from
      !
      rn = ran2(iseed)
@@ -4321,6 +4335,22 @@ subroutine walk_full_path_bjorkmanwood(params,ierror)
      ! ----- We have a photon emitted by the external environment into -----
      !       our computational domain. This is done from a sphere 
      !       centered around the center of the coordinate system.
+     !
+     ! Switch on the quantum flag if quantum heating is on.
+     !
+     ! This is because in the quick quantum mode we treat stellar
+     ! photons differently from dust emission photons. This quick 
+     ! method does not include quantum heating by thermal emission.
+     ! For PAHs, however, this is rarely the case, so this approximation
+     ! is likely to be fine.
+     !
+     if(incl_quantum.ne.0) then
+        iqactive = 1
+     else
+        iqactive = 0
+     endif
+     !
+     ! The ray starts outside the domain
      !
      ray_index = 0
      !
