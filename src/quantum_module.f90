@@ -498,123 +498,106 @@ end subroutine quantum_solve_temp_distrib
 !-----------------------------------------------------------------
 !          FILL THE MATRIX, FOR A GIVEN RADIATION FIELD
 !-----------------------------------------------------------------
-subroutine fill_matrix(isq,meanint)
+subroutine quantum_fill_matrix(isq,nf,ntemp,meanint)
   implicit none
-  integer :: isq
-  doubleprecision :: kappa(FRSIZE_FREQ),meanint(FRSIZE_FREQ)
-      doubleprecision dnu(FRSIZE_FREQ)
-      doubleprecision find_dust_kappa,epspeak,nphot,dum,pi,dt,hh
-      integer inu,itemp,itpeak,ispec,it
-      parameter(pi=3.1415926535897932385d0)
-      parameter(hh=6.6262d-27)
-c
-#include "common_dust.h"
-#include "common_grid.h"
-#include "common_pah_radmc.h"
-!
-! Make dnu
-c
-      dnu(1)       = 0.5 * ( freq_nu(2) - freq_nu(1) )
-      dnu(freq_nr) = 0.5 * ( freq_nu(freq_nr) - freq_nu(freq_nr-1) )
-      do inu=2,freq_nr-1
-          dnu(inu) = 0.5 * ( freq_nu(inu+1) - freq_nu(inu-1) )
-      enddo
-c
-!Get the kappa
-c
-      do inu=1,freq_nr
-          kappa(inu) = find_dust_kappa(inu,1,ispec,10.d0,1,0)
-      enddo
-c
-!First clear the matrix
-c
-      do itemp=1,ntempgrid
-          do it=1,ntempgrid
-              mat(itemp,it) = 0.d0
-          enddo
-      enddo
-c
-!Fill matrix for the cooling
-!
-      do itemp=ntempgrid,2,-1
-c
-!    Compute the time it takes to cool from itemp to itemp-1
-c
-!    We do this in an explicit way, i.e. the time scale for
-!    cooling from itemp to itemp-1 is computed using the 
-!    infrared-emission cooling rate at itemp. In this way
-!    we make sure that the shift of the material to lower 
-!    temperature over an explicit time step delta t corresponds
-!    to the cooling rate at the beginning of the time step
-!    multiplied by delta t.
-c
-          dt = cooltime(itemp-1) - cooltime(itemp)
-c
-!    Compute the matrix contribution
-c
-          dum = 1.d0 / dt
-c
-!    Add this to the matrix, such that mass is conserved
-c
-          mat(itemp,itemp)   = mat(itemp,itemp)   - dum
-          mat(itemp-1,itemp) = mat(itemp-1,itemp) + dum
-      enddo
-c
-!Fill the matrix for the heating
-c
-      do itemp=1,ntempgrid-1
-c
-!    Excite from temperature level itemp to the temperature
-!    level given by the input photon energy. So make a loop
-!    over all incoming photons
-c
-          do inu=1,freq_nr
-c
-!        Find where the energy is dumped
-c
-              itpeak  = peak_itemp(itemp,inu)
-              epspeak = peak_eps(itemp,inu)
-c
-!        Find out how many photons are absorbed per second
-!        by 1 gram of PAHs 
-c
-              nphot = 4 * pi * meanint(inu) * dnu(inu) * 
-     %                kappa(inu) / ( hh * freq_nu(inu) )
-c
-!        Convert this into how many photons are absorbed per
-!        second by 1 PAH molecule
-c
-              nphot = nphot * dust_mgrain(ispec)
-c
-!        This is the excitation rate...
-c
-!        Put this in the matrix
-c
-              if(itpeak.lt.ntempgrid) then
-c
-!            Normal case
-c
-                  mat(itemp,itemp)    = mat(itemp,itemp) - nphot
-                  mat(itpeak,itemp)   = mat(itpeak,itemp) +
-     %                                  (1.d0-epspeak)*nphot
-                  mat(itpeak+1,itemp) = mat(itpeak+1,itemp) +
-     %                                  epspeak*nphot
-              elseif(itpeak.eq.ntempgrid) then
-c
-!            Excited to upper bin
-c
-                  mat(itemp,itemp)    = mat(itemp,itemp) - nphot
-                  mat(itpeak,itemp)   = mat(itpeak,itemp) + nphot
-              else
-c
-!            Internal error...
-c
-                  stop 93971
-              endif
-          enddo
-      enddo
-c
-      end
+  integer :: isq,nf,ntemp
+  doubleprecision :: meanint(nf)
+  doubleprecision :: epspeak,nphot,dum,dt
+  integer :: inu,itemp,itpeak,ispec,it
+  !
+  ! Get the dust ispec from isq
+  !
+  if(isq.gt.quantum_nrquantum) stop 8310
+  ispec = quantum_ispec(isq)
+  !
+  ! First clear the matrix
+  !
+  do itemp=1,quantum_ntemp
+     do it=1,quantum_ntemp
+        quantum_mat(itemp,it) = 0.d0
+     enddo
+  enddo
+  !
+  ! Fill matrix for the cooling
+  !
+  do itemp=quantum_ntemp,2,-1
+     !
+     ! Compute the time it takes to cool from itemp to itemp-1
+     !
+     ! We do this in an explicit way, i.e. the time scale for
+     ! cooling from itemp to itemp-1 is computed using the 
+     ! infrared-emission cooling rate at itemp. In this way
+     ! we make sure that the shift of the material to lower 
+     ! temperature over an explicit time step delta t corresponds
+     ! to the cooling rate at the beginning of the time step
+     ! multiplied by delta t.
+     !
+     dt = quantum_cooltime(itemp-1) - quantum_cooltime(itemp)
+     !
+     ! Compute the matrix contribution
+     !
+     dum = 1.d0 / dt
+     !
+     ! Add this to the matrix, such that mass is conserved
+     !
+     quantum_mat(itemp,itemp)   = quantum_mat(itemp,itemp)   - dum
+     quantum_mat(itemp-1,itemp) = quantum_mat(itemp-1,itemp) + dum
+  enddo
+  !
+  ! Fill the matrix for the heating
+  !
+  do itemp=1,quantum_ntemp-1
+     !
+     ! Excite from temperature level itemp to the temperature
+     ! level given by the input photon energy. So make a loop
+     ! over all incoming photons
+     !
+     do inu=1,quantum_nf
+        !
+        ! Find where the energy is dumped
+        !
+        itpeak  = peak_itemp(itemp,inu)
+        epspeak = peak_eps(itemp,inu)
+        !
+        ! Find out how many photons are absorbed per second
+        ! by 1 gram of PAHs 
+        !
+        nphot = 4 * pi * meanint(inu) * dnu(inu) *   &
+                quatum_kappa(inu) /                  &
+                ( hh * quantum_frequencies(inu) )
+        !
+        ! Convert this into how many photons are absorbed per
+        ! second by 1 PAH molecule
+        !
+        nphot = nphot * dust_mgrain(ispec)
+        !
+        ! This is the excitation rate...
+        !
+        ! Put this in the matrix
+        !
+        if(itpeak.lt.quantum_ntemp) then
+           !
+           ! Normal case
+           !
+           quantum_mat(itemp,itemp)    = quantum_mat(itemp,itemp) - nphot
+           quantum_mat(itpeak,itemp)   = quantum_mat(itpeak,itemp) + (1.d0-epspeak)*nphot
+           quantum_mat(itpeak+1,itemp) = quantum_mat(itpeak+1,itemp) + epspeak*nphot
+        elseif(itpeak.eq.quantum_ntemp) then
+           !
+           ! Excited to upper bin
+           !
+           quantum_mat(itemp,itemp)    = quantum_mat(itemp,itemp) - nphot
+           quantum_mat(itpeak,itemp)   = quantum_mat(itpeak,itemp) + nphot
+        else
+           !
+           ! Internal error...
+           !
+           stop 93971
+        endif
+     enddo
+  enddo
+  !
+end subroutine quantum_fill_matrix
 
 
 end module quantum_module
