@@ -8226,3 +8226,17 @@ finetuning: I noticed during some testing with a supersimple annulus model
             some stuff about this in the manual. Still to do. I added
             it to the run_spher* examples, though. For now that should
             be enough.
+
+27.03.2017  montecarlo_module.f90
+  Cleanup   In the thermal Monte Carlo I completely removed the computation
+            of the scattering source function. That was a lot of code, 
+            but it was never used. It should also not be used, because
+            it would simply yield very noisy images and spectra. The
+            scattering source function should only be computed with the
+            scattering Monte Carlo. So I cleaned out all stuff related
+            to incl_scatsrc_mctherm. 
+
+            main.f90, rtglobal_module.f90
+            I commented out all stuff related to incl_scatsrc_mctherm.
+
+

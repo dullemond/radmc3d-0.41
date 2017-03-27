@@ -389,11 +389,9 @@ subroutine montecarlo_init(params,ierr,mcaction,resetseed)
   endif
   !
   ! If we must store a scattering source function, we must have at least
-  ! mcscat_nrdirs.ge.1. This is true for the scattering Monte Carlo, but
-  ! also for the thermal Monte Carlo IFF the incl_scatsrc_mctherm is
-  ! switched on.
+  ! mcscat_nrdirs.ge.1. This is true for the scattering Monte Carlo.
   !
-  if((mcaction.eq.101).or.(params%incl_scatsrc_mctherm.eq.1)) then
+  if(mcaction.eq.101) then
      if(mcscat_nrdirs.le.0) then
         mcscat_nrdirs = 1
      endif
@@ -670,31 +668,6 @@ subroutine montecarlo_init(params,ierr,mcaction,resetseed)
      endif
      mc_enerpart(:) = 0.d0
      !$OMP END PARALLEL
-     !
-     ! If we want to record the scattering source function during the 
-     ! thermal Monte Carlo (which is, for memory reasons, rarely the case!!)
-     ! then we must allocate the scattering source function array.
-     !
-     if(params%incl_scatsrc_mctherm.eq.1) then
-     !$ write(stdo,*) 'ERROR: Not implemented in the parallel version of RADMC-3D.'
-     !$ stop
-        write(stdo,*) 'WARNING: Allocating HUGE array for scattering source function'
-        write(stdo,*) '         for thermal Monte Carlo... Are you sure about this?'
-        if(mcscat_nrdirs.le.0) then
-           write(stdo,*) 'ERROR: mcscat_nrdirs.le.0 while initiating MC therm...'
-           stop
-        endif
-        allocate(mcscat_scatsrc_iquv(1:mc_nrfreq,1:nrcellsmax,1:4,1:mcscat_nrdirs),STAT=ierr)
-        if(ierr.ne.0) then
-           write(stdo,*) 'ERROR in Montecarlo Module: Could not allocate mcscat_scatsrc_iquv()'
-           write(stdo,*) '      As this can be a huge array, perhaps you have memory limitations?'
-           write(stdo,*) '      This array requires ',mcscat_nrdirs*mc_nrfreq* &
-                (nrcellsmax*4.d0)/(1024.*1024),' Mbytes'
-           stop 
-        else
-           mcscat_scatsrc_iquv(:,:,:,:) = 0.d0
-        endif
-     endif
      !
      ! Check the alignment mode
      !
@@ -2245,14 +2218,6 @@ subroutine do_monte_carlo_bjorkmanwood(params,ierror,resetseed)
   if(params%cntdump.lt.params%countwrite) then
      write(stdo,*) 'ERROR: Cntdump must be >= ',params%countwrite
      stop 
-  endif
-  if(params%incl_scatsrc_mctherm.eq.1) then
-     if(scattering_mode.eq.0) then
-        write(stdo,*) 'ERROR: If scattering is to be included in the'
-        write(stdo,*) '       thermal Monte Carlo, then the scattering_mode'
-        write(stdo,*) '       should of course not be 0...'
-        stop
-     endif
   endif
   !
   ! Initialize the Monte Carlo module by allocating the required arrays
@@ -5879,41 +5844,6 @@ subroutine walk_cells_thermal(params,taupath,iqactive,arrived, &
   mc_photon_destroyed = .false.
   arrived  = .false.
   !
-  ! Pre-compute the phase functions for all dirs and species
-  !
-  ! *** NOTE: IF WE WISH TO INCLUDE LOCAL OBSERVERS, WE CANNOT PRE-COMPUTE THE SOURCE FUNCTION! ***
-  !
-  if(params%incl_scatsrc_mctherm.eq.1) then
-     if(scattering_mode.eq.2) then
-        !
-        ! The case of anisotropic scattering based on the
-        ! Henyey-Greenstein function
-        !
-        do idir=1,mcscat_nrdirs
-           costheta = ray_cart_dirx*mcscat_dirs(1,idir) +              &
-                      ray_cart_diry*mcscat_dirs(2,idir) +              &
-                      ray_cart_dirz*mcscat_dirs(3,idir)
-           do ispec=1,dust_nr_species
-              g                            = kappa_g(ray_inu,ispec)
-              mcscat_phasefunc(idir,ispec) = henyeygreenstein_phasefunc(g,costheta)
-           enddo
-        enddo
-     elseif(scattering_mode.eq.3) then
-        !
-        ! The case of anisotropic scattering based on tabulated 
-        ! scattering matrix
-        !
-        do idir=1,mcscat_nrdirs
-           costheta = ray_cart_dirx*mcscat_dirs(1,idir) +              &
-                      ray_cart_diry*mcscat_dirs(2,idir) +              &
-                      ray_cart_dirz*mcscat_dirs(3,idir)
-           do ispec=1,dust_nr_species
-              mcscat_phasefunc(idir,ispec) = anisoscat_phasefunc(ray_inu,ispec,costheta)
-           enddo
-        enddo
-     endif
-  endif
-  !
   ! In this subroutine we will not make use of the amrray option to
   ! advance only partly within a cell. We will check here if we have
   ! an event within this cell and compute here the location of this
@@ -6075,133 +6005,6 @@ subroutine walk_cells_thermal(params,taupath,iqactive,arrived, &
            enddo
         endif
         !
-        ! Add photons to scattering source
-        !
-        ! NOTE: In the original RADMC I did not divide by 4*pi yet; only
-        !       in the writing to scatsource.dat I did that. Here I do 
-        !       it immediately.
-        !
-        if(params%incl_scatsrc_mctherm.eq.1) then
-           if(alpha_s_tot.gt.0.d0) then
-              if(scattering_mode.eq.1) then
-                 !
-                 ! Isotropic scattering: simply add the source term
-                 !
-                 scatsrc0 = albedo * (taupath-tau) * energy /                        &
-                     ( cellvolume(ray_index) * freq_dnu(ray_inu) * 12.566371d0 )
-                 mcscat_scatsrc_iquv(ray_inu,ray_index,1,1) =                            &
-                      mcscat_scatsrc_iquv(ray_inu,ray_index,1,1) + scatsrc0
-              elseif((scattering_mode.eq.2).or.(scattering_mode.eq.3)) then
-                 !
-                 ! Anisotropic scattering (Henyey-Greenstein or
-                 ! tabulated scatter matrix): add only for the given directions
-                 !
-                 scatsrc0 = albedo * (taupath-tau) * energy /                        &
-                     ( cellvolume(ray_index) * freq_dnu(ray_inu) * 12.566371d0 )
-                 do idir=1,mcscat_nrdirs
-                    dum = 0.d0
-                    do ispec=1,dust_nr_species
-                       dum       = dum + mcscat_phasefunc(idir,ispec) *           &
-                                         alpha_s(ispec) / alpha_s_tot
-                    enddo
-                    mcscat_scatsrc_iquv(ray_inu,ray_index,1,idir) =      &
-                         mcscat_scatsrc_iquv(ray_inu,ray_index,1,idir) + &
-                         scatsrc0 * dum
-                 enddo
-              elseif(scattering_mode.eq.4) then
-                 !
-                 ! Polarized scattering, but only for the scattering 
-                 ! source function (we assume that the current photon is
-                 ! unpolarized)
-                 !
-                 if(mcscat_localobserver) then
-                    !
-                    ! Polarized scattering and local-observer are mutually
-                    ! incompatible. NOTE: Also multiple directions (i.e.
-                    ! mcscat_nrdirs.gt.1) is not possible.
-                    !
-                    write(stdo,*) 'ERROR: Polarized scattering and local-observer are incompatible.'
-                    stop
-                 endif
-                 !
-                 ! Make the "phot" array for use with the polarization
-                 ! module. We choose an arbitrary S-vector, because the
-                 ! incoming light is assumed to be unpolarized.
-                 !
-                 photpkg%E    = energy
-                 photpkg%Q    = 0.d0
-                 photpkg%U    = 0.d0
-                 photpkg%V    = 0.d0
-                 photpkg%n(1) = ray_cart_dirx
-                 photpkg%n(2) = ray_cart_diry
-                 photpkg%n(3) = ray_cart_dirz
-                 call polarization_make_s_vector(photpkg%n,photpkg%s)   ! arb S-vector
-                 !
-                 ! Now add the scattering contribution of each of
-                 ! the dust species. We use the distance to the
-                 ! final point: dss = fr*ds. Note that we do not
-                 ! need to divide by 4*pi here because we use 
-                 ! Z instead of kappa_scat.
-                 !
-                 do ispec=1,dust_nr_species
-                    call polarization_randomorient_scatsource(photpkg, &
-                         mcscat_dirs(:,1),mcscat_svec(:,1),            &
-                         scat_munr,scat_mui_grid(:),                   &
-                         zmatrix(:,ray_inu,1,ispec),                   &
-                         zmatrix(:,ray_inu,2,ispec),                   &
-                         zmatrix(:,ray_inu,3,ispec),                   &
-                         zmatrix(:,ray_inu,4,ispec),                   &
-                         zmatrix(:,ray_inu,5,ispec),                   &
-                         zmatrix(:,ray_inu,6,ispec),                   &
-                         src4)
-                    mcscat_scatsrc_iquv(ray_inu,ray_index,1:4,1) =      &
-                         mcscat_scatsrc_iquv(ray_inu,ray_index,1:4,1) + &
-                         dustdens(ispec,ray_index) * src4(1:4) * dss /  &
-                         cellvolume(ray_index)
-                 enddo
-                 !
-              elseif(scattering_mode.eq.5) then
-                 !
-                 ! Full scattering matrix with polarization, 
-                 ! based on polarized incident photon
-                 !
-                 if(mcscat_localobserver) then
-                    !
-                    ! Polarized scattering and local-observer are mutually
-                    ! incompatible. NOTE: Also multiple directions (i.e.
-                    ! mcscat_nrdirs.gt.1) is not possible.
-                    !
-                    write(stdo,*) 'ERROR: Polarized scattering and local-observer are incompatible.'
-                    stop
-                 endif
-                 !
-                 ! Add the scattering contribution of each of
-                 ! the dust species. We use the distance to the
-                 ! final point: dss = fr*ds. Note that we do not
-                 ! need to divide by 4*pi here because we use 
-                 ! Z instead of kappa_scat.
-                 !
-                 do ispec=1,dust_nr_species
-                    call polarization_randomorient_scatsource(photpkg, &
-                         mcscat_dirs(:,1),mcscat_svec(:,1),            &
-                         scat_munr,scat_mui_grid(:),                   &
-                         zmatrix(:,ray_inu,1,ispec),                   &
-                         zmatrix(:,ray_inu,2,ispec),                   &
-                         zmatrix(:,ray_inu,3,ispec),                   &
-                         zmatrix(:,ray_inu,4,ispec),                   &
-                         zmatrix(:,ray_inu,5,ispec),                   &
-                         zmatrix(:,ray_inu,6,ispec),                   &
-                         src4)
-                    mcscat_scatsrc_iquv(ray_inu,ray_index,1:4,1) =      &
-                         mcscat_scatsrc_iquv(ray_inu,ray_index,1:4,1) + &
-                         dustdens(ispec,ray_index) * src4(1:4) * dss /  &
-                         cellvolume(ray_index)
-                 enddo
-                 !
-              endif
-           endif
-        endif
-        !
         ! Add photons to mean intensity of 
         ! primary (quantum-heating) photons
         !
@@ -6285,120 +6088,6 @@ subroutine walk_cells_thermal(params,taupath,iqactive,arrived, &
                    mc_cumulener(ispec,ray_index) + dum * alpha_a(ispec) 
            endif
         enddo
-        !
-        ! Add photons to scattering source
-        !
-        ! NOTE: In the original RADMC I did not divide by 4*pi yet; only
-        !       in the writing to scatsource.dat I did that. Here I do 
-        !       it immediately.
-        !
-        if((params%incl_scatsrc_mctherm.eq.1).and.(alpha_s_tot.gt.0.d0)) then
-           if(scattering_mode.eq.1) then
-              !
-              ! Isotropic scattering: simply add the source term
-              !
-              scatsrc0 = albedo * dtau * energy /                                 &
-                ( cellvolume(ray_index) * freq_dnu(ray_inu) * 12.566371d0 )
-              mcscat_scatsrc_iquv(ray_inu,ray_index,1,1) =                            &
-                   mcscat_scatsrc_iquv(ray_inu,ray_index,1,1) + scatsrc0
-           elseif((scattering_mode.eq.2).or.(scattering_mode.eq.3)) then
-              !
-              ! Anisotropic scattering (Henyey-Greenstein or
-              ! tabulated scattering matrix): add only for the given directions
-              !
-              scatsrc0 = albedo * dtau * energy /                                 &
-                ( cellvolume(ray_index) * freq_dnu(ray_inu) * 12.566371d0 )
-              do idir=1,mcscat_nrdirs
-                 dum = 0.d0
-                 do ispec=1,dust_nr_species
-                    dum       = dum + mcscat_phasefunc(idir,ispec) *           &
-                                      alpha_s(ispec) / alpha_s_tot
-                 enddo
-                 mcscat_scatsrc_iquv(ray_inu,ray_index,1,idir) =      &
-                      mcscat_scatsrc_iquv(ray_inu,ray_index,1,idir) + &
-                      scatsrc0 * dum
-              enddo
-           elseif(scattering_mode.eq.4) then
-              !
-              ! Polarized scattering, but only for the scattering 
-              ! source function (we assume that the current photon is
-              ! unpolarized)
-              !
-              if(mcscat_localobserver) then
-                 write(stdo,*) 'ERROR: Polarized scattering and local-observer are incompatible.'
-                 stop
-              endif
-              !
-              ! Make the "phot" array for use with the polarization
-              ! module. We choose an arbitrary S-vector, because the
-              ! incoming light is assumed to be unpolarized.
-              !
-              photpkg%E    = energy
-              photpkg%Q    = 0.d0
-              photpkg%U    = 0.d0
-              photpkg%V    = 0.d0
-              photpkg%n(1) = ray_cart_dirx
-              photpkg%n(2) = ray_cart_diry
-              photpkg%n(3) = ray_cart_dirz
-              call polarization_make_s_vector(photpkg%n,photpkg%s)   ! arb S-vector
-              !
-              ! Now add the scattering contribution of each of
-              ! the dust species. Note that we do not
-              ! need to divide by 4*pi here because we use 
-              ! Z instead of kappa_scat.
-              !
-              do ispec=1,dust_nr_species
-                 call polarization_randomorient_scatsource(photpkg, &
-                      mcscat_dirs(:,1),mcscat_svec(:,1),            &
-                      scat_munr,scat_mui_grid(:),                   &
-                      zmatrix(:,ray_inu,1,ispec),                   &
-                      zmatrix(:,ray_inu,2,ispec),                   &
-                      zmatrix(:,ray_inu,3,ispec),                   &
-                      zmatrix(:,ray_inu,4,ispec),                   &
-                      zmatrix(:,ray_inu,5,ispec),                   &
-                      zmatrix(:,ray_inu,6,ispec),                   &
-                      src4)
-                 mcscat_scatsrc_iquv(ray_inu,ray_index,1:4,1) =      &
-                      mcscat_scatsrc_iquv(ray_inu,ray_index,1:4,1) + &
-                      dustdens(ispec,ray_index) * src4(1:4) * ds /   &
-                      cellvolume(ray_index)
-              enddo
-              !
-           elseif(scattering_mode.eq.5) then
-              !
-              ! Full scattering matrix with polarization, 
-              ! based on polarized incident photon
-              !
-              if(mcscat_localobserver) then
-                 write(stdo,*) 'ERROR: Polarized scattering and local-observer are incompatible.'
-                 stop
-              endif
-              !
-              ! Add the scattering contribution of each of
-              ! the dust species. We use the distance to the
-              ! final point: dss = fr*ds. Note that we do not
-              ! need to divide by 4*pi here because we use 
-              ! Z instead of kappa_scat.
-              !
-              do ispec=1,dust_nr_species
-                 call polarization_randomorient_scatsource(photpkg, &
-                      mcscat_dirs(:,1),mcscat_svec(:,1),            &
-                      scat_munr,scat_mui_grid(:),                   &
-                      zmatrix(:,ray_inu,1,ispec),                   &
-                      zmatrix(:,ray_inu,2,ispec),                   &
-                      zmatrix(:,ray_inu,3,ispec),                   &
-                      zmatrix(:,ray_inu,4,ispec),                   &
-                      zmatrix(:,ray_inu,5,ispec),                   &
-                      zmatrix(:,ray_inu,6,ispec),                   &
-                      src4)
-                 mcscat_scatsrc_iquv(ray_inu,ray_index,1:4,1) =      &
-                      mcscat_scatsrc_iquv(ray_inu,ray_index,1:4,1) + &
-                      dustdens(ispec,ray_index) * src4(1:4) * ds /   &
-                      cellvolume(ray_index)
-              enddo
-              !
-           endif
-        endif
         !
         ! Add photons to mean intensity of 
         ! primary (quantum-heating) photons

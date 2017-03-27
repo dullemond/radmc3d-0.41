@@ -218,8 +218,8 @@ program radmc3d
   rt_mcparams%niter_vstruct    = 0
   rt_mcparams%errtoldiff       = 1d-10
   rt_mcparams%nphotdiff        = 0
-  rt_mcparams%incl_scatsrc_mctherm= 0    ! The default is not to compute the 
-  !                                      ! scat source in Bjork&Wood
+  !rt_mcparams%incl_scatsrc_mctherm= 0    ! The default is not to compute the 
+  !!                                      ! scat source in Bjork&Wood
   rt_mcparams%optimized_motion = .false. ! By default switch optimized photon
   !                                      ! motion off. This is perhaps slower
   !                                      ! but safer.
