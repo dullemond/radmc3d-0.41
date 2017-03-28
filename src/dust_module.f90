@@ -99,6 +99,7 @@ module dust_module
   ! Some stuff for quantum-heated grains
   !
   integer,allocatable :: dust_quantum(:),dust_n_catom(:)
+  doubleprecision,allocatable :: dust_tmax(:)
   !
   ! The main dust opacity information
   !
@@ -259,6 +260,10 @@ subroutine read_dustdata(action)
      stop
   endif
   dust_gfactor(:,:) = 0.d0
+  allocate(dust_n_catom(1:dust_nr_species))
+  allocate(dust_tmax(1:dust_nr_species))
+  dust_n_catom(:) = 0
+  dust_tmax(:) = 0.0
   !
   ! Now read
   !
@@ -283,36 +288,20 @@ subroutine read_dustdata(action)
                !
                read(3,*) dum3
                dust_n_catom(ispec) = dum3
-            elseif(idum2.eq.3) then
-               ! OLD MODE, DONT USE
+            elseif(idum2.eq.6) then
+               !
+               ! Read the nr of C-atoms for this PAH molecule 
+               ! and the maximum temperature that the grain can 
+               ! survive.
+               ! (this is only done if quantum is on for this species)
+               !
+               read(3,*) dum3
+               dust_n_catom(ispec) = dum3
+               read(3,*) dum3
+               dust_tmax(ispec) = dum3
+            elseif((idum2.ge.3).and.(idum2.le.5)) then
+               ! OLD MODES, DONT USE (still from the old RADMC times)
                stop
-               !!!! read(3,*) dum3
-               !!!! dust_n_catom(ispec) = dum3
-               !!!! read(3,*) dum3
-               !!!! dust_tmax(ispec) = dum3
-            elseif(idum2.eq.4) then
-               !
-               ! This is the real mode for the PAH destruction temperature
-               ! This is not part of this code yet (18.04.06).
-               ! MODIFIED 18.04.06
-               !
-               !!!! read(3,*) dum3
-               !!!! dust_mgrain(ispec) = dum3*12*mp
-               !!!! dust_n_catom(ispec) = dum3
-               !!!! read(3,*) dum3
-               !!!! pahdes_temp(ispec) = dum3
-               stop 
-            elseif(idum2.eq.5) then
-               !
-               ! This is the real mode for the PAH destruction temperature
-               ! With Habart's recipe for destruction...
-               ! This is not part of this code yet (25.11.06).
-               ! MODIFIED 25.11.06
-               !
-               !!!! read(3,*) dum3
-               !!!! dust_n_catom(ispec) = dum3
-               !!!! read(3,*) dum3
-               !!!! read(3,*) dum3
             else
                dust_n_catom(ispec) = 0
             endif
@@ -581,6 +570,7 @@ subroutine dust_cleanup
   if(allocated(dust_gfactor)) deallocate(dust_gfactor)
   if(allocated(dust_quantum)) deallocate(dust_quantum)
   if(allocated(dust_n_catom)) deallocate(dust_n_catom)
+  if(allocated(dust_tmax)) deallocate(dust_tmax)
   if(allocated(dust_agrain)) deallocate(dust_agrain)
   if(allocated(dust_mgrain)) deallocate(dust_mgrain)
   if(allocated(dust_kappa_arrays)) then

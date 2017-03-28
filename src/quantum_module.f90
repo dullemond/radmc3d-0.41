@@ -4,6 +4,12 @@
 ! This is a port of a code that was originally made for use with the
 ! original RADMC code. That's why there are comments from before the
 ! RADMC-3D code in there. 
+!
+! A main difference is that for the UV photons (the ones that excite
+! the PAHs) we here use an independent frequency array, while the
+! cooling is done using the standard frequency array freq_nu(). 
+! This allows us to fine-tune the wavelengths of the PAH-exciting
+! photons. This UV-photon array is quantum_frequencies(). 
 !======================================================================
 module quantum_module
 use rtglobal_module
@@ -22,6 +28,11 @@ doubleprecision,allocatable :: quantum_temp_grid(:)
 doubleprecision,allocatable :: quantum_temp_distr(:,:,:)
 doubleprecision,allocatable :: quantum_mat(:,:)
 doubleprecision,allocatable :: quantum_cooltime(:,:)
+doubleprecision,allocatable :: quantum_pahdes_time(:)
+doubleprecision,allocatable :: quantum_pahdes_pcrit(:)
+integer,allocatable :: quantum_peak_itemp(:,:,:)
+doubleprecision,allocatable :: quantum_peak_eps(:,:,:)
+doubleprecision,allocatable :: quantum_peak_temp(:,:,:)
 integer,allocatable :: quantum_ispec(:)
 integer :: quantum_nrquantum=0
 integer :: quantum_ntemp=100
@@ -36,7 +47,7 @@ contains
 !---------------------------------------------------------------------
 subroutine quantum_init(set_opacities,set_tempgrid,incl_emisquant)
 implicit none
-integer :: ierr,itemp,ispec,isq
+integer :: itemp,ispec,isq,inu
 logical :: set_opacities,incl_emisquant,set_tempgrid
 !
 ! Message and check
@@ -101,12 +112,17 @@ if(set_tempgrid) then
    if(allocated(quantum_temp_distr)) deallocate(quantum_temp_distr)
    if(allocated(quantum_mat)) deallocate(quantum_mat)
    if(allocated(quantum_cooltime)) deallocate(quantum_cooltime)
+   if(allocated(quantum_pahdes_time)) deallocate(quantum_pahdes_time)
+   if(allocated(quantum_pahdes_pcrit)) deallocate(quantum_pahdes_pcrit)
+   if(allocated(quantum_peak_itemp)) deallocate(quantum_peak_itemp)
+   if(allocated(quantum_peak_eps)) deallocate(quantum_peak_eps)
+   if(allocated(quantum_peak_temp)) deallocate(quantum_peak_temp)
    !
    ! The temperature grid itself
    !
    allocate(quantum_temp_grid(1:quantum_ntemp))
    do itemp=1,quantum_ntemp
-      quantum_temp(itemp) = quantum_temp0 *     &
+      quantum_temp_grid(itemp) = quantum_temp0 *     &
            (quantum_temp1/quantum_temp0)**      &
            ((itemp-1.d0)/(quantum_ntemp-1.d0))
    enddo
@@ -124,6 +140,17 @@ if(set_tempgrid) then
    ! function, but only for the quantum grains...
    !
    allocate(quantum_temp_distr(quantum_ntemp,quantum_nrquantum,nrcellsmax))
+   !
+   ! Allocate the PAH destruction arrays
+   !
+   allocate(quantum_pahdes_time(quantum_nrquantum))
+   allocate(quantum_pahdes_pcrit(quantum_nrquantum))
+   !
+   ! Allocate the peak temperature arrays
+   !
+   allocate(quantum_peak_itemp(quantum_ntemp,quantum_nf,quantum_nrquantum))
+   allocate(quantum_peak_eps(quantum_ntemp,quantum_nf,quantum_nrquantum))
+   allocate(quantum_peak_temp(quantum_ntemp,quantum_nf,quantum_nrquantum))
 endif
 !
 ! Allocate the arrays necessary to include the quantum
@@ -135,26 +162,10 @@ endif
 ! used in the global frequency array.
 !
 if(incl_emisquant) then
-   allocate(emisquant(1:freq_nr,1:nrcellsmax),STAT=ierr)
-   if(ierr.ne.0) then
-      write(stdo,*) 'ERROR: Could not allocate emisquant.'
-      stop
-   endif
-   allocate(emisquant_loccum(1:freq_nr+1,1:nrcellsmax),STAT=ierr)
-   if(ierr.ne.0) then
-      write(stdo,*) 'ERROR: Could not allocate emisquant_loccum.'
-      stop
-   endif
-   allocate(emisquant_loctot(1:nrcellsmax),STAT=ierr)
-   if(ierr.ne.0) then
-      write(stdo,*) 'ERROR: Could not allocate emisquant_loctot.'
-      stop
-   endif
-   allocate(emisquant_cum(nrcellsmax+1),STAT=ierr)
-   if(ierr.ne.0) then
-      write(stdo,*) 'ERROR: Could not allocate emisquant_cum.'
-      stop
-   endif
+   allocate(emisquant(1:freq_nr,1:nrcellsmax))
+   allocate(emisquant_loccum(1:freq_nr+1,1:nrcellsmax))
+   allocate(emisquant_loctot(1:nrcellsmax))
+   allocate(emisquant_cum(nrcellsmax+1))
 endif
 end subroutine quantum_init
 
@@ -176,6 +187,11 @@ if(allocated(quantum_mat)) deallocate(quantum_mat)
 if(allocated(quantum_cooltime)) deallocate(quantum_cooltime)
 if(allocated(quantum_ispec)) deallocate(quantum_ispec)
 if(allocated(quantum_kappa)) deallocate(quantum_kappa)
+if(allocated(quantum_pahdes_time)) deallocate(quantum_pahdes_time)
+if(allocated(quantum_pahdes_pcrit)) deallocate(quantum_pahdes_pcrit)
+if(allocated(quantum_peak_itemp)) deallocate(quantum_peak_itemp)
+if(allocated(quantum_peak_eps)) deallocate(quantum_peak_eps)
+if(allocated(quantum_peak_temp)) deallocate(quantum_peak_temp)
 end subroutine quantum_cleanup
 
 
@@ -249,16 +265,8 @@ subroutine quantum_read_wavelengths(action)
   !
   ! Allocate the frequency arrays
   !
-  allocate(quantum_frequencies(1:quantum_nf),STAT=ierr)
-  if(ierr.ne.0) then
-     write(stdo,*) 'ERROR in Montecarlo Module: Could not allocate quantum_frequencies'
-     stop 
-  endif
-  allocate(quantum_dnu(1:quantum_nf),STAT=ierr)
-  if(ierr.ne.0) then
-     write(stdo,*) 'ERROR in Montecarlo Module: Could not allocate quantum_dlgnu'
-     stop 
-  endif
+  allocate(quantum_frequencies(1:quantum_nf))
+  allocate(quantum_dnu(1:quantum_nf))
   !
   ! Compute the average frequencies and the bin widths
   !
@@ -297,7 +305,7 @@ subroutine quantum_solve_temp_distrib(isq,nf,ntemp,freq,meanint,tdist)
   !
   ! Fill the matrix
   !
-  call quantum_fill_matrix(ispec,meanint)
+  call quantum_fill_matrix(isq,quantum_nf,quantum_ntemp,meanint)
   !
   ! This matrix obviously has one zero eigenvalue because all the
   ! temperature bins are converted into each other. This cannot be
@@ -307,8 +315,8 @@ subroutine quantum_solve_temp_distrib(isq,nf,ntemp,freq,meanint,tdist)
   ! But remember the original line for later in this routine.
   !
   do itemp=1,quantum_ntemp
-     matbk(itemp)             = mat(quantum_ntemp,itemp)
-     mat(quantum_ntemp,itemp) = 1.d0
+     matbk(itemp)                     = quantum_mat(quantum_ntemp,itemp)
+     quantum_mat(quantum_ntemp,itemp) = 1.d0
   enddo
   !
   ! Put (0,0,...,0,1) as right-hand size
@@ -323,10 +331,10 @@ subroutine quantum_solve_temp_distrib(isq,nf,ntemp,freq,meanint,tdist)
   do itemp=1,quantum_ntemp-1
      dummy = 0.d0
      do it=1,quantum_ntemp
-        if(abs(mat(itemp,it)).gt.dummy) dummy=abs(mat(itemp,it))
+        if(abs(quantum_mat(itemp,it)).gt.dummy) dummy=abs(quantum_mat(itemp,it))
      enddo
      do it=1,quantum_ntemp
-        mat(itemp,it) = mat(itemp,it) / dummy
+        quantum_mat(itemp,it) = quantum_mat(itemp,it) / dummy
      enddo
   enddo
   !
@@ -335,7 +343,7 @@ subroutine quantum_solve_temp_distrib(isq,nf,ntemp,freq,meanint,tdist)
   dummy = 1.d0
   do itemp=1,quantum_ntemp
      do it=1,quantum_ntemp
-        matwork(itemp,it) = mat(itemp,it)
+        matwork(itemp,it) = quantum_mat(itemp,it)
      enddo
   enddo
   call ludcmp(matwork,quantum_ntemp,quantum_ntemp,indx,dummy)
@@ -349,7 +357,7 @@ subroutine quantum_solve_temp_distrib(isq,nf,ntemp,freq,meanint,tdist)
   do itemp=1,quantum_ntemp
      tdtmp(itemp)  = 0.d0
      do it=1,quantum_ntemp
-        tdtmp(itemp) = tdtmp(itemp) + mat(itemp,it) * tdist(it)
+        tdtmp(itemp) = tdtmp(itemp) + quantum_mat(itemp,it) * tdist(it)
      enddo
      if(itemp.lt.quantum_ntemp) then
         dummy = dummy + abs(tdtmp(itemp))
@@ -358,7 +366,7 @@ subroutine quantum_solve_temp_distrib(isq,nf,ntemp,freq,meanint,tdist)
      endif
   enddo
   if(dummy.gt.1d-10) then
-     write(*,*) 'ERROR in matix inversion quantum: Error = ',dummy
+     write(stdo,*) 'ERROR in matix inversion quantum: Error = ',dummy
      stop
   endif
   !
@@ -369,10 +377,9 @@ subroutine quantum_solve_temp_distrib(isq,nf,ntemp,freq,meanint,tdist)
      dummy = dummy + tdist(itemp)
   enddo
   if(abs(dummy-1.d0).gt.1d-7) then 
-     write(*,*) 'ERROR: Distribution does not add up to 1,'
-     write(*,*) '   at ir,it = ',irr,itt
-     write(*,*) (tdist(itemp),itemp=1,quantum_ntemp)
-     write(*,*) dummy
+     write(stdo,*) 'ERROR: Distribution does not add up to 1,'
+     write(stdo,*) (tdist(itemp),itemp=1,quantum_ntemp)
+     write(stdo,*) dummy
      stop 9564
   endif
   !
@@ -392,14 +399,14 @@ subroutine quantum_solve_temp_distrib(isq,nf,ntemp,freq,meanint,tdist)
      dummy = dummy + tdist(itemp)
   enddo
   if(abs(dummy-1.d0).gt.1d-2) then 
-     write(*,*) 'ERROR: Distribution does not add up to 1,'
-     write(*,*) (tdist(itemp),itemp=1,quantum_ntemp)
-     write(*,*) dummy
+     write(stdo,*) 'ERROR: Distribution does not add up to 1,'
+     write(stdo,*) (tdist(itemp),itemp=1,quantum_ntemp)
+     write(stdo,*) dummy
      open(unit=2,file='matrix.dat')
      write(2,*) quantum_ntemp
      do itemp=1,quantum_ntemp
         do it=1,quantum_ntemp
-           write(2,*) mat(itemp,it)
+           write(2,*) quantum_mat(itemp,it)
         enddo
      enddo
      close(2)
@@ -417,17 +424,17 @@ subroutine quantum_solve_temp_distrib(isq,nf,ntemp,freq,meanint,tdist)
   !
   ! Compute the typical life time of the grains
   !   
-  if(pahdes_temp(ispec).gt.0.d0) then
-     if(pahdes_pcrit(ispec).eq.0.d0) then
+  if(dust_tmax(ispec).gt.0.d0) then
+     if(quantum_pahdes_pcrit(isq).eq.0.d0) then
         !
         ! The original method of Kees
         !
         ! Find the index of the temperature grid 
         !
-        call hunt(quantum_temp,quantum_ntemp,pahdes_temp(ispec),ievap)
+        call hunt(quantum_temp_grid,quantum_ntemp,dust_tmax(ispec),ievap)
         if(ievap.ge.quantum_ntemp) stop 90934
         if(ievap.lt.1) then
-           write(*,*) pahdes_temp(ispec)
+           write(stdo,*) dust_tmax(ispec)
            stop 90935
         endif
         !      
@@ -453,7 +460,7 @@ subroutine quantum_solve_temp_distrib(isq,nf,ntemp,freq,meanint,tdist)
         ! Restore last line of the matrix
         !             
         do itemp=1,quantum_ntemp
-           mat(quantum_ntemp,itemp) = matbk(itemp)
+           quantum_mat(quantum_ntemp,itemp) = matbk(itemp)
         enddo
         !             
         ! Do matrix multip
@@ -461,7 +468,7 @@ subroutine quantum_solve_temp_distrib(isq,nf,ntemp,freq,meanint,tdist)
         do itemp=1,quantum_ntemp
            res(itemp) = 0.d0
            do it=1,quantum_ntemp
-              res(itemp) = res(itemp) + mat(itemp,it) * tdtmp(it)
+              res(itemp) = res(itemp) + quantum_mat(itemp,it) * tdtmp(it)
            enddo
         enddo
         !
@@ -472,7 +479,7 @@ subroutine quantum_solve_temp_distrib(isq,nf,ntemp,freq,meanint,tdist)
         do itemp=ievap+1,quantum_ntemp
            dummy = dummy + res(itemp)
         enddo
-        pahdes_time(ispec) = 1.d0 / ( abs(dummy) + 1d-99 )
+        quantum_pahdes_time(isq) = 1.d0 / ( abs(dummy) + 1d-99 )
      else
         !
         ! The Habart method, slightly generalized
@@ -480,10 +487,10 @@ subroutine quantum_solve_temp_distrib(isq,nf,ntemp,freq,meanint,tdist)
         !
         ! Find the index of the temperature grid 
         !
-        call hunt(quantum_temp,quantum_ntemp,pahdes_temp(ispec),ievap)
+        call hunt(quantum_temp_grid,quantum_ntemp,dust_tmax(ispec),ievap)
         if(ievap.ge.quantum_ntemp) stop 90934
         if(ievap.lt.1) then
-           write(*,*) pahdes_temp(ispec)
+           write(stdo,*) dust_tmax(ispec)
            stop 90935
         endif
         !
@@ -500,11 +507,11 @@ subroutine quantum_solve_temp_distrib(isq,nf,ntemp,freq,meanint,tdist)
         ! another value of pahdes_pcrit read in from the dust
         ! opacity files).
         !
-        pahdes_time(ispec) = 3.1536d+13 * ( pahdes_pcrit(ispec) / dummy )
+        quantum_pahdes_time(isq) = 3.1536d+13 * ( quantum_pahdes_pcrit(isq) / dummy )
         !
      endif
   else
-     pahdes_time(ispec) = 1d99
+     quantum_pahdes_time(isq) = 1d99
   endif
   !
 end subroutine quantum_solve_temp_distrib
@@ -571,14 +578,14 @@ subroutine quantum_fill_matrix(isq,nf,ntemp,meanint)
         !
         ! Find where the energy is dumped
         !
-        itpeak  = peak_itemp(itemp,inu)
-        epspeak = peak_eps(itemp,inu)
+        itpeak  = quantum_peak_itemp(itemp,inu,isq)
+        epspeak = quantum_peak_eps(itemp,inu,isq)
         !
         ! Find out how many photons are absorbed per second
         ! by 1 gram of PAHs 
         !
-        nphot = 4 * pi * meanint(inu) * dnu(inu) *   &
-                quatum_kappa(inu) /                  &
+        nphot = 4 * pi * meanint(inu) * quantum_dnu(inu) *   &
+                quantum_kappa(inu,isq) /                     &
                 ( hh * quantum_frequencies(inu) )
         !
         ! Convert this into how many photons are absorbed per
@@ -615,6 +622,89 @@ subroutine quantum_fill_matrix(isq,nf,ntemp,meanint)
 end subroutine quantum_fill_matrix
 
 !-----------------------------------------------------------------
+!    COMPUTE PEAK TEMPERATURE FOR EXCITED PAH FROM SOME T-LEVEL 
+!
+! This subroutine computes the peak temperature obtained by a
+! single photon with frequency nu, starting from a given temp level 
+!-----------------------------------------------------------------
+subroutine compute_peak_temperatures(ntemp,isq)
+  implicit none
+  integer :: ntemp
+  doubleprecision :: cv_pah_gram,energy
+  integer :: isq,itemp,ispec,inu,itstart
+  doubleprecision :: heatcontent(ntemp)
+  !
+  ! Check
+  !
+  if(ntemp.ne.quantum_ntemp) stop 3676
+  !
+  ! Get the dust ispec from isq
+  !
+  if(isq.gt.quantum_nrquantum) stop 8310
+  ispec = quantum_ispec(isq)
+  !
+  ! Compute a table for the heat content
+  !
+  ! Now compute the rest
+  ! 
+  do itemp=1,quantum_ntemp
+     heatcontent(itemp) = dust_mgrain(ispec) * enthalpy_pah_gram(quantum_temp_grid(itemp))
+  enddo
+  !
+  ! First a loop over starting temperatures
+  ! 
+  do itstart=1,quantum_ntemp-1 
+     !
+     ! Now do loop over frequency of the quantum-heating mean intensity
+     ! array, and compute the peak temperature at every frequency (when a
+     ! photon of that frequency hits a PAH).
+     !     
+     do inu=1,quantum_nf
+        !     
+        ! Compute the energy of a single photon
+        !
+        energy = hh * quantum_frequencies(inu)
+        !
+        ! Find the index of the heat content corresponding
+        ! to that energy. This gives the peak temperature
+        !
+        if(energy.lt.heatcontent(quantum_ntemp-1)-heatcontent(itstart)) then
+           !
+           ! Find the index of the temperature
+           !
+           call hunt(heatcontent,quantum_ntemp,energy+heatcontent(itstart),itemp)
+           !
+           ! Find the actual temperature through linear interpolation
+           !
+           quantum_peak_itemp(itstart,inu,isq) = itemp
+           quantum_peak_eps(itstart,inu,isq)   =                           &
+                ( energy + heatcontent(itstart) - heatcontent(itemp) ) /   &
+                ( heatcontent(itemp+1) - heatcontent(itemp) )
+           if((quantum_peak_eps(itstart,inu,isq).lt.0.d0).or.              &
+                (quantum_peak_eps(itstart,inu,isq).gt.1.d0)) then
+              stop 82701
+           endif
+           quantum_peak_temp(itstart,inu,isq)  =                             &
+                (1.d0-quantum_peak_eps(itstart,inu,isq)) * quantum_temp_grid(itemp) + &
+                      quantum_peak_eps(itstart,inu,isq) * quantum_temp_grid(itemp+1)
+           !
+           ! If this temperature exceeds the evaporation temperature
+           ! then put peak_itemp to quantum_ntemp as a signal
+           !
+           if((quantum_peak_temp(itstart,inu,isq).gt.dust_tmax(ispec)).and.  &
+                (dust_tmax(ispec).ne.0.d0)) then 
+              quantum_peak_itemp(itstart,inu,isq) = quantum_ntemp
+           endif
+        else
+           quantum_peak_itemp(itstart,inu,isq) = quantum_ntemp
+        endif
+     enddo
+     !
+  end do
+end subroutine compute_peak_temperatures
+
+
+!-----------------------------------------------------------------
 !               COMPUTE THE COOLING TIME LINE
 !
 ! This routine returns the time the PAH reaches each of the 
@@ -628,7 +718,7 @@ subroutine quantum_cooling(isq)
   integer :: isq,ispec
   doubleprecision :: temp,dtime,cv_pah_gram
   doubleprecision :: dum,qcool
-  doubleprecision :: enthalpy_pah_gram,kappa
+  doubleprecision :: kappa
   integer :: itemp,inu
   !
   ! Get the dust ispec from isq
@@ -638,8 +728,8 @@ subroutine quantum_cooling(isq)
   !
   ! Test
   !
-  if(quantum_temp(quantum_ntemp).le.quantum_temp(1)) then
-     write(*,*) 'Quantum Tempeature grid must be in ascending order'
+  if(quantum_temp_grid(quantum_ntemp).le.quantum_temp_grid(1)) then
+     write(stdo,*) 'Quantum Tempeature grid must be in ascending order'
      stop
   endif
   !
@@ -654,7 +744,7 @@ subroutine quantum_cooling(isq)
      ! Use the temperature of itemp+1, which is important for
      ! the energy conservation of the multi-photon algorithm...
      !
-     temp = quantum_temp(itemp+1)
+     temp = quantum_temp_grid(itemp+1)
      !
      ! Compute cooling rate per gram of dust
      !
@@ -669,8 +759,8 @@ subroutine quantum_cooling(isq)
      !
      ! Compute the time it takes to cool...
      !
-     dtime = ( enthalpy_pah_gram(tempgrid(itemp+1)) -    &
-               enthalpy_pah_gram(tempgrid(itemp)) ) /    &
+     dtime = ( enthalpy_pah_gram(quantum_temp_grid(itemp+1)) -    &
+               enthalpy_pah_gram(quantum_temp_grid(itemp)) ) /    &
              qcool
      !
      ! Compute the new time

@@ -10588,7 +10588,7 @@ subroutine montecarlo_compute_quantum_radiation_field()
   !
   ! Now reallocate this array
   !
-  mc_nfreq = quantum_nf
+  mc_nrfreq = quantum_nf
   allocate(mc_frequencies(mc_nrfreq),STAT=ierr)
   if(ierr.ne.0) then
      write(stdo,*) 'ERROR in montecarlo module: Could not allocate '
@@ -10609,20 +10609,6 @@ subroutine montecarlo_compute_quantum_radiation_field()
      call read_dustdata(1)
      call read_dust_density(1)
      call read_dust_temperature(1)
-  endif
-  !
-  ! If line emission is included, then make sure the line data are
-  ! read. If yes, then do not read it again.
-  !
-  if(rt_incl_lines) then
-     call read_lines_all(1)
-  endif
-  !
-  ! If gas continuum is included, then make sure the gas continuum
-  ! data are read. If yes, then do not read it again.
-  !
-  if(rt_incl_gascont) then
-     call gascont_init(1)
   endif
   !
   ! Now compute the mean intensity, and store it in
