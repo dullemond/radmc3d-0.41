@@ -3931,19 +3931,111 @@ XXXXXXXXXXXXXXXXXXXXXXXXX
 
 
 \subsection{Dust opacities for PAHs and VSGs}
+\label{sec-pah-and-vsg-opacs}
+%
 In order to treat a dust species in RADMC-3D as a quantum-heated grain, the
 opacity input files must specify that this grain is indeed quantum-heated.
 This is one in the {\small\tt dustopac.inp} file (see Section
-\ref{sec-opacities}).
+\ref{sec-opacities}). Here is an example of the content of the file 
+{\small\tt dustopac.inp} which specifies opacity {\small\tt dustkappa\_silicate.inp}
+as normal grain and {\small\tt dustkappa\_pah.inp} as quantum grain:
+\begin{asciibox}\begin{verbatim}
+2
+2
+-----------------------------
+1
+0
+silicate
+-----------------------------
+1
+6
+50
+2000.
+pah
+-----------------------------
+\end{verbatim}\end{asciibox}
+The ``6'' tells RADMC-3D that this grain is quantum-heated, and tells
+RADMC-3D to read the next two lines as the number of C atoms and the
+sublimation tempeature, respectively. Why 6? Historical reasons: there were
+various other modes of reading the PAH/VSG properties into the original
+RADMC code in the past. In this example the PAH has 50 C atoms (neccesary
+information for computing the heat capacity of the grain). It will 
+sublimate once the grain exceeds 2000 Kelvin. 
 
+For the rest the PAH or VSG opacities are treated just like normal
+grains. For instance, in the above example we would need to specify the dust
+opacity files {\small\tt dustkappa\_silicate.inp} and {\small\tt
+  dustkappa\_pah.inp} (see Section \ref{sec-opacities}).
 
-XXXXXXXXXXXXXXXXXXXXXXXXX
-XXXXXXXXXXXXXXXXXXXXXXXXX
-XXXXXXXXXXXXXXXXXXXXXXXXX
-XXXXXXXXXXXXXXXXXXXXXXXXX
+\subsection{Quantum-heated grains in RADMC-3D: How to do it}
+First it is important to have an opacity file for the quantum-heated
+grains. For PAHs one can, for instance, use the Drude-Profile model of Li \&
+Draine (2001, ApJ 554, 778). Typically you would have ``normal'' grains as
+well, so that you would, for instance, have one ``normal grain'' opacity and
+one ``PAH grain'' opacity. In the {\small\tt dustopac.inp} file you specify
+these two opacities (see Section \ref{sec-opacities} and Section
+\ref{sec-pah-and-vsg-opacs}) and for the ``PAH grain'' you specify that it
+is a quantum-heated grain, you give the number of C atoms of that grain and
+you give a sublimation temperature (all described in Section
+\ref{sec-pah-and-vsg-opacs}).
 
+For both dust opacities (``normal'' and ``PAH'') you specify the spatial
+density distribution in the {\small\tt dust\_density.inp} (Section
+\ref{sec-dustdens}).
 
+You must also specify a grid of wavelengths at which the quantum-heating
+radiation is computed using the Monte Carlo module. This should typically be
+a wavelength grid in the UV wavelength range (because it is typically
+ultraviolet photons that excite PAH modules and VSGs). This is done by
+creating a file {\small\tt quantum\_wavelength\_micron.inp}, which has
+exactly the same format as the file {\small\tt wavelength\_micron.inp} (see
+Section \ref{sec-wavelengths}). This file must contain {\em at least} two
+wavelengths. If only two wavelength are specified, the quantum-exciting
+radiation field is computed only at one wavelength (the average between the
+two specified wavelengths), and the total number of photons is then the
+integral of the radiation field over this wavelength bin. With three
+wavelengths specified, two bins are used, etc. The usefulness of specifying
+only one or a few bins is to keep the memory requirement and computational
+cost low, and also perhaps for simplifications for testing purposes.
 
+Finally, you must explicitly activate the quantum-heating, by adding the
+following line to {\small\tt radmc3d.inp}:
+\begin{asciibox}\begin{verbatim}
+incl_quantum = 1
+\end{verbatim}\end{asciibox}
+
+If you now perform the usual thermal Monte Carlo with 
+\begin{asciibox}\begin{verbatim}
+radmc3d mctherm
+\end{verbatim}\end{asciibox}
+RADMC-3D will perform the usual thermal Monte Carlo run according to the
+Bjorkman \& Wood algorithm, where the normal grains are treated as usual,
+and the quantum grains are included only starting after the first
+absorption/re-emission event. For stellar photons (before the first
+absorption/re-emission event) the quantum grains can absorb photons, but
+they will not be immediately re-emitted during the Monte Carlo. Instead
+these photons are destroyed ({\bf This is planned to be improved soon}).
+The inclusion of the quantum grains also during the thermal Monte Carlo run
+guarantees that that deep in optically thick regions the quantum grains
+behave as normal grains. Each quantum grain thus has not only a temperature
+distribution (excited by the UV photons) but also an equilibrium temperature
+(excited by all radiation {\em except} the UV photons). This may sound
+strange, but one could think of the equilibrium temperature as being a
+delta-function added to the temperature distribution function.
+
+Now if you wish to make an image and you call the code as
+\begin{asciibox}\begin{verbatim}
+radmc3d image lambda 11.3
+\end{verbatim}\end{asciibox}
+(for instance), then RADMC-3D will first perform monochromatic Monte Carlo
+runs for all the wavelengths specified in {\small\tt
+  quantum\_wavelength\_micron.inp}. Then it will calculate, for the
+quantum-grains, the temperature distribution function at each grid
+point. {\em Note that this can be memory-demanding for large models!} It
+will also read in the dust temperature file, for the normal grains and for
+the thermal part of the quantum grains. The code will compute the emissivity
+caused by the temperature distribution function for the quantum-grains.
+Finally it will perform the ray-tracing and save the image to file.
 
 
 
