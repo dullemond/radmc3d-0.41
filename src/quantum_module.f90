@@ -796,17 +796,12 @@ end function enthalpy_pah_gram
 !-----------------------------------------------------------------
 !                       COMPUTE EMISSION
 !-----------------------------------------------------------------
-subroutine quantum_compute_emission(isq,nf,freq,kappa,emissivity)
+subroutine quantum_compute_emission(nf,ntemp,freq,kappa,tdist,emissivity)
   implicit none
-  integer :: isq,nf
-  doubleprecision :: freq(nf),kappa(nf),emissivity(nf)
+  integer :: nf,ntemp
+  doubleprecision :: freq(nf),kappa(nf),emissivity(nf),tdist(ntemp)
   doubleprecision :: absorb
-  integer :: ispec,inu,itemp
-  !
-  ! Get the dust ispec from isq
-  !
-  if(isq.gt.quantum_nrquantum) stop 8310
-  ispec = quantum_ispec(isq)
+  integer :: inu,itemp
   !
   ! Reset emissivity
   !
@@ -817,10 +812,10 @@ subroutine quantum_compute_emission(isq,nf,freq,kappa,emissivity)
   ! Add emissivity of each of the temperature points,
   ! except for the itemp=1, because that is the zero-point
   ! 
-  do itemp=2,ntempgrid
+  do itemp=2,quantum_ntemp
      do inu=1,nf
-        emissivity(inu) = emissivity(inu) + tdistrib(itemp) *    &
-             kappa(inu)*bplanck(tempgrid(itemp),freq(inu))
+        emissivity(inu) = emissivity(inu) + tdist(itemp) *  &
+             kappa(inu)*bplanck(quantum_temp_grid(itemp),freq(inu))
      enddo
   enddo
 end subroutine quantum_compute_emission
