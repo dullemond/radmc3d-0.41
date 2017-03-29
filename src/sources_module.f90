@@ -94,6 +94,14 @@ subroutine sources_init(nrfreq,frequencies,secondorder,doppcatch)
   sources_secondorder        = secondorder
   sources_catch_doppler_line = doppcatch
   !
+  ! Check
+  !
+  if((secondorder.or.doppcatch).and.(incl_quantum.ne.0)) then
+     write(stdo,*) 'ERROR: Quantum-heated grains not consistent'
+     write(stdo,*) '       with second order integration.'
+     stop
+  endif
+  !
   ! Allocate the sources_frequencies array
   !
   if(allocated(sources_frequencies)) deallocate(sources_frequencies)
@@ -1109,6 +1117,16 @@ subroutine sources_get_src_alp(inu0,inu1,nf,src,alp,inclstokes)
                                                  0.5d0 * mcscat_scatsrc_iquv(inu,ray_index,1,iphievent+1)
                     endif
                  endif
+              endif
+           endif
+           !
+           ! Add the quantum-heated grains
+           !
+           if(incl_quantum.ne.0) then
+              if(camera_mcscat_monochromatic) then
+                 src(inu,1) = src(inu,1) + sources_quantum_emissivity(1,ray_index)
+              else
+                 src(inu,1) = src(inu,1) + sources_quantum_emissivity(inu,ray_index)
               endif
            endif
         enddo
