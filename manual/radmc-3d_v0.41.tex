@@ -3876,23 +3876,139 @@ Siebenmorgen, Kruegel \& Mathis 1992, A\&A, 266, 501). In this model
 the grain has an opacity $\kappa_\nu$ like any other grain. But instead of
 a given (non-changing) temperature $T$, it has a temperature distribution
 function as $P(T)$, which is normalized as
-\begin{equation}
+\begin{equation}\label{eq-tdist-norm}
 \int_0^\infty P(T) dT = 1
 \end{equation}
-The grain will have, at any given time, a well-defined temperature $T$,
-but this varies strongly with time. Most of the time the grain is 
-receiving no photons, but is emitting infrared radiation and thus cools.
-Every now and then it absorbs a photon
+The grain will have, at any given time, a well-defined temperature $T$, but
+this varies strongly with time. Most of the time the grain is receiving no
+photons, while it is emitting infrared radiation and thus gradually cools.
+The cooling is assumed to go smoothly (i.e.\ the energy of each infrared
+photon it emits is much {\em less} than the heat capacity of the grain).
+Every now and then the grain absorbs a UV photon, and thus its temperature
+makes a quantum jump to a much higher value. After that, it gradually 
+cools again, until the next UV photon hits the grain. 
 
+The quantum heating and classical cooling of these grains depends on the
+heat capacity of the grains, which depends on material properties. In
+RADMC-3D we rarely have material properties hard-coded inside: mostly we
+read them in from file (e.g.~dust opacities or molecules). But here, as an
+exception, we have the heat capacity of carbon-based materials built in, and
+we assume that the quantum-heated grains are always made of such
+substance. This is built into the function {\small\tt
+  enthalpy\_pah\_gram(temp)} in the {\small\tt quantum\_module.f90} file.
+If the user wishes to use another kind of material, then he/she will have to
+modify the code here. The enthalpy in erg per gram of PAH material is taken
+from Siebenmorgen \& Kruegel (1992), who took it from Chase et al.~(1985).
+\begin{equation}
+H(T) = \frac{4.15\times 10^{-22}}{12\,m_p} \frac{ T^{3.3}}{
+              1+ 6.51\times 10^{-3} T + 1.5\times 10^{-6} T^2 +
+                      8.3\times 10^{-7} T^{2.3}} \;\frac{\mathrm{erg}}{\mathrm{g}}
+\end{equation}
+where $m_p$ is the proton mass and the 12 comes from the atomic mass of
+carbon. The specific heat $c_p$ is then given by $c_p=dH(T)/dT$. The quantum
+heating by absorbing a UV photon with frequency $\nu$ results in a
+temperature jump from $T_{\mathrm{before}}$ to $T_{\mathrm{after}}$ which
+such that
+\begin{equation}\label{eq-quantum-t-jump}
+H(T_{\mathrm{after}}) - H(T_{\mathrm{before}}) = \frac{h\nu}{m_{\mathrm{grain}}}
+\end{equation}
+where we approximate $m_{\mathrm{grain}}\simeq 12 m_p n_{C}$ where $n_C$ is
+the number of carbon atoms in the grain. We ignore the mass contribution by
+the H atoms that might be attached to the outside of the PAH or VSG.  
 
+For any given $T_{\mathrm{before}}$ and $\nu$ Eq.~(\ref{eq-quantum-t-jump})
+is solved for $T_{\mathrm{after}}$ using a simple bisection algorithm.  The
+rate of absorption of UV photons is simply computed using the dust opacity
+given by the user and the radiation field computed by RADMC-3D. This
+radiation field is computed by RADMC-3D using the same method as for
+computing the mean intensity at a given set of frequencies (Section
+\ref{sec-dust-monochromatic-monte-carlo}). The frequency grid used for this
+calculation must be specified by the used in a file called {\small\tt
+  quantum\_wavelength\_micron.inp} which has the same format as the file
+{\small\tt wavelength\_micron.inp} (see Section \ref{sec-wavelengths}).
+Given the mean intensity $J_\nu$, the rate
+of absorption of UV photons of energy $h\nu$ per gram of dust per Herz 
+is
+\begin{equation}\label{eq-quantum-absorb-rate}
+R_\nu = \kappa_{\mathrm{abs},\nu}\frac{J_\nu}{h\nu}
+\end{equation} 
 
+The cooling is a continuous and time-dependent process. The temperature
+decreases with time as
+\begin{equation}\label{eq-quantum-cooling}
+c_p\frac{dT}{dt} = 4\pi\int_0^\infty \kappa_{\mathrm{abs},\nu} B_\nu(T)d\nu
+\end{equation}
+The frequency grid used for the cooling is {\em not} the one from {\small\tt
+  quantum\_wavelength\_micron.inp}, but instead it is the normal global
+frequency grid from {\small\tt wavelength\_micron.inp} (see Section
+\ref{sec-wavelengths}). This means that in practice you want to set the
+wavelengths in {\small\tt quantum\_wavelength\_micron.inp} to the UV and
+optical domain, while you would set {\small\tt wavelength\_micron.inp}
+to the entire UV to millimeter wavelength range.
 
+Given the rate of UV photon absorption events per gram of (PAH or VSG) dust,
+the corresponding rate of quantum jumps of temperature and the rate of
+cooling, RADMC-3D attempts to find an equilibrium solution for the
+temperature distribution function $P(T)$. The formal integro-differential
+equation that $P(T)$ obeys is somewhat difficult to formulate in continuous
+form. The time-dependent version of the quantum heating part of this
+equation can be (admittedly rather cryptically) formulated as
+\begin{equation}
+\frac{\partial P(T,t)}{\partial t} = \int_0^{T}P(T')R_{\nu(T',T)}dT'
+\end{equation}
+where $\nu(T',T)$ is the frequency of the photon needed to heat the
+grain from $T$ to $T'$ according to Eq.~(\ref{eq-quantum-t-jump})
+and the rate $R_{\nu(T',T)}$ is the corresponding absorption rate of
+such photons given by Eq.~(\ref{eq-quantum-absorb-rate}).
 
-Once we have computed $P(T)$, we can compute the emissivity $j_\nu$
-(in erg s$^{-1}$ cm$^{-2}$ Hz$^{-1}$ ster$^{-1}$) as
+The time-dependent cooling equation (Eq.~\ref{eq-quantum-cooling})
+becomes a conservative advection equation
+\begin{equation}
+\frac{\partial P(T,t)}{\partial t} - \frac{\partial [ P(T,t) c_p(T) ]}{\partial T} = 0
+\end{equation}
+where $-c_p$ is the ``velocity'' in $P$-space. 
+
+A stationary state is found by solving the combination of these two
+equations and settting $\partial P/\partial t=0$:
+\begin{equation}\label{eq-quantum-tdist-equilibrium}
+\int_0^{T}P(T')R_{\nu(T',T)}dT' - \frac{\partial [ P(T,t) c_p(T) ]}{\partial T} = 0
+\end{equation}
+
+Since in the computer it is anyway solved in a discrete manner, the method
+is usually described in a discrete form. In this approach the $P(T)$ is
+mapped onto a grid of temperatures $\{T_i\}$, where RADMC-3D takes a
+logarithmic spacing (i.e.~equal spacing in
+$\log(T)$). The function $P(T)$ is thus mapped onto a set of
+probabilities $\{P_i\}$ such that
+\begin{equation}
+P_i\equiv \int_{T_{i-1/2}}^{T_{i+1/2}} P(T)dT
+\end{equation}
+where the half-indices are mean to denote the ``cell walls'' of the discrete
+temperature bins (the usual notation in the numerical hydrodynamics
+literature). Eq.~(\ref{eq-quantum-tdist-equilibrium}) is then formulated in
+matrix equation form:
+\begin{equation}\label{eq-quantum-tdist-matrixform}
+\sum_{j}M_{ij}\;P_j = 0
+\end{equation}
+where the matrix elements are the discrete version of the differential and
+integral operators in Eq.~(\ref{eq-quantum-tdist-equilibrium}).  The last
+row of Eq.~(\ref{eq-quantum-tdist-matrixform}) is, however, replaced by 
+\begin{equation}
+\sum_{j}\;P_j = 1
+\end{equation}
+to assure that Eq.~(\ref{eq-tdist-norm}) is fulfilled. Solving this matrix
+equation using LU decomposition yields the solution $\{P_i\}$, which are
+the relative fractions of the time that the grain is found with temperature
+between $T_{i-1/2}$ and $T_{i+1/2}$. This is the discrete version of the
+function $P(T)$.
+
+Once we have computed $P(T)$, we can compute the time-averaged emissivity
+$j_\nu$ (in erg s$^{-1}$ cm$^{-2}$ Hz$^{-1}$ ster$^{-1}$) as
 \begin{equation}
 j_\nu = \int_0^\infty \kappa_\nu B_\nu(T)P(T) dT
 \end{equation}
+This is the emissivity that is then used in the ray-tracing routine of
+RADMC-3D to produce images and spectra.
 
 
 \subsection{Approximations to quantum-heating in RADMC-3D}
@@ -3915,20 +4031,11 @@ function. But it is algorithmically more stable to treat this
 low-temperature peak in the $P(T)$ distribution simply as the usual
 equilibrium temperature like for the normal ``thermal'' grains. So the
 ``quantum'' part only treats the effect of the absorption by stellar or
-external photons. Strictly speaking the $P(T)$ can (and often will)
-have a low-$T$ tail that goes even below the equilibrium temperature.
-
-
-
-XXXXXXXXXXXXXXXXXXXXXXXXX
-XXXXXXXXXXXXXXXXXXXXXXXXX
-XXXXXXXXXXXXXXXXXXXXXXXXX
-XXXXXXXXXXXXXXXXXXXXXXXXX
-
-
-
-
-
+external photons. Strictly speaking the $P(T)$ can (and often will) have a
+low-$T$ tail that goes even below the equilibrium temperature.  This is an
+artifact of our artificial splitting between ``quantum heating'' and
+``thermal heating''. However, this does not make a significant difference
+in the results. 
 
 \subsection{Dust opacities for PAHs and VSGs}
 \label{sec-pah-and-vsg-opacs}
