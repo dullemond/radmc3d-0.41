@@ -3886,9 +3886,13 @@ subroutine camera_make_rect_image(img,tausurf)
         !
         call quantum_read_wavelengths(1)
         !
-        ! Compute the temperature distribution functions
+        ! Compute the radiation field of UV photons
         !
         call montecarlo_compute_quantum_radiation_field()
+        !
+        ! Compute the temperature distribution functions 
+        !
+        call montecarlo_compute_quantum_temp_distr()
         !
         ! Allocate the emissivity array for all wavelengths at once
         !
@@ -3994,9 +3998,13 @@ subroutine camera_make_rect_image(img,tausurf)
         !
         call quantum_read_wavelengths(1)
         !
-        ! Compute the temperature distribution functions
+        ! Compute the radiation field of UV photons
         !
         call montecarlo_compute_quantum_radiation_field()
+        !
+        ! Compute the temperature distribution functions 
+        !
+        call montecarlo_compute_quantum_temp_distr()
         !
         ! Allocate the emissivity array for one wavelengths at at a time
         !
@@ -6972,9 +6980,13 @@ subroutine camera_make_circ_image()
         !
         call quantum_read_wavelengths(1)
         !
-        ! Compute the temperature distribution functions
+        ! Compute the radiation field of UV photons
         !
         call montecarlo_compute_quantum_radiation_field()
+        !
+        ! Compute the temperature distribution functions 
+        !
+        call montecarlo_compute_quantum_temp_distr()
         !
         ! Allocate the emissivity array for all wavelengths at once
         !
@@ -7080,9 +7092,13 @@ subroutine camera_make_circ_image()
         !
         call quantum_read_wavelengths(1)
         !
-        ! Compute the temperature distribution functions
+        ! Compute the radiation field of UV photons
         !
         call montecarlo_compute_quantum_radiation_field()
+        !
+        ! Compute the temperature distribution functions 
+        !
+        call montecarlo_compute_quantum_temp_distr()
         !
         ! Allocate the emissivity array for one wavelengths at at a time
         !

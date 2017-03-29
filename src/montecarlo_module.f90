@@ -10619,7 +10619,40 @@ subroutine montecarlo_compute_quantum_radiation_field()
   !
 end subroutine montecarlo_compute_quantum_radiation_field
 
-
+!---------------------------------------------------------------------
+!    CALL THE QUANTUM MODULE TO COMPUTE TEMPERATURE DISTRIBUTIONS
+!
+! Make sure to first call montecarlo_compute_quantum_radiation_field()
+!---------------------------------------------------------------------
+subroutine montecarlo_compute_quantum_temp_distr()
+  implicit none
+  integer :: index,icell,isq,ispec
+  !
+  ! First prepare the quantum heating computations
+  !
+  do isq=1,quantum_nrquantum
+     call compute_peak_temperatures(quantum_ntemp,isq)
+     call quantum_cooling(isq)
+  enddo
+  !
+  ! Loop over all cells, and all quantum dust species
+  !
+  do icell=1,nrcells
+     index = cellindex(icell)
+     do isq=1,quantum_nrquantum
+        ispec = quantum_ispec(isq)
+        !
+        ! Compute the temperature distribution function
+        ! at this location for this grain
+        !
+        call quantum_solve_temp_distrib(isq,quantum_nf,quantum_ntemp,    &
+                                        quantum_frequencies,             &
+                                        mcscat_meanint(:,index),         &
+                                        quantum_temp_distr(:,isq,index))
+        !
+     enddo
+  enddo
+end subroutine montecarlo_compute_quantum_temp_distr
 
 
 end module montecarlo_module
