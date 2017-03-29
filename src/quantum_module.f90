@@ -795,19 +795,16 @@ end function enthalpy_pah_gram
 
 !-----------------------------------------------------------------
 !                       COMPUTE EMISSION
+!
+! Note: This routine *adds* to the emissivity. So you have to
+!       reset yourself.
 !-----------------------------------------------------------------
-subroutine quantum_compute_emission(nf,ntemp,freq,kappa,tdist,emissivity)
+subroutine quantum_add_emission(nf,ntemp,freq,kappa,tdist,emissivity)
   implicit none
   integer :: nf,ntemp
   doubleprecision :: freq(nf),kappa(nf),emissivity(nf),tdist(ntemp)
   doubleprecision :: absorb
   integer :: inu,itemp
-  !
-  ! Reset emissivity
-  !
-  do inu=1,nf
-     emissivity(inu) = 0.d0
-  enddo
   !
   ! Add emissivity of each of the temperature points,
   ! except for the itemp=1, because that is the zero-point
@@ -818,6 +815,6 @@ subroutine quantum_compute_emission(nf,ntemp,freq,kappa,tdist,emissivity)
              kappa(inu)*bplanck(quantum_temp_grid(itemp),freq(inu))
      enddo
   enddo
-end subroutine quantum_compute_emission
+end subroutine quantum_add_emission
 
 end module quantum_module

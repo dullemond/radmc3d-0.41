@@ -35,6 +35,10 @@ module sources_module
   !
   double precision, allocatable :: sources_stellarsrc_templates(:,:)
   !
+  !    Quantum-heated grains emissivity
+  !
+  double precision, allocatable :: sources_quantum_emissivity(:,:)
+  !
   !    Arrays for the second order integration with corner vertices
   !
   !    NOTE: snu either means S_nu (source function) or j_nu (emissivity)
@@ -317,6 +321,7 @@ subroutine sources_partial_cleanup()
   if(allocated(sources_align_mu)) deallocate(sources_align_mu)
   if(allocated(sources_align_orth)) deallocate(sources_align_orth)
   if(allocated(sources_align_para)) deallocate(sources_align_para)
+  if(allocated(sources_quantum_emissivity)) deallocate(sources_quantum_emissivity)
 end subroutine sources_partial_cleanup
 
 !-------------------------------------------------------------------

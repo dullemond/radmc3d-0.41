@@ -404,14 +404,6 @@ program radmc3d
      write(stdo,*) '       in this 3-D version of RADMC. Use RADMC instead.'
      stop
   endif
-  if(incl_quantum.eq.-1) then
-     write(stdo,*) 'WARNING: PAH emission not included as '
-     write(stdo,*) '         heating source for thermal grains.'
-     write(stdo,*) '         Energy is therefore not well conserved.'
-     write(stdo,*) '         Put incl_quantum to -2 to include it,'
-     write(stdo,*) '         and run RADMC-3D both before and after'
-     write(stdo,*) '         the external PAH code...'
-  endif
   if(rt_mcparams%ifast.eq.1) then
      write(stdo,*) 'NOTE: Using acceleration efficiency 1'
      write(stdo,*) '      (=approximate method!)'
