@@ -3122,6 +3122,7 @@ subroutine camera_make_rect_image(img,tausurf)
   implicit none
   double precision :: x,y,z,dxx,dyy,dzz,px,py
   integer :: inu,img,ix,iy,idxx,idxy,istar,ierr,inu0,inu1,ierror,ispec
+  integer :: isq,index,icell
   double precision :: pdx,pdy,dz,d2,d3,factor,celldxmin,quvsq
   double precision :: dirx,diry,dirz,distance,xbk,ybk,zbk,svcx,svcy,svcz
   logical :: domc,dotausurf
@@ -6421,6 +6422,7 @@ subroutine camera_make_circ_image()
   implicit none
   double precision :: r,phi,px,py,x,y,z
   integer :: inu,ir,iphi,ierr,inu0,inu1,ierror,ispec
+  integer :: isq,index,icell
   double precision :: celldxmin,quvsq
   double precision :: dirx,diry,dirz,distance,xbk,ybk,zbk,svcx,svcy,svcz
   logical :: domc
@@ -6946,6 +6948,47 @@ subroutine camera_make_circ_image()
         endif
      endif
      !
+     ! If quantum-heated grains included, then perform the quantum-heating
+     ! Monte Carlo simulation and compute the temperature distribution function
+     !
+     if(incl_quantum.ne.0) then
+        !
+        ! Call the quantum init routine
+        !
+        call quantum_init(.true.,.true.,.false.)   ! For now: no quant emiss in thermal MC
+        !
+        ! Read the quantum-heating wavelength grid (the grid for the UV photons)
+        !
+        call quantum_read_wavelengths(1)
+        !
+        ! Compute the temperature distribution functions
+        !
+        call montecarlo_compute_quantum_radiation_field()
+        !
+        ! Allocate the emissivity array for all wavelengths at once
+        !
+        if(allocated(sources_quantum_emissivity)) deallocate(sources_quantum_emissivity)
+        allocate(sources_quantum_emissivity(1:camera_nrfreq,1:nrcells))
+        sources_quantum_emissivity(:,:) = 0.d0
+        !
+        ! Now compute the emissivities for all wavelengths at once
+        !
+        do icell=1,nrcells
+           index = cellindex(icell)
+           do isq=1,quantum_nrquantum
+              ispec = quantum_ispec(isq)
+              !
+              ! Call the local routine for computing the 
+              ! local quantum emission
+              !
+              call quantum_add_emission(camera_nrfreq,quantum_ntemp, &
+                   camera_frequencies,sources_dustkappa_a(:,ispec),  &
+                   quantum_temp_distr(:,isq,index),                  &
+                   sources_quantum_emissivity(:,index))
+           enddo
+        enddo
+     endif
+     !
      ! Pre-compute which lines and which levels for line transfer may
      ! contribute to these wavelengths. Note that this only has to be
      ! pre-computed if the serial ray tracing is used, but we do it 
@@ -7013,6 +7056,29 @@ subroutine camera_make_circ_image()
         allocate(mc_frequencies(1:1),STAT=ierr)
      endif
      !
+     ! If quantum-heated grains included, then perform the quantum-heating
+     ! Monte Carlo simulation and compute the temperature distribution function
+     !
+     if(incl_quantum.ne.0) then
+        !
+        ! Call the quantum init routine
+        !
+        call quantum_init(.true.,.true.,.false.)   ! For now: no quant emiss in thermal MC
+        !
+        ! Read the quantum-heating wavelength grid (the grid for the UV photons)
+        !
+        call quantum_read_wavelengths(1)
+        !
+        ! Compute the temperature distribution functions
+        !
+        call montecarlo_compute_quantum_radiation_field()
+        !
+        ! Allocate the emissivity array for one wavelengths at at a time
+        !
+        if(allocated(sources_quantum_emissivity)) deallocate(sources_quantum_emissivity)
+        allocate(sources_quantum_emissivity(1:1,1:nrcells))
+     endif
+     !
      ! Do a loop over all camera frequencies
      !
      do inu0=1,camera_nrfreq
@@ -7070,6 +7136,34 @@ subroutine camera_make_circ_image()
               write(stdo,*) 'Lambda single scattering mode cannot be other than 0 or 1 for now.'
               stop 8762
            endif
+        endif
+        !
+        ! If quantum-heated grains included, then compute the emissivity
+        ! of these grains
+        !
+        if(incl_quantum.ne.0) then
+           !
+           ! Reset the emissivity array
+           !
+           sources_quantum_emissivity(:,:) = 0.d0
+           !
+           ! Now compute the emissivities for this wavelength
+           !
+           do icell=1,nrcells
+              index = cellindex(icell)
+              do isq=1,quantum_nrquantum
+                 ispec = quantum_ispec(isq)
+                 !
+                 ! Call the local routine for computing the 
+                 ! local quantum emission
+                 !
+                 call quantum_add_emission(1,quantum_ntemp,    &
+                      camera_frequencies(inu0),                &
+                      sources_dustkappa_a(inu0,ispec),         &
+                      quantum_temp_distr(:,isq,index),         &
+                      sources_quantum_emissivity(inu0,index))
+              enddo
+           enddo
         endif
         !
         ! Pre-compute which lines and which levels for line transfer may
