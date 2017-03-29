@@ -255,10 +255,17 @@ module camera_module
   double precision, allocatable :: camera_circ_image_iquv(:,:,:,:)
   logical :: camera_warn_resolution
   !
-  !    Flag to force RADMC-3D to precompute the source function for all frequencies
+  !    Flag to force RADMC-3D to precompute the scattering
+  !    source function for all frequencies
   !    of the camera_frequencies array at once.
   !
   logical :: camera_scatsrc_allfreq=.false.
+  !
+  !    Flag to force RADMC-3D to precompute the quantum
+  !    source function for all frequencies
+  !    of the camera_frequencies array at once.
+  !
+  logical :: camera_quantum_allfreq=.false.
   !
   !    Integer specifying if we are/were in a star sphere, and if yes,
   !    which one.
@@ -3796,9 +3803,11 @@ subroutine camera_make_rect_image(img,tausurf)
   ! of them separately. That saves a lot of computer memory, so it is the
   ! preferred method for large simulations when making spectra. But it may
   ! be slower. The way to choose one or the other is with the switch called
-  ! camera_scatsrc_allfreq.
+  ! camera_scatsrc_allfreq (for the scattering) and camera_quantum_allfreq
+  ! (for the quantum-heated grains).
   !
   if(((scattering_mode.eq.0).or.camera_scatsrc_allfreq).and.   &
+      ((incl_quantum.eq.0).or.camera_quantum_allfreq).and.     &
       (.not.camera_secondorder)) then
      !
      ! Multi-wavelength Method 1:
@@ -6880,9 +6889,11 @@ subroutine camera_make_circ_image()
   ! of them separately. That saves a lot of computer memory, so it is the
   ! preferred method for large simulations when making spectra. But it may
   ! be slower. The way to choose one or the other is with the switch called
-  ! camera_scatsrc_allfreq.
+  ! camera_scatsrc_allfreq (for the scattering) and camera_quantum_allfreq
+  ! (for the quantum-heated grains).
   !
   if(((scattering_mode.eq.0).or.camera_scatsrc_allfreq).and.   &
+      ((incl_quantum.eq.0).or.camera_quantum_allfreq).and.     &
       (.not.camera_secondorder)) then
      !
      ! Multi-wavelength Method 1:
