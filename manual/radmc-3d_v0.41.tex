@@ -3953,15 +3953,36 @@ temperature distribution function $P(T)$. The formal integro-differential
 equation that $P(T)$ obeys is somewhat difficult to formulate in continuous
 form. The time-dependent version of the quantum heating part of this
 equation can be (admittedly rather cryptically) formulated as
-\begin{equation}
+\begin{equation}\label{eq-pah-heat-integro}
 \frac{\partial P(T,t)}{\partial t} = \int_0^{T}P(T')R_{\nu(T',T)}dT'
+- P(T)\int_T^{\infty}R_{\nu(T,T')}dT'
 \end{equation}
-where $\nu(T',T)$ is the frequency of the photon needed to heat the
-grain from $T$ to $T'$ according to Eq.~(\ref{eq-quantum-t-jump})
-and the rate $R_{\nu(T',T)}$ is the corresponding absorption rate of
-such photons given by Eq.~(\ref{eq-quantum-absorb-rate}).
+where $\nu(T',T)$ is the frequency of the photon needed to heat the grain
+from $T$ to $T'$ according to Eq.~(\ref{eq-quantum-t-jump}) and the rate
+$R_{\nu(T',T)}$ is the corresponding absorption rate of such photons given
+by Eq.~(\ref{eq-quantum-absorb-rate}), but with a conversion factor 
+(a Jacobian factor) to convert between $d\nu$ and $dT'$:
+\begin{equation}
+R_{\nu(T,T')}dT' = R_\nu d\nu
+\end{equation}
+which leads to
+\begin{equation}
+R_{\nu(T,T')} = \frac{c_p}{h}R_\nu
+\end{equation}
+The first term in Eq.~(\ref{eq-pah-heat-integro}) accounts for grains that
+were quantum heated to temperature $T$. The second term in
+Eq.~(\ref{eq-pah-heat-integro}) accounts for grains that get heated from $T$
+to a higher temperature. Since the integral in the second term is independent
+of $P(T)$, it can be computed independently: it is simply the total number of
+photons absorbed per second per gram of dust. If we include all frequencies,
+including the very low ones (radio wavelengths), then this number diverges.
+But low-energy photons will also hardly heat up the grain, so the two 
+terms in Eq.~(\ref{eq-pah-heat-integro}) will then effectively cancel out
+for these photons. In RADMC-3D the lowest included photon energy is that
+of the lowest frequency (longest wavelength) in the file 
+{\small\tt quantum\_wavelength\_micron.inp}.
 
-The time-dependent cooling equation (Eq.~\ref{eq-quantum-cooling})
+The time-dependent {\em cooling} equation (Eq.~\ref{eq-quantum-cooling})
 becomes a conservative advection equation
 \begin{equation}
 \frac{\partial P(T,t)}{\partial t} - \frac{\partial [ P(T,t) c_p(T) ]}{\partial T} = 0
@@ -3971,7 +3992,7 @@ where $-c_p$ is the ``velocity'' in $P$-space.
 A stationary state is found by solving the combination of these two
 equations and settting $\partial P/\partial t=0$:
 \begin{equation}\label{eq-quantum-tdist-equilibrium}
-\int_0^{T}P(T')R_{\nu(T',T)}dT' - \frac{\partial [ P(T,t) c_p(T) ]}{\partial T} = 0
+\int_0^{T}P(T')R_{\nu(T',T)}dT' - P(T)\int_T^{\infty}R_{\nu(T,T')}dT' - \frac{\partial [ P(T,t) c_p(T) ]}{\partial T} = 0
 \end{equation}
 
 Since in the computer it is anyway solved in a discrete manner, the method
