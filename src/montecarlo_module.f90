@@ -1511,17 +1511,7 @@ subroutine montecarlo_compute_total_luminosities(params,incl_therm)
   ! NOTE: All cumulative arrays are indexed by "icell", all others by "index"
   !
   emisquanttot = 0.d0
-  if(incl_quantum.ne.0) then
-     if(incl_quantum.gt.0) then
-        write(stdo,*) 'HALTING: For now only the externally computed quantum '
-        write(stdo,*) '         mode is available (incl_quantum<0).'
-        stop
-     endif
-     if(.not.allocated(emisquant_loccum)) then
-        write(stdo,*) 'ERROR: When quantum heating is included,'
-        write(stdo,*) '       the array emisquant_loccum must be allocated.'
-        stop
-     endif
+  if((incl_quantum.ne.0).and.(allocated(emisquant_loccum))) then
      do icell=1,nrcells
         index = cellindex(icell)
         dum = 0.d0
@@ -2293,13 +2283,11 @@ subroutine do_monte_carlo_bjorkmanwood(params,ierror,resetseed)
   ! Put to zero various arrays 
   !
   if(incl_quantum.ne.0) then
-     if((.not.(allocated(emisquant))).or. &
-        (.not.(allocated(emisquant_cum)))) then
-        write(stdo,*) 'INTERNAL ERROR: Including quantum, but quantum not initalized.'
-        stop
+     if((allocated(emisquant)).and. &
+        (allocated(emisquant_cum))) then
+        emisquant(:,:)     = 0.d0
+        emisquant_cum(:)   = 0.d0
      endif
-     emisquant(:,:)     = 0.d0
-     emisquant_cum(:)   = 0.d0
   endif
   if(.not.(allocated(dusttemp))) then
      write(stdo,*) 'INTERNAL ERROR: dusttemp arrays not initalized.'
