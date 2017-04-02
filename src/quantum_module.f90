@@ -817,4 +817,154 @@ subroutine quantum_add_emission(nf,ntemp,freq,kappa,tdist,emissivity)
   enddo
 end subroutine quantum_add_emission
 
+!-------------------------------------------------------------------
+!             WRITE THE TEMPERATURE DISTRIBUTION FUNCTION
+!
+! NOTE: This may produce very large files!
+!-------------------------------------------------------------------
+subroutine quantum_write_tdist()
+  implicit none
+  character*80 :: filename,ispecstr
+  integer :: ispec,ierr,iformat,i,precis,isq,itemp
+  integer(kind=8) :: iiformat,reclen,reclend,nn,kk
+  !
+  ! Check if the temperature distribution functions are there
+  !
+  if(.not.allocated(quantum_temp_distr)) then
+     write(stdo,*) 'WARNING: Wanted to write the temperature distribution functions. '
+     write(stdo,*) '         But the array is not allocated... Skipping this.'
+     call flush(stdo)
+     return
+  endif
+  !
+  ! Message
+  !
+  write(stdo,*) 'Writing temperature distribution functions...'
+  call flush(stdo)
+  !
+  ! Determine the precision
+  !
+  if(rto_single) then
+     precis = 4
+  else
+     precis = 8
+  endif
+  !
+  ! Loop over all quantum dust species
+  !
+  do isq=1,quantum_nrquantum
+     ispec = quantum_ispec(isq)
+     call integer_to_string(ispec,ispecstr)
+     if(igrid_type.lt.100) then
+        !
+        ! Regular (AMR) grid
+        ! 
+        ! Just make sure that the cell list is complete
+        !
+        if(amr_tree_present) then
+           call amr_compute_list_all()
+        endif
+        !
+        ! Do a stupidity check
+        !
+        if(nrcells.ne.amr_nrleafs) stop 3209
+        !
+        ! Open file and write header
+        !
+        if(rto_style.eq.1) then
+           !
+           ! Ascii output
+           !
+           filename = 'tempdistrib_'//trim(ispecstr)//'.dat'
+           open(unit=1,file=filename)
+           !
+           ! Write format number
+           !
+           write(1,*) 1
+           !
+           ! Write number of grid points
+           !
+           write(1,*) nrcellsinp
+           !
+           ! write number of temperatures
+           !
+           write(1,*) quantum_ntemp
+           !
+           ! Write the grid of temperatures
+           !
+           write(1,*) ''
+           do itemp=1,quantum_ntemp
+              write(1,*) quantum_temp_grid(itemp)
+           enddo
+           write(1,*) ''
+        elseif(rto_style.eq.2) then
+           !
+           ! F77-unformatted
+           !
+           filename = 'tempdistrib_'//trim(ispecstr)//'.udat'
+           reclend = rto_reclen/8
+           open(unit=1,file=filename,form='unformatted')
+           !
+           ! Header
+           !
+           nn=1
+           kk=rto_reclen
+           write(1) nn,kk
+           nn=nrcellsinp
+           write(1) nn
+           !
+           ! Write the nr of temperature points
+           !
+           nn=quantum_ntemp
+           write(1) nn
+           !
+           ! Write the grid of temperatures
+           !
+           write(1) (quantum_temp_grid(itemp),itemp=1,quantum_ntemp)
+        elseif(rto_style.eq.3) then
+           !
+           ! C-compliant binary output
+           !
+           filename = 'tempdistrib_'//trim(ispecstr)//'.bdat'
+           open(unit=1,file=filename,status='replace',access='stream')
+           !
+           ! Header
+           !
+           nn=1
+           kk=precis
+           write(1) nn,kk
+           nn=nrcellsinp
+           write(1) nn
+           !
+           ! Write the nr of levels in the  subset 
+           !
+           nn=quantum_ntemp
+           write(1) nn
+           !
+           ! Write the grid of temperatures
+           !
+           write(1) (quantum_temp_grid(itemp),itemp=1,quantum_ntemp)
+        else
+           write(stdo,*) 'ERROR: Do not know rto_style ',rto_style
+           stop
+        endif
+        !
+        ! Write the dust temperature distributions
+        !
+        call write_vectorfield(1,rto_style,precis,         &
+                quantum_ntemp,quantum_ntemp,nrcellsinp,    &
+                quantum_nrquantum,isq,                     &
+                vector1=quantum_temp_distr)
+        !
+        ! Close file
+        !
+        close(1)
+     else
+        write(stdo,*) 'ERROR: For the moment no other grid type supported as AMR for writing out temp distributions'
+        stop
+     endif
+  enddo ! Loop over species
+  !
+end subroutine quantum_write_tdist
+
 end module quantum_module

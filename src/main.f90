@@ -3,6 +3,7 @@ program radmc3d
   use rtglobal_module
   use dust_module
   use lines_module
+  use quantum_module
   use ioput_module
   use camera_module
   use constants_module
@@ -66,6 +67,8 @@ program radmc3d
   do_respondwhenready        = .false.
   do_writepop                = .false.
   do_calcpop                 = .false.
+  do_writetdist              = .false.
+  do_calctdist               = .false.
   !
   ! Processes to include
   !
@@ -1564,6 +1567,46 @@ program radmc3d
      endif
      !
      !----------------------------------------------------------------
+     !     CALCULATE QUANTUM TEMPERATURE DISTRIBUTION FUNCTIONS
+     !----------------------------------------------------------------
+     !
+     if(do_calctdist) then
+        !
+        ! If the dust emission is included, then make sure the dust data,
+        ! density and temperature are read. If yes, do not read again.
+        !
+        if(rt_incl_dust) then
+           call read_dustdata(1)
+           call read_dust_density(1)
+           ! call read_dust_temperature(1)
+        endif
+        !
+        ! If lines are active, and if the level populations are to be calculated
+        ! beforehand and stored in the big array, then compute them now, if not
+        ! already done.
+        !
+        if(incl_quantum.ne.0) then
+           !
+           ! Call the quantum init routine
+           !
+           call quantum_init(.true.,.true.,.false.)   ! For now: no quant emiss in thermal MC
+           !
+           ! Read the quantum-heating wavelength grid (the grid for the UV photons)
+           !
+           call quantum_read_wavelengths(1)
+           !
+           ! Compute the radiation field of UV photons
+           !
+           call montecarlo_compute_quantum_radiation_field()
+           !
+           ! Compute the temperature distribution functions 
+           !
+           call montecarlo_compute_quantum_temp_distr()
+           !
+        endif
+     endif
+     !
+     !----------------------------------------------------------------
      !                 WRITE THE LATEST IMAGE AGAIN 
      !----------------------------------------------------------------
      !
@@ -1652,6 +1695,14 @@ program radmc3d
      !
      if(do_writepop) then
         call write_levelpop()
+     endif
+     !
+     !----------------------------------------------------------------
+     !         WRITE THE QUANTUM TEMPERATURE DISTRIBUTIONS
+     !----------------------------------------------------------------
+     !
+     if(do_writetdist) then
+        call quantum_write_tdist()
      endif
      !
      !----------------------------------------------------------------
@@ -2093,6 +2144,8 @@ program radmc3d
         do_respondwhenready        = .false.
         do_writepop                = .false.
         do_calcpop                 = .false.
+        do_writetdist              = .false.
+        do_calctdist               = .false.
         !
         ! Reset other defaults
         !
@@ -2603,6 +2656,13 @@ subroutine interpet_command_line_options(gotit,fromstdi,quit)
      elseif((buffer(1:8).eq.'calcpop')) then
         do_calcpop = .true.
         do_writepop = .true.
+        gotit = .true.
+     elseif((buffer(1:10).eq.'writetdist')) then
+        do_writetdist = .true.
+        gotit = .true.
+     elseif((buffer(1:10).eq.'calctdist')) then
+        do_calctdist = .true.
+        do_writetdist = .true.
         gotit = .true.
      elseif(buffer(1:16).eq.'respondwhenready') then
         do_respondwhenready = .true.

@@ -119,6 +119,8 @@ module rtglobal_module
   logical :: do_writegridfile            ! Write the grid
   logical :: do_writepop                 ! Write the internally calculated level populations
   logical :: do_calcpop                  ! Calculate level populations (automatic when making images)
+  logical :: do_writetdist               ! Write the quantum temperature distribution function
+  logical :: do_calctdist                ! Calculate quantum temperature distribution function
   logical :: do_respondwhenready         ! Write '1' to STDO when ready
   logical :: do_montecarlo_therm         ! Do Bjorkman & Wood to 
   !                                      ! find the dust temperature
