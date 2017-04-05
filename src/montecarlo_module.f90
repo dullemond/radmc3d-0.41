@@ -2848,10 +2848,6 @@ subroutine do_monte_carlo_scattering(params,ierror,resetseed,scatsrc,meanint)
      write(stdo,*) 'ERROR: Cntdump must be >= ',params%countwrite
      stop 
   endif
-  if(incl_quantum.ne.0) then
-     write(stdo,*) 'ERROR: At the moment quantum heated grains are not included yet'
-     stop
-  endif
   if(.not.(allocated(dusttemp))) then
      write(stdo,*) 'INTERNAL ERROR: dusttemp arrays not initalized.'
      stop
@@ -3372,7 +3368,7 @@ subroutine do_lambda_starlight_single_scattering(params,ierror,scatsrc,meanint)
      stop
   endif
   if(incl_quantum.ne.0) then
-     write(stdo,*) 'ERROR: At the moment quantum heated grains are not included yet'
+     write(stdo,*) 'ERROR: At the moment quantum heated grains are not included in do_lambda_starlight_single_scattering() yet'
      stop
   endif
   if((mc_nrfreq.le.0).or.(.not.allocated(mc_frequencies))) then
