@@ -9,6 +9,7 @@ module dust_module
   use rtglobal_module
   use polarization_module
   use mathroutines_module
+  use constants_module
   !
   ! The dust scattering mode, which is typically automatically set, 
   ! depending on the kind of dust opacities found. 
@@ -288,6 +289,7 @@ subroutine read_dustdata(action)
                !
                read(3,*) dum3
                dust_n_catom(ispec) = dum3
+               dust_mgrain(ispec) = dust_n_catom(ispec) * 12 * mp
             elseif(idum2.eq.6) then
                !
                ! Read the nr of C-atoms for this PAH molecule 
@@ -297,6 +299,7 @@ subroutine read_dustdata(action)
                !
                read(3,*) dum3
                dust_n_catom(ispec) = dum3
+               dust_mgrain(ispec) = dust_n_catom(ispec) * 12 * mp
                read(3,*) dum3
                dust_tmax(ispec) = dum3
             elseif((idum2.ge.3).and.(idum2.le.5)) then
