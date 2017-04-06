@@ -1,0 +1,9 @@
+This is a super-simple setup for PAH emission.
+
+python problem_setup.py
+radmc3d mctherm
+radmc3d calctdist
+
+This produces the temperature distribution function in all cells (in this
+example just a single cell). 
+
