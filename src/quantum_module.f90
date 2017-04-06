@@ -614,6 +614,7 @@ subroutine quantum_fill_matrix(isq,nf,ntemp,meanint)
            !
            ! Internal error...
            !
+           write(stdo,*) itemp,itpeak, nphot
            stop 93971
         endif
      enddo

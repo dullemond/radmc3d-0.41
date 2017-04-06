@@ -10619,6 +10619,10 @@ subroutine montecarlo_compute_quantum_temp_distr()
      call quantum_cooling(isq)
   enddo
   !
+  ! Message
+  !
+  write(stdo,*) 'Computing the quantum temperature distribution function everywhere...'
+  !
   ! Loop over all cells, and all quantum dust species
   !
   do icell=1,nrcells

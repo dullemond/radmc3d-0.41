@@ -3878,13 +3878,13 @@ subroutine camera_make_rect_image(img,tausurf)
      !
      if(incl_quantum.ne.0) then
         !
-        ! Call the quantum init routine
-        !
-        call quantum_init(.true.,.true.,.false.)   ! For now: no quant emiss in thermal MC
-        !
         ! Read the quantum-heating wavelength grid (the grid for the UV photons)
         !
         call quantum_read_wavelengths(1)
+        !
+        ! Call the quantum init routine
+        !
+        call quantum_init(.true.,.true.,.false.)   ! For now: no quant emiss in thermal MC
         !
         ! Compute the radiation field of UV photons
         !
@@ -3990,13 +3990,13 @@ subroutine camera_make_rect_image(img,tausurf)
      !
      if(incl_quantum.ne.0) then
         !
-        ! Call the quantum init routine
-        !
-        call quantum_init(.true.,.true.,.false.)   ! For now: no quant emiss in thermal MC
-        !
         ! Read the quantum-heating wavelength grid (the grid for the UV photons)
         !
         call quantum_read_wavelengths(1)
+        !
+        ! Call the quantum init routine
+        !
+        call quantum_init(.true.,.true.,.false.)   ! For now: no quant emiss in thermal MC
         !
         ! Compute the radiation field of UV photons
         !
@@ -6972,13 +6972,13 @@ subroutine camera_make_circ_image()
      !
      if(incl_quantum.ne.0) then
         !
-        ! Call the quantum init routine
-        !
-        call quantum_init(.true.,.true.,.false.)   ! For now: no quant emiss in thermal MC
-        !
         ! Read the quantum-heating wavelength grid (the grid for the UV photons)
         !
         call quantum_read_wavelengths(1)
+        !
+        ! Call the quantum init routine
+        !
+        call quantum_init(.true.,.true.,.false.)   ! For now: no quant emiss in thermal MC
         !
         ! Compute the radiation field of UV photons
         !
@@ -7084,13 +7084,13 @@ subroutine camera_make_circ_image()
      !
      if(incl_quantum.ne.0) then
         !
-        ! Call the quantum init routine
-        !
-        call quantum_init(.true.,.true.,.false.)   ! For now: no quant emiss in thermal MC
-        !
         ! Read the quantum-heating wavelength grid (the grid for the UV photons)
         !
         call quantum_read_wavelengths(1)
+        !
+        ! Call the quantum init routine
+        !
+        call quantum_init(.true.,.true.,.false.)   ! For now: no quant emiss in thermal MC
         !
         ! Compute the radiation field of UV photons
         !
