@@ -8230,3 +8230,8 @@ finetuning: I noticed during some testing with a supersimple annulus model
 25.03.2017  Trying to re-implement the PAH / quantum-heating stuff. 
             This was part of the old RADMC. But I have not yet built
             it in in RADMC-3D. Now working on this.
+
+06.04.2017  
+ QUESTION   When allocating large spatial arrays, shouldn't I use 
+  TODO      nrcellsmax instead of nrcells? Does not seem to have been
+            done everywhere. Not sure if this could lead to problems...
