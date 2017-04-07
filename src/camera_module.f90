@@ -4094,7 +4094,7 @@ subroutine camera_make_rect_image(img,tausurf)
                       camera_frequencies(inu0),                &
                       sources_dustkappa_a(inu0,ispec),         &
                       quantum_temp_distr(:,isq,index),         &
-                      sources_quantum_emissivity(inu0,index))
+                      sources_quantum_emissivity(1,index))
               enddo
            enddo
         endif
