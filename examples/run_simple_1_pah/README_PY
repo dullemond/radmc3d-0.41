@@ -7,3 +7,10 @@ radmc3d calctdist
 This produces the temperature distribution function in all cells (in this
 example just a single cell). 
 
+With
+
+radmc3d sed
+
+the spectrum (SED) is produced.
+
+06.04.2017
