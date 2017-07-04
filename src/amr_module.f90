@@ -4623,7 +4623,9 @@ do iz=1,1+amr_zdim
                            !
                            if(x.ne.amr_finegrid_xi(a%ixyzf(1)+1+amr_xdim-ix,1,a%level)) then
                               if(amr_cyclic_xyz(1)) then
-                                 if((ix.ne.1).and.(ix.ne.amr_grid_nx)) then
+                                 if(abs(abs(x-amr_finegrid_xi(a%ixyzf(1)+1+amr_xdim-ix,1,a%level))/          &
+                                      abs(amr_grid_xi(amr_grid_nx+1,1)-amr_grid_xi(amr_grid_nx,1))-1.d0).gt. &
+                                      1.0d-6) then
                                     write(stdo,*) 'ERROR: Corner coordinate mismatch found:'
                                     write(stdo,*) x,y,z
                                     write(stdo,*) amr_finegrid_xi(a%ixyzf(1)+1+amr_xdim-ix,1,a%level), &
@@ -4642,7 +4644,9 @@ do iz=1,1+amr_zdim
                            endif
                            if(y.ne.amr_finegrid_xi(a%ixyzf(2)+1+amr_ydim-iy,2,a%level)) then
                               if(amr_cyclic_xyz(2)) then
-                                 if((iy.ne.1).and.(iy.ne.amr_grid_ny)) then
+                                 if(abs(abs(y-amr_finegrid_xi(a%ixyzf(2)+1+amr_ydim-iy,2,a%level))/          &
+                                      abs(amr_grid_xi(amr_grid_ny+1,2)-amr_grid_xi(amr_grid_ny,2))-1.d0).gt. &
+                                      1.0d-6) then
                                     write(stdo,*) 'ERROR: Corner coordinate mismatch found:'
                                     write(stdo,*) x,y,z
                                     write(stdo,*) amr_finegrid_xi(a%ixyzf(1)+1+amr_xdim-ix,1,a%level), &
@@ -4661,7 +4665,9 @@ do iz=1,1+amr_zdim
                            endif
                            if(z.ne.amr_finegrid_xi(a%ixyzf(3)+1+amr_zdim-iz,3,a%level)) then
                               if(amr_cyclic_xyz(3)) then
-                                 if((iz.ne.1).and.(iz.ne.amr_grid_nz)) then
+                                 if(abs(abs(z-amr_finegrid_xi(a%ixyzf(3)+1+amr_zdim-iz,3,a%level))/          &
+                                      abs(amr_grid_xi(amr_grid_nz+1,3)-amr_grid_xi(amr_grid_nz,3))-1.d0).gt. &
+                                      1.0d-6) then
                                     write(stdo,*) 'ERROR: Corner coordinate mismatch found:'
                                     write(stdo,*) x,y,z
                                     write(stdo,*) amr_finegrid_xi(a%ixyzf(1)+1+amr_xdim-ix,1,a%level), &

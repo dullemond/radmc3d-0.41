@@ -8239,4 +8239,18 @@ finetuning: I noticed during some testing with a supersimple annulus model
             main.f90, rtglobal_module.f90
             I commented out all stuff related to incl_scatsrc_mctherm.
 
+04.07.2017  amr_module.f90
+  BUG       Attila Juhasz found a bug in amr_get_corner_vertexindex()!
+            It appears when calling this subroutine for AMR in spherical
+            coordinates. The if((iz.ne.1).and.(iz.ne.amr_grid_nz))
+            clause (and similar clauses) is wrong, because iz is not
+            the index of the main grid, but just 1 or 2... However,
+            this was only part of a safety check, and it only occurs
+            when using periodic boundary conditions, which is the case
+            for 3-D spherical coordinates only.
+
+  FIXED     Nevertheless it is a bug and must be fixed. I now check
+            (in case of a possible coordinate mismatch in a coordinate
+            that is cyclic) if the difference is equal to the periodic
+            length. If so, then it is false alarm.
 
