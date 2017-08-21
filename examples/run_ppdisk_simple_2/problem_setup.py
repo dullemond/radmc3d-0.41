@@ -28,15 +28,17 @@ ntheta   = 32
 nphi     = 1
 rin      = 10*au
 rout     = 100*au
-thetaup  = np.pi*0.5 - 0.7e0
+thetaup  = np.pi*0.5 - 0.5e0
 #
 # Disk parameters
 #
-sigmag0  = 1e1               # Sigma gas at 1 AU
+sigmag0  = 1e3               # Sigma gas at 1 AU
 sigmad0  = sigmag0 * 0.01    # Sigma dust at 1 AU
+fracbig  = 0.99              # Fraction of dust that is the big grain dust
 plsig    = -1.0e0            # Powerlaw of the surface density
 hr0      = 0.05              # H_p/r at 1 AU
 plh      = 0.1               # Powerlaw of flaring
+hrbigsett= 0.02              # The big grains are settled a bit more than the small grains
 #
 # Star parameters
 #
@@ -64,9 +66,14 @@ zr       = np.pi/2.e0 - qq[1]
 # Make the dust density model
 #
 sigmad   = sigmad0 * (rr/au)**plsig
-hhr      = hr0 * (rr/au)**plh
-hh       = hhr * rr
-rhod     = ( sigmad / (np.sqrt(2.e0*np.pi)*hh) ) * np.exp(-(zr**2/hhr**2)/2.e0)
+sigmadsm = sigmad*(1.-fracbig)
+sigmadbg = sigmad*fracbig
+hhrsm    = hr0 * (rr/au)**plh
+hhrbg    = hrbigsett * (rr/au)**plh
+hhsm     = hhrsm * rr
+hhbg     = hhrbg * rr
+rhodsm   = ( sigmadsm / (np.sqrt(2.e0*np.pi)*hhsm) ) * np.exp(-(zr**2/hhrsm**2)/2.e0)
+rhodbg   = ( sigmadbg / (np.sqrt(2.e0*np.pi)*hhbg) ) * np.exp(-(zr**2/hhrbg**2)/2.e0)
 #
 # Write the wavelength_micron.inp file
 #
@@ -87,8 +94,7 @@ nlam     = lam.size
 #
 with open('wavelength_micron.inp','w+') as f:
     f.write('%d\n'%(nlam))
-    for value in lam:
-        f.write('%13.6e\n'%(value))
+    np.savetxt(f,lam.T,fmt=['%13.6e'])
 #
 #
 # Write the stars.inp file
@@ -97,8 +103,7 @@ with open('stars.inp','w+') as f:
     f.write('2\n')
     f.write('1 %d\n\n'%(nlam))
     f.write('%13.6e %13.6e %13.6e %13.6e %13.6e\n\n'%(rstar,mstar,pstar[0],pstar[1],pstar[2]))
-    for value in lam:
-        f.write('%13.6e\n'%(value))
+    np.savetxt(f,lam.T,fmt=['%13.6e'])
     f.write('\n%13.6e\n'%(-tstar))
 #
 # Write the grid file
@@ -110,32 +115,34 @@ with open('amr_grid.inp','w+') as f:
     f.write('0\n')                       # gridinfo
     f.write('1 1 0\n')                   # Include r,theta coordinates
     f.write('%d %d %d\n'%(nr,ntheta,1))  # Size of grid
-    for value in ri:
-        f.write('%13.6e\n'%(value))      # X coordinates (cell walls)
-    for value in thetai:
-        f.write('%13.6e\n'%(value))      # Y coordinates (cell walls)
-    for value in phii:
-        f.write('%13.6e\n'%(value))      # Z coordinates (cell walls)
+    np.savetxt(f,ri.T,fmt=['%21.14e'])    # R coordinates (cell walls)
+    np.savetxt(f,thetai.T,fmt=['%21.14e'])# Theta coordinates (cell walls)
+    np.savetxt(f,phii.T,fmt=['%21.14e'])  # Phi coordinates (cell walls)
 #
 # Write the density file
 #
 with open('dust_density.inp','w+') as f:
     f.write('1\n')                       # Format number
     f.write('%d\n'%(nr*ntheta*nphi))     # Nr of cells
-    f.write('1\n')                       # Nr of dust species
-    data = rhod.ravel(order='F')         # Create a 1-D view, fortran-style indexing
-    data.tofile(f, sep='\n', format="%13.6e")
-    f.write('\n')
+    f.write('2\n')                       # Nr of dust species
+    data = rhodsm.ravel(order='F')         # Create a 1-D view, fortran-style indexing
+    np.savetxt(f,data.T,fmt=['%13.6e'])  # The data
+    data = rhodbg.ravel(order='F')         # Create a 1-D view, fortran-style indexing
+    np.savetxt(f,data.T,fmt=['%13.6e'])  # The data
 #
 # Dust opacity control file
 #
 with open('dustopac.inp','w+') as f:
     f.write('2               Format number of this file\n')
-    f.write('1               Nr of dust species\n')
+    f.write('2               Nr of dust species\n')
     f.write('============================================================================\n')
     f.write('1               Way in which this dust species is read\n')
     f.write('0               0=Thermal grain\n')
-    f.write('silicate        Extension of name of dustkappa_***.inp file\n')
+    f.write('0.1_micron      Extension of name of dustkappa_***.inp file\n')
+    f.write('----------------------------------------------------------------------------\n')
+    f.write('1               Way in which this dust species is read\n')
+    f.write('0               0=Thermal grain\n')
+    f.write('100_micron      Extension of name of dustkappa_***.inp file\n')
     f.write('----------------------------------------------------------------------------\n')
 #
 # Write the radmc3d.inp control file

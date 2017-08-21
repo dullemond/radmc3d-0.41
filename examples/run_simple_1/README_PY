@@ -25,7 +25,8 @@ This is what you should do to run this model:
   2) Type python problem_setup.py
   3) In the shell type 'radmc3d mctherm' and wait until this is finished
      NOTE: Do not, as in run_simple_userdef_1/, type './radmc3d mctherm' (i.e.
-     do not use the ./).
+     do not use the ./). NOTE: If you compiled the code with openmp,
+     then you can speed up the code with e.g. 'radmc3d mctherm setthreads 4'.
   4) Make sure that the radmc3dPy subroutines are found by python, e.g.
      by setting the shell environment variable PYTHONPATH to the 
      python directory in your ~/bin/ directory. 
@@ -65,6 +66,7 @@ Note also that radmc3dPy has routines for reading the spectrum and
 for plotting it (after you ran radmc3d sed incl 60 phi 30 on the shell).
 Just type in ipython --matplotlib the following:
 
+  from matplotlib import pyplot as plt
   from radmc3dPy.analyze import *
   s=readSpectrum()
   plotSpectrum(s,xlg=True,ylg=True,micron=True)

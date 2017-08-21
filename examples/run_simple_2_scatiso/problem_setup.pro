@@ -24,7 +24,9 @@ sizez    = 10*AU
 ; Model parameters
 ;
 radius   = 5*AU
-rho0     = 1d-18
+;rho0     = 1d-18
+rho0     = 3d-18
+;rho0     = 1d-22
 ;
 ; Star parameters
 ;
@@ -120,9 +122,9 @@ openw,1,'dustopac.inp'
 printf,1,'2               Format number of this file'
 printf,1,'1               Nr of dust species'
 printf,1,'============================================================================'
-printf,1,'1               Way in which this dust species is read'
+printf,1,'10              Way in which this dust species is read'
 printf,1,'0               0=Thermal grain'
-printf,1,'silicate        Extension of name of dustkappa_***.inp file'
+printf,1,'pyrmg70         Extension of name of dustkapscatmat_***.inp file'
 printf,1,'----------------------------------------------------------------------------'
 close,1
 ;
@@ -131,7 +133,9 @@ close,1
 openw,1,'radmc3d.inp'
 printf,1,'nphot = ',nphot
 ;printf,1,'scattering_mode_max = 0'
-;printf,1,'mc_weighted_photons = 0'
+printf,1,'iranfreqmode = 1'
+;;printf,1,'mc_weighted_photons = 0'
+;;print,'WARNING: Switched off weighted photons...'
 close,1
 ;
 end

@@ -3,6 +3,7 @@
 #
 import numpy as np
 from radmc3dPy.natconst import *
+pi  = 3.1415926535897932385e0
 #
 # Import plotting libraries (start Python with ipython --matplotlib)
 #
@@ -15,21 +16,27 @@ nphot    = 1000000
 #
 # Grid parameters
 #
-nx       = 1
-ny       = 1
-nz       = 1
+nx       = 64
+ny       = 64
+nz       = 64
 sizex    = 100*au
 sizey    = 100*au
 sizez    = 100*au
 #
 # Model parameters
 #
-rhogas0  = 3e-19
-temp0    = 30.e0
+omega    = 2*pi/(50*year)
+rhogas0  = 1e-16
+temp0    = 50.e0
 dusttogas= 0.01
-vturb0   = 0.1*1e5
-abunco   = 1e-4
-factco   = abunco/(2.3*mp)
+vturb0   = 3.*1e5
+#
+# Star parameters
+#
+mstar    = ms
+rstar    = rs
+tstar    = ts
+pstar    = np.array([0.,0.,0.])
 #
 # Write the wavelength_micron.inp file
 #
@@ -54,24 +61,22 @@ zi       = np.linspace(-sizez,sizez,nz+1)
 xc       = 0.5 * ( xi[0:nx] + xi[1:nx+1] )
 yc       = 0.5 * ( yi[0:ny] + yi[1:ny+1] )
 zc       = 0.5 * ( zi[0:nz] + zi[1:nz+1] )
+qq       = np.meshgrid(xc,yc,zc,indexing='ij')
+xx       = qq[0]
+yy       = qq[1]
+zz       = qq[2]
+rrcyl    = np.sqrt(xx**2+yy**2)
 #
-# Model
+# Make a simple solid-body rotating gas flow
 #
-rhogas  = np.zeros([nx,ny,nz]) + rhogas0
+rhogas  = np.zeros((nx,ny,nz)) + rhogas0
 rhod    = rhogas*dusttogas
-nco     = rhogas*factco
-tgas    = np.zeros([nx,ny,nz]) + temp0
-vx      = np.zeros([nx,ny,nz])
-vy      = np.zeros([nx,ny,nz])
-vz      = np.zeros([nx,ny,nz])
-vturb   = np.zeros([nx,ny,nz]) + vturb0
-#
-# Write the wavelength file
-#
-with open('wavelength_micron.inp','w+') as f:
-    f.write('%d\n'%(nlam))
-    for value in lam:
-        f.write('%13.6e\n'%(value))
+tgas    = np.zeros((nx,ny,nz)) + temp0
+vcir    = rrcyl * omega
+vx      =  vcir * yy / ( rrcyl + 1e-10*sizex )
+vy      = -vcir * xx / ( rrcyl + 1e-10*sizey )
+vz      = np.zeros((nx,ny,nz))
+vturb   = np.zeros((nx,ny,nz)) + vturb0
 #
 # Write the grid file
 #
@@ -89,7 +94,7 @@ with open('amr_grid.inp','w+') as f:
     for value in zi:
         f.write('%13.6e\n'%(value))      # Z coordinates (cell walls)
 #
-# Write the density file
+# Write the dust density file. Here we use a dust-to-gas ratio of 0.01
 #
 with open('dust_density.inp','w+') as f:
     f.write('1\n')                       # Format number
@@ -99,8 +104,11 @@ with open('dust_density.inp','w+') as f:
     data.tofile(f, sep='\n', format="%13.6e")
     f.write('\n')
 #
-# Write the CO number density file
+# Write the molecule number density file. 
 #
+abunco = 1e-4
+factco = abunco/(2.3*mp)
+nco    = rhogas*factco
 with open('numberdens_co.inp','w+') as f:
     f.write('1\n')                       # Format number
     f.write('%d\n'%(nx*ny*nz))           # Nr of cells
@@ -108,42 +116,51 @@ with open('numberdens_co.inp','w+') as f:
     data.tofile(f, sep='\n', format="%13.6e")
     f.write('\n')
 #
-# Write the gas velocity file
+# Write the gas velocity field
 #
 with open('gas_velocity.inp','w+') as f:
     f.write('1\n')                       # Format number
     f.write('%d\n'%(nx*ny*nz))           # Nr of cells
-    #data = nco.ravel(order='F')          # Create a 1-D view, fortran-style indexing
-    #np.savetxt(f,data.T,fmt=['%13.6e'])  # The data
-    f.write('0. 0. 0.\n')         # Dummy for now
+    for iz in range(nz):
+        for iy in range(ny):
+            for ix in range(nx):
+                f.write('%13.6e %13.6e %13.6e\n'%(vx[ix,iy,iz],vy[ix,iy,iz],vz[ix,iy,iz]))
 #
-# Write the gas microturbulence file
+# Write the microturbulence file
 #
 with open('microturbulence.inp','w+') as f:
     f.write('1\n')                       # Format number
     f.write('%d\n'%(nx*ny*nz))           # Nr of cells
-    data = vturb.ravel(order='F')        # Create a 1-D view, fortran-style indexing
+    data = vturb.ravel(order='F')          # Create a 1-D view, fortran-style indexing
     data.tofile(f, sep='\n', format="%13.6e")
     f.write('\n')
 #
-# Write the gas temperature file
+# Write the gas temperature
 #
 with open('gas_temperature.inp','w+') as f:
     f.write('1\n')                       # Format number
     f.write('%d\n'%(nx*ny*nz))           # Nr of cells
-    data = tgas.ravel(order='F')         # Create a 1-D view, fortran-style indexing
+    data = tgas.ravel(order='F')          # Create a 1-D view, fortran-style indexing
     data.tofile(f, sep='\n', format="%13.6e")
     f.write('\n')
 #
-# Write the dust temperature file (dummy)
+# Write the wavelength file
 #
-with open('dust_temperature.dat','w+') as f:
-    f.write('1\n')                       # Format number
-    f.write('%d\n'%(nx*ny*nz))           # Nr of cells
-    f.write('1\n')                       # Nr of species
-    data = tgas.ravel(order='F')         # Create a 1-D view, fortran-style indexing
-    data.tofile(f, sep='\n', format="%13.6e")
-    f.write('\n')
+with open('wavelength_micron.inp','w+') as f:
+    f.write('%d\n'%(nlam))
+    for value in lam:
+        f.write('%13.6e\n'%(value))
+#
+#
+# Write the stars.inp file
+#
+with open('stars.inp','w+') as f:
+    f.write('2\n')
+    f.write('1 %d\n\n'%(nlam))
+    f.write('%13.6e %13.6e %13.6e %13.6e %13.6e\n\n'%(rstar,mstar,pstar[0],pstar[1],pstar[2]))
+    for value in lam:
+        f.write('%13.6e\n'%(value))
+    f.write('\n%13.6e\n'%(-tstar))
 #
 # Dust opacity control file
 #
@@ -156,17 +173,16 @@ with open('dustopac.inp','w+') as f:
     f.write('silicate        Extension of name of dustkappa_***.inp file\n')
     f.write('----------------------------------------------------------------------------\n')
 #
-# Lines file
+# Write the lines.inp control file
 #
-with open('lines.inp','w+') as f:
-    f.write('2\n')
+with open('lines.inp','w') as f:
     f.write('1\n')
-    f.write('co    leiden    0    0    0\n')
+    f.write('1\n')
+    f.write('co    leiden    0    0\n')
 #
 # Write the radmc3d.inp control file
 #
 with open('radmc3d.inp','w+') as f:
     f.write('nphot = %d\n'%(nphot))
-    f.write('scattering_mode_max = 0\n')
-    f.write('lines_mode = 1\n') # LTE
-    f.write('iranfreqmode = 1\n')
+    f.write('scattering_mode_max = 0\n')   # Put this to 1 for isotropic scattering
+    f.write('tgas_eq_tdust   = 1')

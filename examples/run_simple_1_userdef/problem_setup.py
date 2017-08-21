@@ -61,7 +61,8 @@ nlam     = lam.size
 #
 with open('wavelength_micron.inp','w+') as f:
     f.write('%d\n'%(nlam))
-    np.savetxt(f,lam.T,fmt=['%13.6e'])
+    for value in lam:
+        f.write('%13.6e\n'%(value))
 #
 #
 # Write the stars.inp file
@@ -70,7 +71,8 @@ with open('stars.inp','w+') as f:
     f.write('2\n')
     f.write('1 %d\n\n'%(nlam))
     f.write('%13.6e %13.6e %13.6e %13.6e %13.6e\n\n'%(rstar,mstar,pstar[0],pstar[1],pstar[2]))
-    np.savetxt(f,lam.T,fmt=['%13.6e'])
+    for value in lam:
+        f.write('%13.6e\n'%(value))
     f.write('\n%13.6e\n'%(-tstar))
 #
 # Dust opacity control file
