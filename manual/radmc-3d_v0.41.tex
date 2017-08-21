@@ -4704,6 +4704,15 @@ radmc3d spectrum iline 1 widthkms 10 linenlam 100 vkms -10
 \end{verbatim}}
 which would make the wavelength grid 10 kms shifted in short direction.
 
+Note that you can use the {\small\tt widthkms} and {\small\tt linenlam}
+keywords also for images:
+{\small\begin{verbatim}
+radmc3d image iline 1 widthkms 10 linenlam 100
+\end{verbatim}}
+This will make a multi-color image, i.e.~it will make images at
+100 wavelenths points evenly spaced around the line center. In this way
+you can make channel maps.
+
 For more details on how to specify the spectral sampling, please read
 Section \ref{sec-set-camera-frequencies}. Note that keywords such as
 {\small\tt incl}, {\small\tt phi}, and any other keywords specifying the
@@ -12828,6 +12837,8 @@ modus of polarization is implemented.
       for RADMC-3D. See the {\small\tt python/} directory. This is version
       0.29 of his package. This package now also supports reading and
       writing AMR grids.
+    \item Bugfix in VTK for 3-D spherical coordinates (thanks Attila Juhasz!).
+      Now it should work.
   \end{itemize}
 \end{itemize}
 
