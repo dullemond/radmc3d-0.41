@@ -5,9 +5,9 @@ For help on the syntax or functionality of each function see the help of the ind
 try:
     import numpy as np
 except:
-    print 'ERROR'
-    print ' Numpy cannot be imported '
-    print ' To use the python module of RADMC-3D you need to install Numpy'
+    print('ERROR')
+    print(' Numpy cannot be imported ')
+    print(' To use the python module of RADMC-3D you need to install Numpy')
 
 import subprocess as sp
 import os, sys, copy
@@ -95,20 +95,20 @@ def problemSetupDust(model='', binary=True, writeDustTemp=False, old=False, dfun
 
 
     if model=='':
-        print 'ERROR'
-        print 'No model name is given'
+        print('ERROR')
+        print('No model name is given')
         return
 
     if not ppar:
-        print 'problem_params.inp was not found'
+        print('problem_params.inp was not found')
         return 
 
     if ppar['grid_style'] != 0:
         if old:
-            print 'ERROR'
-            print 'problemSetupDust was called with the old switch, meaning to create a model setup'
-            print 'for the predecessor radmc code, and with the AMR activated'
-            print 'radmc does not support mesh refinement'
+            print('ERROR')
+            print('problemSetupDust was called with the old switch, meaning to create a model setup')
+            print('for the predecessor radmc code, and with the AMR activated')
+            print('radmc does not support mesh refinement')
             return
 
 # --------------------------------------------------------------------------------------------
@@ -140,9 +140,9 @@ def problemSetupDust(model='', binary=True, writeDustTemp=False, old=False, dfun
                     elif type(kwargs[ikey][i]) is str:
                         dum = dum + (kwargs[ikey][i])
                     else:
-                        print ' ERROR '
-                        print ' Unknown data type in '+ikey
-                        print kwargs[ikey][i]
+                        print(' ERROR ')
+                        print(' Unknown data type in '+ikey)
+                        print(kwargs[ikey][i])
 
                     if i<len(kwargs[ikey])-1:
                         dum = dum + ', '
@@ -204,10 +204,10 @@ def problemSetupDust(model='', binary=True, writeDustTemp=False, old=False, dfun
         try:
             mdl  = __import__('radmc3dPy.models.'+model, fromlist=['']) 
         except:
-            print 'ERROR'
-            print ' '+model+'.py could not be imported'
-            print ' The model files should either be in the current working directory or'
-            print ' in the radmc3d python module directory'
+            print('ERROR')
+            print(' '+model+'.py could not be imported')
+            print(' The model files should either be in the current working directory or')
+            print(' in the radmc3d python module directory')
             return
 # --------------------------------------------------------------------------------------------
 # Create the input radiation field (stars at this point) 
@@ -266,14 +266,14 @@ def problemSetupDust(model='', binary=True, writeDustTemp=False, old=False, dfun
         if callable(getattr(mdl, 'getDustDensity')):
             data.rhodust = mdl.getDustDensity(grid=grid, ppar=ppar)
         else:
-            print 'WARNING'
-            print ' '+model+'.py does not contain a getDustDensity() function, therefore, '
-            print ' dust_density.inp cannot be written'
+            print('WARNING')
+            print(' '+model+'.py does not contain a getDustDensity() function, therefore, ')
+            print(' dust_density.inp cannot be written')
             return 
     else:
-        print 'WARNING'
-        print ' '+model+'.py does not contain a getDustDensity() function, therefore, '
-        print ' dust_density.inp cannot be written'
+        print('WARNING')
+        print(' '+model+'.py does not contain a getDustDensity() function, therefore, ')
+        print(' dust_density.inp cannot be written')
         return 
 # --------------------------------------------------------------------------------------------
 # Create the dust temperature distribution if the model has such function
@@ -283,14 +283,14 @@ def problemSetupDust(model='', binary=True, writeDustTemp=False, old=False, dfun
             if callable(getattr(mdl, 'getDustTemperature')):
                 data.dusttemp = mdl.getDustTemperature(grid=grid, ppar=ppar)
             else:
-                print 'WARNING'
-                print ' '+model+'.py does not contain a getDustTemperature() function, therefore, '
-                print ' dust_temperature.dat cannot be written'
+                print('WARNING')
+                print(' '+model+'.py does not contain a getDustTemperature() function, therefore, ')
+                print(' dust_temperature.dat cannot be written')
                 return 
         else:
-            print 'WARNING'
-            print ' '+model+'.py does not contain a getDustTemperature() function, therefore, '
-            print ' dust_temperature.dat cannot be written'
+            print('WARNING')
+            print(' '+model+'.py does not contain a getDustTemperature() function, therefore, ')
+            print(' dust_temperature.dat cannot be written')
             return 
     #data.rhodust = mdl.get_temperature(grid=grid, ppar=ppar) * ppar['dusttogas']
 # --------------------------------------------------------------------------------------------
@@ -317,18 +317,18 @@ def problemSetupDust(model='', binary=True, writeDustTemp=False, old=False, dfun
         radSources.writeStellarsrcDensity(binary=binary)
 
     #totlum = radSources.getTotalLuminosities()
-    print '-------------------------------------------------------------'
-    print 'Luminosities of radiation sources in the model :'
+    print('-------------------------------------------------------------')
+    print('Luminosities of radiation sources in the model :')
     
     totlum = radSources.getTotalLuminosities(readInput=True)
-    print 'As calculated from the input files :'
-    print 'Stars : '
-    print ("  Star #%d + hotspot        : %.6e"%(0, totlum['lnu_star'][0]))
+    print('As calculated from the input files :')
+    print('Stars : ')
+    print(("  Star #%d + hotspot        : %.6e"%(0, totlum['lnu_star'][0])))
     for istar in range(1,radSources.nstar):
-        print ("  Star #%d               : %.6e"%(istar, totlum['lnu_star'][istar]))
-    print ("Continuous starlike source : %.6e"%totlum['lnu_accdisk'])
-    print ' '
-    print '-------------------------------------------------------------'
+        print(("  Star #%d               : %.6e"%(istar, totlum['lnu_star'][istar])))
+    print(("Continuous starlike source : %.6e"%totlum['lnu_accdisk']))
+    print(' ')
+    print('-------------------------------------------------------------')
 
     #Dust density distribution
     if ppar['grid_style'] == 1:
@@ -452,8 +452,8 @@ def problemSetupGas(model='', fullsetup=False, binary=True,  writeGasTemp=False,
     
 
     if not ppar:
-        print 'ERROR'
-        print 'problem_params.inp was not found'
+        print('ERROR')
+        print('problem_params.inp was not found')
         return
     
 # --------------------------------------------------------------------------------------------
@@ -485,9 +485,9 @@ def problemSetupGas(model='', fullsetup=False, binary=True,  writeGasTemp=False,
                     elif type(kwargs[ikey][i]) is str:
                         dum = dum + (kwargs[ikey][i])
                     else:
-                        print ' ERROR '
-                        print ' Unknown data type in '+ikey
-                        print kwargs[ikey][i]
+                        print(' ERROR ')
+                        print(' Unknown data type in '+ikey)
+                        print(kwargs[ikey][i])
 
                     if i<len(kwargs[ikey])-1:
                         dum = dum + ', '
@@ -509,10 +509,10 @@ def problemSetupGas(model='', fullsetup=False, binary=True,  writeGasTemp=False,
         try:
             mdl  = __import__('radmc3dPy.models.'+model, fromlist=['']) 
         except:
-            print 'ERROR'
-            print ' '+model+'.py could not be imported'
-            print ' The model files should either be in the current working directory or'
-            print ' in the radmc3d python module directory'
+            print('ERROR')
+            print(' '+model+'.py could not be imported')
+            print(' The model files should either be in the current working directory or')
+            print(' in the radmc3d python module directory')
             return 
 
 # --------------------------------------------------------------------------------------------
@@ -606,18 +606,18 @@ def problemSetupGas(model='', fullsetup=False, binary=True,  writeGasTemp=False,
             radSources.writeStellarsrcTemplates()
             radSources.writeStellarsrcDensity(binary=binary)
     
-        print '-------------------------------------------------------------'
-        print 'Luminosities of radiation sources in the model :'
+        print('-------------------------------------------------------------')
+        print('Luminosities of radiation sources in the model :')
         
         totlum = radSources.getTotalLuminosities(readInput=True)
-        print 'As calculated from the input files :'
-        print 'Stars : '
-        print ("  Star #%d + hotspot        : %.6e"%(0, totlum['lnu_star'][0]))
+        print('As calculated from the input files :')
+        print('Stars : ')
+        print(("  Star #%d + hotspot        : %.6e"%(0, totlum['lnu_star'][0])))
         for istar in range(1,radSources.nstar):
-            print ("  Star #%d               : %.6e"%(istar, totlum['lnu_star'][istar]))
-        print ("Continuous starlike source : %.6e"%totlum['lnu_accdisk'])
-        print ' '
-        print '-------------------------------------------------------------'
+            print(("  Star #%d               : %.6e"%(istar, totlum['lnu_star'][istar])))
+        print(("Continuous starlike source : %.6e"%totlum['lnu_accdisk']))
+        print(' ')
+        print('-------------------------------------------------------------')
 
         
         #radmc3d.inp
@@ -645,9 +645,9 @@ def problemSetupGas(model='', fullsetup=False, binary=True,  writeGasTemp=False,
             if ppar['grid_style'] == 1:
                 data.rhogas = mdl.getGasDensity(grid=grid, ppar=ppar)
     else:
-        print 'WARNING'
-        print ' '+model+'.py does not contain a getGasDensity() function, therefore, '
-        print ' numberdens_***.inp cannot be written'
+        print('WARNING')
+        print(' '+model+'.py does not contain a getGasDensity() function, therefore, ')
+        print(' numberdens_***.inp cannot be written')
         return 
        
 # --------------------------------------------------------------------------------------------
@@ -676,9 +676,9 @@ def problemSetupGas(model='', fullsetup=False, binary=True,  writeGasTemp=False,
                     data.writeGasDens(ispec=ppar['gasspec_colpart_name'][icp], binary=binary)
 
     else:
-        print 'WARNING'
-        print ' '+model+'.py does not contain a getGasAbundance() function, and no "gasspec_mol_abun" '
-        print ' parameter is found in the problem_setup.inp file. numberdens_***.inp cannot be written'
+        print('WARNING')
+        print(' '+model+'.py does not contain a getGasAbundance() function, and no "gasspec_mol_abun" ')
+        print(' parameter is found in the problem_setup.inp file. numberdens_***.inp cannot be written')
         return
 
 # --------------------------------------------------------------------------------------------
@@ -693,9 +693,9 @@ def problemSetupGas(model='', fullsetup=False, binary=True,  writeGasTemp=False,
             else:
                 data.writeGasVel(binary=binary) 
     else:
-        print 'WARNING'
-        print ' '+model+'.py does not contain a getVelocity() function, therefore, '
-        print ' gas_velocity.inp cannot be written'
+        print('WARNING')
+        print(' '+model+'.py does not contain a getVelocity() function, therefore, ')
+        print(' gas_velocity.inp cannot be written')
         return
     
 # --------------------------------------------------------------------------------------------
@@ -712,9 +712,9 @@ def problemSetupGas(model='', fullsetup=False, binary=True,  writeGasTemp=False,
                 else:
                     data.writeGasTemp(binary=binary) 
         else:
-            print 'WARNING'
-            print ' '+model+'.py does not contain a getGasTemperature() function, therefore, '
-            print ' gas_temperature.inp cannot be written'
+            print('WARNING')
+            print(' '+model+'.py does not contain a getGasTemperature() function, therefore, ')
+            print(' gas_temperature.inp cannot be written')
             return
 
 # --------------------------------------------------------------------------------------------
@@ -758,8 +758,8 @@ def writeRadmcInp(modpar=None, nphot=None):
     try :
         wfile = open(fname, 'w')
     except:
-        print 'Error!' 
-        print fname+' cannot be opened!'
+        print('Error!' )
+        print(fname+' cannot be opened!')
         return 
 
     wfile.write("nphot       =    %d\n"%(nphot))
@@ -815,7 +815,7 @@ def writeRadmc3dInp(modpar=None):
         if modpar.pblock[ikey]=='Code parameters':
             ppar[ikey] = modpar.ppar[ikey]
 
-    print 'Writing radmc3d.inp'
+    print('Writing radmc3d.inp')
 
     wfile = open('radmc3d.inp', 'w')
     keys = ppar.keys()
@@ -844,8 +844,8 @@ def writeLinesInp(ppar=None):
     n3 = len(ppar['gasspec_mol_dbase_type'])
 
     if ((n1!=n2)|(n2!=n3)):
-        print ' ERROR '
-        print ' gasspec_mol_name, gasspec_mol_abun and gasspec_mol_dbase_type have different number of elements'
+        print(' ERROR ')
+        print(' gasspec_mol_name, gasspec_mol_abun and gasspec_mol_dbase_type have different number of elements')
         return 
 
     if ppar.has_key('gasspec_colpart_name') & ppar.has_key('gasspec_colpart_abun'):
@@ -856,12 +856,12 @@ def writeLinesInp(ppar=None):
         n5 = 0
 
     if (n4!=n5):
-        print ' ERROR '
-        print ' gasspec_colpart_name and gasspec_colpart_abun have different number of elements'
+        print(' ERROR ')
+        print(' gasspec_colpart_name and gasspec_colpart_abun have different number of elements')
         return 
 
 
-    print 'Writing lines.inp'
+    print('Writing lines.inp')
     wfile = open('lines.inp', 'w')
     # File format
     wfile.write("%d\n"%ppar['lines_mode'])
@@ -880,9 +880,9 @@ def writeLinesInp(ppar=None):
             for icp in range(n4):
                 wfile.write("%s\n"%ppar['gasspec_colpart_name'][icp])
         else:
-            print ' ERROR'
-            print ' An NLTE line excitation method is selected (lines_mode='+("%d"%ppar["lines_mode"])+'), but no collisional'
-            print ' partner is given in the parameter file. '
+            print(' ERROR')
+            print(' An NLTE line excitation method is selected (lines_mode='+("%d"%ppar["lines_mode"])+'), but no collisional')
+            print(' partner is given in the parameter file. ')
             wfile.close()
             return
 
@@ -934,10 +934,10 @@ def validateModel(model='', dustModel=False, gasModel=False, writeDustTemp=False
         try:
             mdl  = __import__('radmc3dPy.models.'+model, fromlist=['']) 
         except:
-            print 'ERROR'
-            print ' '+model+'.py could not be imported'
-            print ' The model files should either be in the current working directory or'
-            print ' in the radmc3d python module directory'
+            print('ERROR')
+            print(' '+model+'.py could not be imported')
+            print(' The model files should either be in the current working directory or')
+            print(' in the radmc3d python module directory')
             return
 
 
@@ -948,42 +948,42 @@ def validateModel(model='', dustModel=False, gasModel=False, writeDustTemp=False
     fnamelist = [f[0] for f in inspect.getmembers(mdl) if inspect.isfunction(f[1])]
     
     if 'getDefaultParams' not in fnamelist:
-        print 'ERROR'
-        print model + ' does not contain a function to provide default parameters (getDefaultParams)'
+        print('ERROR')
+        print(model + ' does not contain a function to provide default parameters (getDefaultParams)')
         isValid = False
 
     if dustModel:
         if 'getDustDensity' not in fnamelist:
-            print 'ERROR'
-            print model + ' does not contain a function to provide dust density (getDustDensity)'
+            print('ERROR')
+            print(model + ' does not contain a function to provide dust density (getDustDensity)')
             isValid = False
            
         if writeDustTemp:
             if 'getDustTemperature' not in fnamelist:
-                print 'ERROR'
-                print model + ' does not contain a function to provide dust temperature (getDustTemperature)'
-                print 'yet the setup function has been called with the option to write the dust temperature.'
+                print('ERROR')
+                print(model + ' does not contain a function to provide dust temperature (getDustTemperature)')
+                print('yet the setup function has been called with the option to write the dust temperature.')
                 isValid = False
 
     if gasModel:
         if 'getGasDensity' not in fnamelist:
-            print 'ERROR'
-            print model + ' does not contain a function to provide gas density (getGasDensity)'
+            print('ERROR')
+            print(model + ' does not contain a function to provide gas density (getGasDensity)')
             isValid = False
 
         if 'getGasAbundance' not in fnamelist:
-            print 'ERROR'
-            print model + ' does not contain a function to provide molecular abundance (getGasAbundance)'
+            print('ERROR')
+            print(model + ' does not contain a function to provide molecular abundance (getGasAbundance)')
             isValid = False
         
         if 'getVTurb' not in fnamelist:
-            print 'ERROR'
-            print model + ' does not contain a function to provide turbulent velocity (getVTurb)'
+            print('ERROR')
+            print(model + ' does not contain a function to provide turbulent velocity (getVTurb)')
             isValid = False
 
         if 'getVelocity' not in fnamelist:
-            print 'ERROR'
-            print model + ' does not contain a function to provide gas velocity (getVelocity)'
+            print('ERROR')
+            print(model + ' does not contain a function to provide gas velocity (getVelocity)')
             isValid = False
 
     #
@@ -998,17 +998,17 @@ def validateModel(model='', dustModel=False, gasModel=False, writeDustTemp=False
                 argnames += ', '+iarg
         if octree:
             if len(arglist)<5:
-                print 'ERROR'
-                print model+'.getDustDensity() has only '+("%d"%len(arglist))+' arguments : ', argnames
-                print 'To use octree the argument list should be :'
-                print 'x=None, y=None, z=None, grid=None, ppar=None)'
+                print('ERROR')
+                print(model+'.getDustDensity() has only '+("%d"%len(arglist))+' arguments : ', argnames)
+                print('To use octree the argument list should be :')
+                print('x=None, y=None, z=None, grid=None, ppar=None)')
                 isValid = False
         else:
             if len(arglist)<2:
-                print 'ERROR'
-                print model+'.getDustDensity() has only '+("%d"%len(arglist))+' arguments : ', argnames
-                print 'The minimal argument list of a model function should be :'
-                print 'grid=None, ppar=None)'
+                print('ERROR')
+                print(model+'.getDustDensity() has only '+("%d"%len(arglist))+' arguments : ', argnames)
+                print('The minimal argument list of a model function should be :')
+                print('grid=None, ppar=None)')
                 isValid = False
 
 
@@ -1021,17 +1021,17 @@ def validateModel(model='', dustModel=False, gasModel=False, writeDustTemp=False
                     argnames += ', '+iarg
             if octree:
                 if len(arglist)<5:
-                    print 'ERROR'
-                    print model+'.getDustTemperature() has only '+("%d"%len(arglist))+' arguments : ', argnames
-                    print 'To use octree the argument list should be :'
-                    print 'x=None, y=None, z=None, grid=None, ppar=None)'
+                    print('ERROR')
+                    print(model+'.getDustTemperature() has only '+("%d"%len(arglist))+' arguments : ', argnames)
+                    print('To use octree the argument list should be :')
+                    print('x=None, y=None, z=None, grid=None, ppar=None)')
                     isValid = False
             else:
                 if len(arglist)<2:
-                    print 'ERROR'
-                    print model+'.getDustTemperature() has only '+("%d"%len(arglist))+' arguments : ', argnames
-                    print 'The minimal argument list of a model function should be :'
-                    print 'grid=None, ppar=None)'
+                    print('ERROR')
+                    print(model+'.getDustTemperature() has only '+("%d"%len(arglist))+' arguments : ', argnames)
+                    print('The minimal argument list of a model function should be :')
+                    print('grid=None, ppar=None)')
                     isValid = False
 
     if gasModel:
@@ -1043,17 +1043,17 @@ def validateModel(model='', dustModel=False, gasModel=False, writeDustTemp=False
                 argnames += ', '+iarg
         if octree:
             if len(arglist)<5:
-                print 'ERROR'
-                print model+'.getGasDensity() has only '+("%d"%len(arglist))+' arguments : ', argnames
-                print 'To use octree the argument list should be :'
-                print 'x=None, y=None, z=None, grid=None, ppar=None)'
+                print('ERROR')
+                print(model+'.getGasDensity() has only '+("%d"%len(arglist))+' arguments : ', argnames)
+                print('To use octree the argument list should be :')
+                print('x=None, y=None, z=None, grid=None, ppar=None)')
                 isValid = False
         else:
             if len(arglist)<2:
-                print 'ERROR'
-                print model+'.getGasDensity() has only '+("%d"%len(arglist))+' arguments : ', argnames
-                print 'The minimal argument list of a model function should be :'
-                print 'grid=None, ppar=None)'
+                print('ERROR')
+                print(model+'.getGasDensity() has only '+("%d"%len(arglist))+' arguments : ', argnames)
+                print('The minimal argument list of a model function should be :')
+                print('grid=None, ppar=None)')
                 isValid = False
 
 
@@ -1065,17 +1065,17 @@ def validateModel(model='', dustModel=False, gasModel=False, writeDustTemp=False
                 argnames += ', '+iarg
         if octree:
             if len(arglist)<5:
-                print 'ERROR'
-                print model+'.getGasAbundance() has only '+("%d"%len(arglist))+' arguments : ', argnames
-                print 'To use octree the argument list should be :'
-                print 'x=None, y=None, z=None, grid=None, ppar=None)'
+                print('ERROR')
+                print(model+'.getGasAbundance() has only '+("%d"%len(arglist))+' arguments : ', argnames)
+                print('To use octree the argument list should be :')
+                print('x=None, y=None, z=None, grid=None, ppar=None)')
                 isValid = False
         else:
             if len(arglist)<2:
-                print 'ERROR'
-                print model+'.getGasAbundance() has only '+("%d"%len(arglist))+' arguments : ', argnames
-                print 'The minimal argument list of a model function should be :'
-                print 'grid=None, ppar=None)'
+                print('ERROR')
+                print(model+'.getGasAbundance() has only '+("%d"%len(arglist))+' arguments : ', argnames)
+                print('The minimal argument list of a model function should be :')
+                print('grid=None, ppar=None)')
                 isValid = False
 
         arglist = inspect.getargspec(mdl.getVTurb).args
@@ -1086,17 +1086,17 @@ def validateModel(model='', dustModel=False, gasModel=False, writeDustTemp=False
                 argnames += ', '+iarg
         if octree:
             if len(arglist)<5:
-                print 'ERROR'
-                print model+'.getVTurb() has only '+("%d"%len(arglist))+' arguments : ', argnames
-                print 'To use octree the argument list should be :'
-                print 'x=None, y=None, z=None, grid=None, ppar=None)'
+                print('ERROR')
+                print(model+'.getVTurb() has only '+("%d"%len(arglist))+' arguments : ', argnames)
+                print('To use octree the argument list should be :')
+                print('x=None, y=None, z=None, grid=None, ppar=None)')
                 isValid = False
         else:
             if len(arglist)<2:
-                print 'ERROR'
-                print model+'.getVTurb() has only '+("%d"%len(arglist))+' arguments : ', argnames
-                print 'The minimal argument list of a model function should be :'
-                print 'grid=None, ppar=None)'
+                print('ERROR')
+                print(model+'.getVTurb() has only '+("%d"%len(arglist))+' arguments : ', argnames)
+                print('The minimal argument list of a model function should be :')
+                print('grid=None, ppar=None)')
                 isValid = False
 
 
@@ -1108,17 +1108,17 @@ def validateModel(model='', dustModel=False, gasModel=False, writeDustTemp=False
                 argnames += ', '+iarg
         if octree:
             if len(arglist)<5:
-                print 'ERROR'
-                print model+'.getVelocity() has only '+("%d"%len(arglist))+' arguments : ', argnames
-                print 'To use octree the argument list should be :'
-                print 'x=None, y=None, z=None, grid=None, ppar=None)'
+                print('ERROR')
+                print(model+'.getVelocity() has only '+("%d"%len(arglist))+' arguments : ', argnames)
+                print('To use octree the argument list should be :')
+                print('x=None, y=None, z=None, grid=None, ppar=None)')
                 isValid = False
         else:
             if len(arglist)<2:
-                print 'ERROR'
-                print model+'.getVelocity() has only '+("%d"%len(arglist))+' arguments : ', argnames
-                print 'The minimal argument list of a model function should be :'
-                print 'grid=None, ppar=None)'
+                print('ERROR')
+                print(model+'.getVelocity() has only '+("%d"%len(arglist))+' arguments : ', argnames)
+                print('The minimal argument list of a model function should be :')
+                print('grid=None, ppar=None)')
                 isValid = False
 
     

@@ -5,24 +5,24 @@ For help on the syntax or functionality of each function see the help of the ind
 try:
     import matplotlib.pylab as plb
 except:
-    print ' WARNING'
-    print ' matploblib.pylab cannot be imported ' 
-    print ' To used the visualization functionality of the python module of RADMC-3D you need to install matplotlib'
-    print ' Without matplotlib you can use the python module to set up a model but you will not be able to plot things or'
-    print ' display images'
+    print(' WARNING')
+    print(' matploblib.pylab cannot be imported ' )
+    print(' To used the visualization functionality of the python module of RADMC-3D you need to install matplotlib')
+    print(' Without matplotlib you can use the python module to set up a model but you will not be able to plot things or')
+    print(' display images')
 try:
     import numpy as np
 except:
-    print 'ERROR'
-    print ' Numpy cannot be imported '
-    print ' To use the python module of RADMC-3D you need to install Numpy'
+    print('ERROR')
+    print(' Numpy cannot be imported ')
+    print(' To use the python module of RADMC-3D you need to install Numpy')
 
 try:
     import scipy.special as spc
 except:
-    print 'WARNING'
-    print ' scipy.special cannot be imported '
-    print ' This module is required to be able to calculate Airy-PSFs. Now PSF calculation is limited to Gaussian.'
+    print('WARNING')
+    print(' scipy.special cannot be imported ')
+    print(' This module is required to be able to calculate Airy-PSFs. Now PSF calculation is limited to Gaussian.')
 
 try:
     import pyfits as pf
@@ -30,10 +30,10 @@ except:
     try:
         from astropy.io import fits as pf
     except:
-        print 'WARNING'
-        print ' PyFits (or astropy.io.fits) cannot be imported'
-        print ' The PyFits/astropy.io.fits module is needed to write RADMC-3D images to FITS format'
-        print ' Without PyFits no fits file can be written'
+        print('WARNING')
+        print(' PyFits (or astropy.io.fits) cannot be imported')
+        print(' The PyFits/astropy.io.fits module is needed to write RADMC-3D images to FITS format')
+        print(' Without PyFits no fits file can be written')
 
 import copy
 import subprocess as sp
@@ -165,7 +165,7 @@ class radmc3dImage(object):
         dm  = m[1]-m[0]
         
         for itri in range(res['ntri']):
-            print 'Calculating baseline triangle # : ', itri
+            print('Calculating baseline triangle # : ', itri)
             
             dum = self.get_visibility(bl=res['bl'][itri,:], pa=res['pa'][itri,:], dpc=dpc)
             res['u'][itri,:,:] = dum['u']
@@ -260,7 +260,7 @@ class radmc3dImage(object):
                 if imag(dum)<0.:
                     res['phase'][ibl, iwav] = 2.*np.pi - res['phase'][ibl, iwav]
                      
-                print 'Calculating baseline # : ', ibl, ' wavelength # : ', iwav 
+                print('Calculating baseline # : ', ibl, ' wavelength # : ', iwav )
 
         return res
 # --------------------------------------------------------------------------------------------------
@@ -323,11 +323,11 @@ class radmc3dImage(object):
         for i in delim:
             ind = dum.find(i)
             if ind<=0:
-                print 'ERROR'
-                print 'coord keyword has a wrong format'
-                print 'coord="0h10m05s -10d05m30s"'
-                print ra
-                print dum
+                print('ERROR')
+                print('coord keyword has a wrong format')
+                print('coord="0h10m05s -10d05m30s"')
+                print(ra)
+                print(dum)
                 return
             ra.append(float(dum[:ind]))
             dum = dum[ind+1:]
@@ -337,9 +337,9 @@ class radmc3dImage(object):
         for i in delim:
             ind = dum.find(i)
             if ind<=0:
-                print 'ERROR'
-                print 'coord keyword has a wrong format'
-                print 'coord="0h10m05s -10d05m30s"'
+                print('ERROR')
+                print('coord keyword has a wrong format')
+                print('coord="0h10m05s -10d05m30s"')
                 return
             dec.append(float(dum[:ind]))
             dum = dum[ind+1:]
@@ -487,13 +487,13 @@ class radmc3dImage(object):
                     hdulist[0].header.set(ikey, fitsheadkeys[ikey], '')
 
         if os.path.exists(fname):
-            print fname+' already exists'
+            print(fname+' already exists')
             dum = raw_input('Do you want to overwrite it (yes/no)?')
             if (dum.strip()[0]=='y')|(dum.strip()[0]=='Y'):
                 os.remove(fname)
                 hdu.writeto(fname)
             else:
-                print 'No image has been written'
+                print('No image has been written')
         else:
             hdu.writeto(fname)
 # --------------------------------------------------------------------------------------------------
@@ -533,17 +533,17 @@ class radmc3dImage(object):
         # I/O error handling
         if nu0==0:
             if wav0==0:
-                print 'ERROR'
-                print 'Neither rest frequency (nu0) nor rest wavelength (wav0) of the line is specified'
+                print('ERROR')
+                print('Neither rest frequency (nu0) nor rest wavelength (wav0) of the line is specified')
                 return
             else:
                 nu0 = 2.99792458e10/wav0*1e4
         
 
         if len(self.image.shape)!=3:
-            print 'ERROR'
-            print ' Channel map calculation requires a three dimensional array with Nx * Ny * Nnu dimensions'
-            print ' The current image array contains '+str(len(self.image.shape))+' dimensions'
+            print('ERROR')
+            print(' Channel map calculation requires a three dimensional array with Nx * Ny * Nnu dimensions')
+            print(' The current image array contains '+str(len(self.image.shape))+' dimensions')
             return
 
         mmap = self.get_momentmap(moment=moment, nu0=nu0, wav0=wav0)
@@ -587,8 +587,8 @@ class radmc3dImage(object):
 
         if vclip!=None:
             if len(vclip)!=2:
-                print 'ERROR'
-                print 'vclip should be a two element list with (clipmin, clipmax)'
+                print('ERROR')
+                print('vclip should be a two element list with (clipmin, clipmax)')
                 return
             else:
                 mmap = mmap.clip(vclip[0], vclip[1])
@@ -621,17 +621,17 @@ class radmc3dImage(object):
         # I/O error handling
         if nu0==0:
             if wav0==0:
-                print 'ERROR'
-                print 'Neither rest frequency (nu0) nor rest wavelength (wav0) of the line is specified'
+                print('ERROR')
+                print('Neither rest frequency (nu0) nor rest wavelength (wav0) of the line is specified')
                 return
             else:
                 nu0 = 2.99792458e10/wav0*1e4
         
 
         if len(self.image.shape)!=3:
-            print 'ERROR'
-            print ' Channel map calculation requires a three dimensional array with Nx * Ny * Nnu dimensions'
-            print ' The current image array contains '+str(len(self.image.shape))+' dimensions'
+            print('ERROR')
+            print(' Channel map calculation requires a three dimensional array with Nx * Ny * Nnu dimensions')
+            print(' The current image array contains '+str(len(self.image.shape))+' dimensions')
             return
         
         # First calculate the velocity field
@@ -676,8 +676,8 @@ class radmc3dImage(object):
             try:
                 rfile = open(fname, 'r')
             except:
-                print 'ERROR!'
-                print 'No '+fname+' file has been found!'
+                print('ERROR!')
+                print('No '+fname+' file has been found!')
                 return -1
             
             dum = rfile.readline().split()
@@ -739,8 +739,8 @@ class radmc3dImage(object):
                 try:
                     rfile = open(fname, 'r')
                 except:
-                    print 'ERROR!'
-                    print 'No '+fname+' file has been found!'
+                    print('ERROR!')
+                    print('No '+fname+' file has been found!')
                     return -1
             
                 dum = ''
@@ -1063,9 +1063,9 @@ def getPSF(nx=None, ny=None, psfType='gauss', pscale=None,  fwhm=None, pa=None, 
 
         # Check whether scipy was successfully imported
         if not spc:
-            print 'ERROR'
-            print 'scipy.special was not imported'
-            print 'PSF calculation is limited to Gaussian'
+            print('ERROR')
+            print('scipy.special was not imported')
+            print('PSF calculation is limited to Gaussian')
             return None
 
         # Unit conversion
@@ -1162,9 +1162,9 @@ def plotPolDir(image=None, arcsec=False, au=False, dpc=None, ifreq=0, cmask_rad=
     #
 
     if not image.stokes:
-        print 'ERROR'
-        print 'The image is not a full stokes image. Polarisation direction can only be displayed if '
-        print 'the full stokes vector is present at every pixel of the image'
+        print('ERROR')
+        print('The image is not a full stokes image. Polarisation direction can only be displayed if ')
+        print('the full stokes vector is present at every pixel of the image')
         return
     
 # Natural constants
@@ -1377,8 +1377,8 @@ def plotImage(image=None, arcsec=False, au=False, log=False, dpc=None, maxlog=No
             cb_label = 'I'+r'$_\nu$'+' [erg/s/cm/cm/Hz/ster]'
     elif (bunit=='snu'):
         if dpc==None:
-            print 'ERROR'
-            print ' If Jy/pixel is selected for the image unit the dpc keyword should also be set'
+            print('ERROR')
+            print(' If Jy/pixel is selected for the image unit the dpc keyword should also be set')
             return
         else:
             if log:
@@ -1397,8 +1397,8 @@ def plotImage(image=None, arcsec=False, au=False, log=False, dpc=None, maxlog=No
                     cb_label = 'S'+r'$_\nu$'+' [Jy/pixel]'
 
     else:
-        print 'ERROR'
-        print 'Unknown image unit : '+bunit
+        print('ERROR')
+        print('Unknown image unit : '+bunit)
         return
 # Set the color bar boundaries
     if log:
@@ -1553,46 +1553,46 @@ def makeImage(npix=None, incl=None, wav=None, sizeau=None, phi=None, posang=None
 # The basic keywords that should be set
 #
     if (npix==None):
-        print 'ERROR!'
-        print ' npix keyword is not set'
+        print('ERROR!')
+        print(' npix keyword is not set')
         return -1
     if (incl==None):
-        print 'ERROR!'
-        print ' incl keyword is not set'
+        print('ERROR!')
+        print(' incl keyword is not set')
         return -1
     if (wav==None):
         if (lambdarange==None)&(nlam==None):
             if (vkms==None):
                 if (widthkms==None)&(linenlam==None):
-                    print 'ERROR!'
-                    print ' Neither wavelength nor velocity is specified at which the image should be calculated'
+                    print('ERROR!')
+                    print(' Neither wavelength nor velocity is specified at which the image should be calculated')
                     return -1
                 else:
                     if (iline==None):
-                        print 'ERROR'
-                        print 'widthkms, linenlam keywords are set indicating a line channel map, but the iline keyword is not specified'
+                        print('ERROR')
+                        print('widthkms, linenlam keywords are set indicating a line channel map, but the iline keyword is not specified')
                         return -1
             else:
                 if (iline==None):
-                    print 'ERROR'
-                    print 'vkms keyword is set indicating a line channel map, but the iline keyword is not specified'
+                    print('ERROR')
+                    print('vkms keyword is set indicating a line channel map, but the iline keyword is not specified')
                     return -1
 
     else:
         if lambdarange!=None:
-            print 'ERROR'
-            print 'Either lambdarange or wav should be set but not both'
+            print('ERROR')
+            print('Either lambdarange or wav should be set but not both')
             return -1
 
     if lambdarange!=None:
         if len(lambdarange)!=2:
-            print 'ERROR'
-            print 'lambdarange must have two and only two elements'
+            print('ERROR')
+            print('lambdarange must have two and only two elements')
             return -1
 
     if (sizeau==None):
-        print 'ERROR!'
-        print ' sizeau keyword is not set'
+        print('ERROR!')
+        print(' sizeau keyword is not set')
         return -1
 
     
@@ -1629,9 +1629,9 @@ def makeImage(npix=None, incl=None, wav=None, sizeau=None, phi=None, posang=None
 
     if (pointau!=None):
         if (len(pointau)!=3):
-            print 'ERROR'
-            print ' pointau should be a list of 3 elements corresponding to the '
-            print ' cartesian coordinates of the image center'
+            print('ERROR')
+            print(' pointau should be a list of 3 elements corresponding to the ')
+            print(' cartesian coordinates of the image center')
             return -1
         else:
             com = com + ' pointau ' + str(pointau[0]) + ' ' + str(pointau[1]) + ' ' + str(pointau[2]) 
@@ -1694,8 +1694,8 @@ def cmask(im=None, rad=0.0, au=False, arcsec=False, dpc=None):
 
     if au:
         if arcsec:
-            print 'ERROR'
-            print ' Either au or arcsec should be set, but not both of them'
+            print('ERROR')
+            print(' Either au or arcsec should be set, but not both of them')
             return
        
         crad = rad*1.496e+13

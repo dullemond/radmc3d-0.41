@@ -108,10 +108,10 @@ class StellarAtm():
             wav  = sp['wav'] 
             ilnu = self.rebinSpectrum(wav=sp['wav'], fnu=sp['lnu'], iwav=iwav)
         else:
-            print 'ERROR'
-            print 'Unknown atmosphere model : ', model
-            print 'The model keyword can only be either "Kurucz" or "NextGen"'
-            print 'Current model name is : ', model
+            print('ERROR')
+            print('Unknown atmosphere model : ', model)
+            print('The model keyword can only be either "Kurucz" or "NextGen"')
+            print('Current model name is : ', model)
             
             return
 
@@ -181,16 +181,16 @@ class StellarAtm():
 
         mstar = 10.**logg * rstar**2/gg
 
-        print '-------------------------------------------'
-        print 'Interpolating in Kurucz model atmospheres'
-        print 'Stellar parameters: '
-        print '-------------------------------------------'
-        print 'Teff [K]          : ', teff
-        print 'Radius [Rsun]     : ', rstar/rs
-        print 'Luminosity [Lsun] : ', lstar/ls
-        print 'Mass [Msun]       : ', mstar/ms 
-        print 'logg              : ', logg
-        print '-------------------------------------------'
+        print('-------------------------------------------')
+        print('Interpolating in Kurucz model atmospheres')
+        print('Stellar parameters: ')
+        print('-------------------------------------------')
+        print('Teff [K]          : ', teff)
+        print('Radius [Rsun]     : ', rstar/rs)
+        print('Luminosity [Lsun] : ', lstar/ls)
+        print('Mass [Msun]       : ', mstar/ms )
+        print('logg              : ', logg)
+        print('-------------------------------------------')
 
 
         dum = self.readKuruczGrid(fname=self.kuruczDir+'/fp00k2.pck')
@@ -289,14 +289,14 @@ class StellarAtm():
                 spc.append(squeeze(dum['inucont'][ii,:]))
 
             if len(x)!=3:
-                print 'Something went wrong..'
-                print 'Only 3 valid points should have been found and I found '+("%d"%len(x))
+                print('Something went wrong..')
+                print('Only 3 valid points should have been found and I found '+("%d"%len(x)))
                 return -1
 
             else:
-                print 'Bracketed spectrum with Teff : ',teff , ' and logg : ',logg
-                print 'Teff grid : ', x
-                print 'Logg grid : ', y
+                print('Bracketed spectrum with Teff : ',teff , ' and logg : ',logg)
+                print('Teff grid : ', x)
+                print('Logg grid : ', y)
             
             c1 = ( (y[1]-y[2])*(teff-x[2]) + (x[2]-x[1])*(logg-y[2]) ) / ( (y[1]-y[2])*(x[0]-x[2]) + (x[2]-x[1])*(y[0]-y[2]) )
             c2 = ( (y[2]-y[0])*(teff-x[2]) + (x[0]-x[2])*(logg-y[2]) ) / ( (y[1]-y[2])*(x[0]-x[2]) + (x[2]-x[1])*(y[0]-y[2]) )
@@ -307,9 +307,9 @@ class StellarAtm():
 
            
         else:
-            print 'Bracketed spectrum with Teff : ',teff ,' and logg : ',logg
-            print 'Teff grid : ', teff_grid[idt1], teff_grid[idt2]
-            print 'Logg grid : ', logg_grid_lower[idgl1], logg_grid_lower[idgl2]
+            print('Bracketed spectrum with Teff : ',teff ,' and logg : ',logg)
+            print('Teff grid : ', teff_grid[idt1], teff_grid[idt2])
+            print('Logg grid : ', logg_grid_lower[idgl1], logg_grid_lower[idgl2])
             #
             # Do the standard four point bilinear interpolation
             #
@@ -499,7 +499,7 @@ class StellarAtm():
         
         """
 
-        print 'Reading : ', fname
+        print('Reading : ', fname)
         rfile = open(fname, 'r')
         dum = rfile.readline()
         sdum = dum.split()
@@ -570,7 +570,7 @@ class StellarAtm():
 
         ifnu = np.zeros(iiwav.shape[0]-1, dtype=float)
         for i in range(iiwav.shape[0]-1):
-            print i, iiwav.shape[0]
+            print(i, iiwav.shape[0])
             ii =( (wav>iiwav[i])&(wav<=iiwav[i+1]) )
             if ii.__contains__(True):
                 x = wav[ii]
@@ -635,16 +635,16 @@ class StellarAtm():
 
         mstar = 10.**logg * rstar**2/gg
 
-        print '-------------------------------------------'
-        print 'Interpolating in NextGen model atmospheres'
-        print 'Stellar parameters: '
-        print '-------------------------------------------'
-        print 'Teff [K]          : ', teff
-        print 'Radius [Rsun]     : ', rstar/rs
-        print 'Luminosity [Lsun] : ', lstar/ls
-        print 'Mass [Msun]       : ', mstar/ms 
-        print 'logg              : ', logg
-        print '-------------------------------------------'
+        print('-------------------------------------------')
+        print('Interpolating in NextGen model atmospheres')
+        print('Stellar parameters: ')
+        print('-------------------------------------------')
+        print('Teff [K]          : ', teff)
+        print('Radius [Rsun]     : ', rstar/rs)
+        print('Luminosity [Lsun] : ', lstar/ls)
+        print('Mass [Msun]       : ', mstar/ms )
+        print('logg              : ', logg)
+        print('-------------------------------------------')
 
 
         teff_grid = np.append( (np.arange(31.)+9.), (np.arange(30.)*2.+40.))
@@ -677,9 +677,9 @@ class StellarAtm():
             idg2 = idg1+1
 
         
-        print 'Bracketing spectrum : ', teff, logg
-        print 'Teff  : ', teff_grid[idt1], teff_grid[idt2]
-        print 'log(g): ', logg_grid[idg1], logg_grid[idg2]
+        print('Bracketing spectrum : ', teff, logg)
+        print('Teff  : ', teff_grid[idt1], teff_grid[idt2])
+        print('log(g): ', logg_grid[idg1], logg_grid[idg2])
 
         # Generate the spectral file names
         mph = '0.0'
