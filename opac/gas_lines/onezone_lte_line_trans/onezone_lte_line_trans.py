@@ -19,18 +19,20 @@ class onezone_lte_line_trans(object):
     """
 
     def __init__(self,dust=None,molecule=None,dvkmsmax=None,nv=101,
-                 colgas=1e-4,temp=30.,vturb=1e4,molabund=1e-4,iline=0):
+                 colgas=1e-4,temp=30.,vturb=1e4,molabund=1e-4,iline=0,
+                 dusttogas=0.01):
         #
         # Model parameters (to be modified by the user)
         # 
         self.colgas     = colgas              # Column density of H2+He+XXX gas in gram/cm^2 (default value)
         self.mugas      = 2.3                 # Mean molecular weight of the gas in units of mp
         self.temp       = temp                # Temperature in K (default value)
-        self.dusttogas  = 0.01                # Dust-to-gas mass ratio (default value)
+        self.dusttogas  = dusttogas           # Dust-to-gas mass ratio (default value)
         self.vturb      = vturb               # Microturbulence in cm/s (default value)
         self.molabund   = molabund            # Abundance of molecule: molecules per gas particle (default value)
         self.iline      = iline               # The line to be modeled (default value)
         self.bgint      = 0.0                 # Background intensity for line transfer
+        self.nv         = nv                  # Nr of velocity bins
         #
         # Read the dust opacity
         #
@@ -45,6 +47,7 @@ class onezone_lte_line_trans(object):
         # Set up the nu grid
         #
         if(dvkmsmax is not None):
+            self.dvkmsmax = dvkmsmax
             self.setup_dvgrid(nv,dvkmsmax)
         
     def readmol(self,molname):
@@ -102,9 +105,15 @@ class onezone_lte_line_trans(object):
     def compute_taudust(self):
         if(hasattr(self,'nu')==False):
             raise NameError('You must first set up a grid of velocities by calling setup_dvgrid().')
-        f              = interp1d(self.dust.freq[0],self.dust.kabs[0])   # Only 1 dust species allowed
-        self.dust_kabs = f(self.nu)
-        self.taudust   = self.dust_kabs*self.dusttogas*self.colgas
+        if(self.dusttogas>0.0):
+            if(hasattr(self,'dust')==False):
+                raise NameError('You must first read in the dust opacity by calling readdust().')
+            f              = interp1d(self.dust.freq[0],self.dust.kabs[0])   # Only 1 dust species allowed
+            self.dust_kabs = f(self.nu)
+            self.taudust   = self.dust_kabs*self.dusttogas*self.colgas
+        else:
+            self.dust_kabs = 0.0
+            self.taudust   = 0.0
 
     def compute_tauline(self):
         if(hasattr(self,'nu')==False):
@@ -143,13 +152,16 @@ class onezone_lte_line_trans(object):
     def doall(self):
         if(hasattr(self,'molecule')==False):
             raise NameError('You must first call readmol() with the molecule name as argument.')
-        if(hasattr(self,'dust')==False):
+        if(hasattr(self,'dust')==False and self.dusttogas!=0.0):
             raise NameError('You must first call readdust() with the dust name as argument.')
         if(hasattr(self,'nu')==False):
             raise NameError('You must first set up a grid of velocities by calling setup_dvgrid().')
+        if(hasattr(self,'dvkmsmax')==False):
+            raise NameError('You must first set dvkmsmax.')
         self.compute_einstein_b()
         self.compute_lte()
         self.compute_numcol()
+        self.setup_dvgrid(self.nv,self.dvkmsmax)
         self.compute_lineprofile()
         self.compute_bplanck()
         self.compute_taudust()

@@ -78,4 +78,40 @@ You can also include a background intensity, for instance:
    plt.ylabel(r'$I_\nu [\mathrm{erg}\,\mathrm{cm}^{-2}\mathrm{s}^{-1}\mathrm{Hz}^{-1}\mathrm{ster}^{-1}]$')
    plt.show()
 
-2017.08.20
+If you do not want to include the dust, you can set dusttogas=0.0, and not
+specify the dust opacity (which will then also not be read):
+
+   from onezone_lte_line_trans import *
+   q = onezone_lte_line_trans(molecule='co',dvkmsmax=1.0,nv=301,dusttogas=0.0)
+   q.colgas = 1e-2      # Column density in gram-of-gas/cm^2
+   q.temp   = 60.       # Temperature of the gas in K
+   q.vturb  = 1e-1*1e5  # Turbulent velocity in cm/s
+   q.iline  = 1         # Line 1 of the molecule file (the J=2-1 of CO)
+   q.doall()
+   plt.plot(q.dvkms,q.intensity,label='Result')
+   plt.plot(q.dvkms,q.bpl,label='Planck')
+   plt.legend()
+   plt.yscale('log')
+   plt.xlabel(r'$\Delta v [\mathrm{km/s}]$')
+   plt.ylabel(r'$I_\nu [\mathrm{erg}\,\mathrm{cm}^{-2}\mathrm{s}^{-1}\mathrm{Hz}^{-1}\mathrm{ster}^{-1}]$')
+   plt.show()
+
+2017.08.20/21
+
+----------------------------------------------------------------------------
+
+I now added also a reverse-engineering routine: compute the column density
+from a given (measured) line-center flux, of course assuming that the gas
+is standing still (with the exception of microturbulent line broadning).
+Here is how to run an example: 
+
+  ipython --matplotlib
+  from line_to_coldens import *
+  q=ltctest()
+
+Please read the the ltctest() code to understand how it works.
+
+Note that this routine assumes that the dust continuum is so weak that
+it can be ignored.
+
+2017.08.22
