@@ -2135,6 +2135,7 @@ subroutine read_levelpop(action)
   ! Now loop over all species
   !
   do ispec=1,lines_nr_species
+     if(allocated(subset)) deallocate(subset)  ! Bugfix 2017.08.30
      if(lines_species_fullmolec(ispec)) then
         !
         ! Create the file name and find if the input file is present and if

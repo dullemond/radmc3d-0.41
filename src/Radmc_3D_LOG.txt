@@ -8254,3 +8254,9 @@ finetuning: I noticed during some testing with a supersimple annulus model
             that is cyclic) if the difference is equal to the periodic
             length. If so, then it is false alarm.
 
+30.08.2017  lines_module.f90/read_levelpop():
+  bugfix    If using more than one molecule, the subset must be deallocated
+            before each molecule is read. I added a line
+                 if(allocated(subset)) deallocate(subset)  ! Bugfix 2017.08.30
+            just after line 2137 in read_levelpop()
+            
