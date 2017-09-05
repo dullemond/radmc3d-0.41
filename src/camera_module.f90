@@ -1118,6 +1118,11 @@ subroutine camera_serial_raytrace(nrfreq,inu0,inu1,x,y,z,dx,dy,dz,distance,   &
 !     if(.not.allocated(camera_ray_jnu)) stop 4560
 !     if(.not.allocated(camera_ray_alpnu)) stop 4561
   endif
+  if(camera_secondorder.and.(inu0.ne.inu1)) then
+     write(stdo,*) 'ERROR: With second order integration it is impossible to '
+     write(stdo,*) 'raytrace multiple frequencies at the same time'
+     stop
+  endif
   !
   ! Set defaults
   !

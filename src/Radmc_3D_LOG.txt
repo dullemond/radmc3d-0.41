@@ -8260,3 +8260,8 @@ finetuning: I noticed during some testing with a supersimple annulus model
                  if(allocated(subset)) deallocate(subset)  ! Bugfix 2017.08.30
             just after line 2137 in read_levelpop()
             
+05.09.2017  camera_module.f90/camera_serial_raytrace()
+            I added a safety check that if second order integration is
+            used, only one frequency can be ray-traced at a time:
+            if(camera_secondorder.and.(inu0.ne.inu1)) then error.
+
