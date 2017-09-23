@@ -211,7 +211,9 @@ class radmc3dDustOpac(object):
                 idu = len(self.nwav)-1
                 
                 # Read the scattering angular grid
-                self.nang.append(int(rfile.readline()))
+                dum = rfile.readline()
+                while len(dum.strip())<2: dum = rfile.readline()
+                self.nang.append(int(dum))
                 wav     = np.zeros(self.nwav[idu], dtype = np.float64)
                 kabs    = np.zeros(self.nwav[idu], dtype = np.float64)
                 ksca    = np.zeros(self.nwav[idu], dtype = np.float64)
@@ -223,27 +225,28 @@ class radmc3dDustOpac(object):
                 z33     = np.zeros([self.nwav[idu], self.nang[idu]], dtype=np.float64) 
                 z34     = np.zeros([self.nwav[idu], self.nang[idu]], dtype=np.float64) 
                 z44     = np.zeros([self.nwav[idu], self.nang[idu]], dtype=np.float64) 
-            
                 print('Reading the opacities..')
-                dum = rfile.readline()
                 for ilam in range(self.nwav[idu]):
-                    dum      = rfile.readline().split()
+                    dum      = rfile.readline()
+                    while len(dum.strip())<2: dum = rfile.readline()
+                    dum = dum.split()
                     wav[ilam]  = float(dum[0])
                     kabs[ilam] = float(dum[1])
                     ksca[ilam] = float(dum[2])
                     phase_g[ilam] = float(dum[3])
 
                 print('Reading the angular grid..')
-                dum = rfile.readline()
                 for iang in range(self.nang[idu]):
                     dum        = rfile.readline()
+                    while len(dum.strip())<2: dum = rfile.readline()
                     scatang[iang] = float(dum)
 
                 print('Reading the scattering matrix..')
                 for ilam in range(self.nwav[idu]):
-                    dum = rfile.readline()
                     for iang in range(self.nang[idu]):
-                        dum        = rfile.readline().split()
+                        dum = rfile.readline()
+                        while len(dum.strip())<2: dum = rfile.readline()
+                        dum = dum.split()
                         z11[ilam,iang] = float(dum[0])
                         z12[ilam,iang] = float(dum[1])
                         z22[ilam,iang] = float(dum[2])
@@ -287,6 +290,7 @@ class radmc3dDustOpac(object):
 
                     # Read the number of wavelengths in the file
                     dum = rfile.readline()
+                    while len(dum.strip())<2: dum = rfile.readline()
                     self.nwav.append(int(dum))
                     self.nfreq.append(int(dum))
                     self.idust.append(idust[i])
@@ -297,7 +301,9 @@ class radmc3dDustOpac(object):
                         wav = np.zeros(self.nwav[idu], dtype=np.float64)
                         kabs = np.zeros(self.nwav[idu], dtype=np.float64)
                         for ilam in range(self.nwav[idu]):
-                            dum = rfile.readline().split()
+                            dum = rfile.readline()
+                            while len(dum.strip())<2: dum = rfile.readline()
+                            dum = dum.split()
                             wav[ilam] = float(dum[0])
                             kabs[ilam] = float(dum[1])
                         self.wav.append(wav)
@@ -311,7 +317,9 @@ class radmc3dDustOpac(object):
                         kabs = np.zeros(self.nwav[idu], dtype=np.float64)
                         ksca = np.zeros(self.nwav[idu], dtype=np.float64)
                         for ilam in range(self.nwav[idu]):
-                            dum = rfile.readline().split()
+                            dum = rfile.readline()
+                            while len(dum.strip())<2: dum = rfile.readline()
+                            dum = dum.split()
                             wav[ilam] = float(dum[0])
                             kabs[ilam] = float(dum[1])
                             ksca[ilam] = float(dum[2]) 
@@ -328,7 +336,9 @@ class radmc3dDustOpac(object):
                         ksca = np.zeros(self.nwav[idu], dtype=np.float64)
                         phase_g = np.zeros(self.nwav[idu], dtype=np.float64)
                         for ilam in range(self.nwav[idu]):
-                            dum = rfile.readline().split()
+                            dum = rfile.readline()
+                            while len(dum.strip())<2: dum = rfile.readline()
+                            dum = dum.split()
                             wav[ilam] = float(dum[0])
                             kabs[ilam] = float(dum[1])
                             ksca[ilam] = float(dum[2])

@@ -8265,3 +8265,11 @@ finetuning: I noticed during some testing with a supersimple annulus model
             used, only one frequency can be ray-traced at a time:
             if(camera_secondorder.and.(inu0.ne.inu1)) then error.
 
+23.09.2017  Added/modified opac/dust_continuum/radmc3dDustOpac.py, which
+            is a stand-alone version of the dust opacity stuff from
+            radmc3dPy/analyze.py (from Attila Juhasz). It is now a bit
+            more robust when it comes to empty lines in the dust opacity
+            files.
+
+
+           
