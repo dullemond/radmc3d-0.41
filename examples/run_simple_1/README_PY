@@ -44,6 +44,7 @@ This is what you should do to run this model:
      to learn how to do these things interactively. You can run this
      script from the python prompt with:
         from problem_plotexamples import *
+     (or if that does not work, try %run problem_plotexamples.py)
 
 One of the examples in the problem_plotexamples.py is how to make a
 spectral energy distribution. Go into ipython --matplotlib and type
