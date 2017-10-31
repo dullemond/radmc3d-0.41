@@ -2025,9 +2025,13 @@ class radmc3dGrid(object):
             self.yi           = np.zeros(self.ny+1, dtype=np.float64)
             self.zi           = np.zeros(self.nz+1, dtype=np.float64)
            
-            for i in range(self.nxi): self.xi[i] = float(rfile.readline())
-            for i in range(self.nyi): self.yi[i] = float(rfile.readline())
-            for i in range(self.nzi): self.zi[i] = float(rfile.readline())
+            #for i in range(self.nxi): self.xi[i] = float(rfile.readline())
+            #for i in range(self.nyi): self.yi[i] = float(rfile.readline())
+            #for i in range(self.nzi): self.zi[i] = float(rfile.readline())
+
+            self.xi[:] = np.fromfile(rfile,dtype=np.float64,count=self.nxi,sep=' ')
+            self.yi[:] = np.fromfile(rfile,dtype=np.float64,count=self.nyi,sep=' ')
+            self.zi[:] = np.fromfile(rfile,dtype=np.float64,count=self.nzi,sep=' ')
 
             if self.crd_sys=='car':
                 self.x = (self.xi[0:self.nx] +  self.xi[1:self.nx+1]) * 0.5
