@@ -3109,7 +3109,7 @@ if(chsp.and.((amr_coordsystem.ge.100).and.(amr_coordsystem.lt.200))) then
          write(stdo,*) '   Adjusting theta(ny+1) to exactly pi...'
          yi(ny+1) = pi
       endif
-      do iy=2,ny-1 
+      do iy=2,ny
          if((abs(yi(iy)-pihalf).lt.0.5d-4*abs(yi(iy+1)-yi(iy-1))).and.(yi(iy).ne.pihalf)) then
             write(string,*) iy
             write(stdo,*) '   Adjusting theta('//trim(adjustl(string))//') to exactly pi/2...'
