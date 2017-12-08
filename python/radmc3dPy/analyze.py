@@ -2570,61 +2570,53 @@ class radmc3dData(object):
 
         if binary:
             if octree:
-                hdr = np.fromfile(fname, count=4, dtype=int)
-                if hdr[2] != self.grid.nLeaf:
-                    print('Error!')
-                    print('Number of cells in '+fname+' is different from that in amr_grid.inp')
-                    print(hdr[1], self.grid.nLeaf)
-                    return -1
+                with open(fname,'r') as f:
+                    hdr = np.fromfile(f, count=4, dtype=int)
+                    if hdr[2] != self.grid.nLeaf:
+                        print('Error!')
+                        print('Number of cells in '+fname+' is different from that in amr_grid.inp')
+                        print(hdr[1], self.grid.nLeaf)
+                        return -1
                 
-                if hdr[1]==8:
-                    data = np.fromfile(fname, count=-1, dtype=np.float64)
-                elif hdr[1]==4:
-                    data = np.fromfile(fname, count=-1, dtype=float)
-                else:
-                    print('ERROR')
-                    print('Unknown datatype in '+fname)
-                    return
+                    if hdr[1]==8:
+                        data = np.fromfile(f, count=-1, dtype=np.float64)
+                    elif hdr[1]==4:
+                        data = np.fromfile(f, count=-1, dtype=np.float32)
+                    else:
+                        print('ERROR')
+                        print('Unknown datatype in '+fname)
+                        return
                 
-                if data.shape[0]==(hdr[2]+3):
-                    data = np.reshape(data[3:], [self.grid.nLeaf, 1], order='f')
-                elif data.shape[0]==(hdr[2]*hdr[3]+4):
-                    data = np.reshape(data[4:], [self.grid.nLeaf, hdr[3]], order='f')
+                    data = np.reshape(data, [self.grid.nLeaf, hdr[3]], order='f')
 
             else:
-                # hdr[0] = format number
-                # hdr[1] = data precision (4=single, 8=double)
-                # hdr[2] = nr of cells
-                # hdr[3] = nr of dust species
-                hdr = np.fromfile(fname, count=4, dtype=int)
-                if hdr[2]!=(self.grid.nx*self.grid.ny*self.grid.nz):
-                    print(' ERROR')
-                    print(' Number of grid points in '+fname+' is different from that in amr_grid.inp')
-                    print(npoints)
-                    print(hdr[2])
-                    return
+                with open(fname,'r') as f:
+                    # hdr[0] = format number
+                    # hdr[1] = data precision (4=single, 8=double)
+                    # hdr[2] = nr of cells
+                    # hdr[3] = nr of dust species
+                    hdr = np.fromfile(f, count=4, dtype=int)
+                    if hdr[2]!=(self.grid.nx*self.grid.ny*self.grid.nz):
+                        print(' ERROR')
+                        print(' Number of grid points in '+fname+' is different from that in amr_grid.inp')
+                        print(npoints)
+                        print(hdr[2])
+                        return
 
-                if hdr[1]==8:
-                    data = np.fromfile(fname, count=-1, dtype=np.float64)
-                elif hdr[1]==4:
-                    data = np.fromfile(fname, count=-1, dtype=float)
-                else:
-                    print('ERROR')
-                    print('Unknown datatype in '+fname)
-                    return
+                    if hdr[1]==8:
+                        data = np.fromfile(f, count=-1, dtype=np.float64)
+                    elif hdr[1]==4:
+                        data = np.fromfile(f, count=-1, dtype=np.float32)
+                    else:
+                        print('ERROR')
+                        print('Unknown datatype in '+fname)
+                        return
                 
-
-                if data.shape[0]==(hdr[2]+3):
-                    data = np.reshape(data[3:], [1, self.grid.nz,self.grid.ny,self.grid.nx])
-                elif data.shape[0]==(hdr[2]*hdr[3]+4):
-                    data = np.reshape(data[4:], [hdr[3],self.grid.nz,self.grid.ny,self.grid.nx])
-
-                
-                #data = reshape(data, [hdr[3],self.grid.nz,self.grid.ny,self.grid.nx])
-                # We need to change the axis orders as Numpy always writes binaries in C-order while RADMC-3D
-                # uses Fortran-order
-                data = np.swapaxes(data,0,3)
-                data = np.swapaxes(data,1,2)
+                    data = np.reshape(data, [hdr[3],self.grid.nz,self.grid.ny,self.grid.nx])
+                    # We need to change the axis orders as Numpy always writes binaries in C-order while RADMC-3D
+                    # uses Fortran-order
+                    data = np.swapaxes(data,0,3)
+                    data = np.swapaxes(data,1,2)
 
         else:
             if not os.path.isfile(fname):
@@ -2633,33 +2625,31 @@ class radmc3dData(object):
                 return -1
 
             if octree:
-                hdr = np.fromfile(fname, count=3, sep="\n", dtype=int)
-                if hdr[1] != self.grid.nLeaf:
-                    print('Error!')
-                    print('Number of cells in '+fname+' is different from that in amr_grid.inp')
-                    print(hdr[1], self.grid.nLeaf)
-                    return -1
-                data = np.fromfile(fname, count=-1, sep="\n", dtype=np.float64)[3:]
-                data = data.reshape([hdr[1], hdr[2]], order='f')
+                with open(fname,'r') as f:
+                    hdr = np.fromfile(f, count=3, sep="\n", dtype=int)
+                    if hdr[1] != self.grid.nLeaf:
+                        print('Error!')
+                        print('Number of cells in '+fname+' is different from that in amr_grid.inp')
+                        print(hdr[1], self.grid.nLeaf)
+                        return -1
+                    data = np.fromfile(f, count=-1, sep="\n", dtype=np.float64)
+                    data = data.reshape([hdr[1], hdr[2]], order='f')
             
             else:
-                hdr = np.fromfile(fname, count=3, sep="\n", dtype=int)
+                with open(fname,'r') as f:
+                    hdr = np.fromfile(f, count=3, sep="\n", dtype=int)
                 
-                if ((self.grid.nx * self.grid.ny * self.grid.nz)!=hdr[1]):
-                    print('Error!')
-                    print('Number of grid points in amr_grid.inp is not equal to that in '+fname)
-                else:
+                    if ((self.grid.nx * self.grid.ny * self.grid.nz)!=hdr[1]):
+                        print('Error!')
+                        print('Number of grid points in amr_grid.inp is not equal to that in '+fname)
+                        return -1
 
-                    data = np.fromfile(fname, count=-1, sep="\n", dtype=np.float64)
-                    if data.shape[0]==hdr[1]+2:
-                        data = np.reshape(data[2:], [1, self.grid.nz,self.grid.ny,self.grid.nx])
-                    elif data.shape[0]==hdr[1]*hdr[2]+3:
-                        data = np.reshape(data[3:], [hdr[2],self.grid.nz,self.grid.ny,self.grid.nx])
+                    data = np.fromfile(f, count=-1, sep="\n", dtype=np.float64)
+                    data = np.reshape(data, [hdr[2],self.grid.nz,self.grid.ny,self.grid.nx])
                     # We need to change the axis orders as Numpy always reads  in C-order while RADMC-3D
                     # uses Fortran-order
                     data = np.swapaxes(data,0,3)
                     data = np.swapaxes(data,1,2)
-        
 
         return data
 
@@ -3061,43 +3051,47 @@ class radmc3dData(object):
             if os.path.isfile(fname):
                 # If we have an octree grid
                 if isinstance(self.grid, radmc3dOctree):
-                    hdr = np.fromfile(fname, count=3, dtype=int)
-                    if (hdr[2]!=self.grid.nLeaf):
-                        print('ERROR')
-                        print('Number of grid points in '+fname+' is different from that in amr_grid.inp')
-                        print(self.grid.nx, self.grid.ny, self.grid.nz)
-                        print(hdr[1])
-                        return
+                    with open(fname,'r') as f:
+                        hdr = np.fromfile(f, count=3, dtype=int)
+                        if (hdr[2]!=self.grid.nLeaf):
+                            print('ERROR')
+                            print('Number of grid points in '+fname+' is different from that in amr_grid.inp')
+                            print(self.grid.nx, self.grid.ny, self.grid.nz)
+                            print(hdr[1])
+                            return
                     
-                    if hdr[1]==8:
-                        self.gasvel = np.fromfile(fname, count=-1, dtype=np.float64)
-                    elif hdr[1]==4:
-                        self.gasvel = np.fromfile(fname, count=-1, dtype=float)
-                    else:
-                        print('ERROR')
-                        print('Unknown datatype in '+fname)
-                        return
-                    self.gasvel = np.reshape(self.gasvel[3:], [self.nLeaf, 3], order='f')
+                        if hdr[1]==8:
+                            self.gasvel = np.fromfile(f, count=-1, dtype=np.float64)
+                        elif hdr[1]==4:
+                            self.gasvel = np.fromfile(f, count=-1, dtype=np.float32)
+                        else:
+                            print('ERROR')
+                            print('Unknown datatype in '+fname)
+                            return
+                        
+                        self.gasvel = np.reshape(self.gasvel, [self.nLeaf, 3], order='f')
 
                 else:
-                    hdr = np.fromfile(fname, count=3, dtype=int)
-                    if (hdr[2]!=self.grid.nx*self.grid.ny*self.grid.nz):
-                        print('ERROR')
-                        print('Number of grid points in '+fname+' is different from that in amr_grid.inp')
-                        print(self.grid.nx, self.grid.ny, self.grid.nz)
-                        print(hdr[1])
-                        return
+                    with open(fname,'r') as f:
+                        hdr = np.fromfile(f, count=3, dtype=int)
+                        if (hdr[2]!=self.grid.nx*self.grid.ny*self.grid.nz):
+                            print('ERROR')
+                            print('Number of grid points in '+fname+' is different from that in amr_grid.inp')
+                            print(self.grid.nx, self.grid.ny, self.grid.nz)
+                            print(hdr[1])
+                            return
 
-                    if hdr[1]==8:
-                        self.gasvel = np.fromfile(fname, count=-1, dtype=np.float64)
-                    elif hdr[1]==4:
-                        self.gasvel = np.fromfile(fname, count=-1, dtype=float)
-                    else:
-                        print('ERROR')
-                        print('Unknown datatype in '+fname)
-                        return
-                    self.gasvel = np.reshape(self.gasvel[3:], [self.grid.nz,self.grid.ny,self.grid.nx,3])
-                    self.gasvel = np.swapaxes(self.gasvel, 0, 2)
+                        if hdr[1]==8:
+                            self.gasvel = np.fromfile(f, count=-1, dtype=np.float64)
+                        elif hdr[1]==4:
+                            self.gasvel = np.fromfile(f, count=-1, dtype=np.float32)
+                        else:
+                            print('ERROR')
+                            print('Unknown datatype in '+fname)
+                            return
+                        
+                        self.gasvel = np.reshape(self.gasvel, [self.grid.nz,self.grid.ny,self.grid.nx,3])
+                        self.gasvel = np.swapaxes(self.gasvel, 0, 2)
             else:
                 print('Error!' )
                 print(fname+' was not found!')
@@ -4824,57 +4818,44 @@ class radmc3dRadSources(object):
         self.grid = readGrid()
 
         if binary:
-            hdr = np.fromfile(fname, count=4, dtype=int)
+            with open(fname,'r') as f:
+                hdr = np.fromfile(f, count=4, dtype=int)
             
-            if hdr[2]!=(self.grid.nx*self.grid.ny*self.grid.nz):
-                print(' ERROR')
-                print(' Number of grid points in '+fname+' is different from that in amr_grid.inp')
-                print(npoints)
-                print(hdr[2])
-                return
+                if hdr[2]!=(self.grid.nx*self.grid.ny*self.grid.nz):
+                    print(' ERROR')
+                    print(' Number of grid points in '+fname+' is different from that in amr_grid.inp')
+                    print(npoints)
+                    print(hdr[2])
+                    return
 
-            if hdr[1]==8:
-                data = np.fromfile(fname, count=-1, dtype=np.float64)
-            elif hdr[1]==4:
-                data = np.fromfile(fname, count=-1, dtype=float)
-            else:
-                print('ERROR')
-                print('Unknown datatype in '+fname)
-                return
+                if hdr[1]==8:
+                    data = np.fromfile(f, count=-1, dtype=np.float64)
+                elif hdr[1]==4:
+                    data = np.fromfile(f, count=-1, dtype=np.float32)
+                else:
+                    print('ERROR')
+                    print('Unknown datatype in '+fname)
+                    return
             
-            data = np.reshape(data[4:], [hdr[3],self.grid.nz,self.grid.ny,self.grid.nx])
-            data = np.swapaxes(data,0,3)
-            data = np.swapaxes(data,1,2)
+                data = np.reshape(data, [hdr[3],self.grid.nz,self.grid.ny,self.grid.nx])
+                data = np.swapaxes(data,0,3)
+                data = np.swapaxes(data,1,2)
         else:
-            rfile = -1
-            try :
-                rfile = open(fname, 'r')
-            except:
-                print('Error!' )
-                print(fname+' was not found!')
-            
-            if (rfile!=(-1)):
-
-                hdr = np.fromfile(fname, count=3, sep="\n", dtype=int)
+            with open(fname,'r') as f:
+                hdr = np.fromfile(f, count=3, sep="\n", dtype=int)
                 
                 if ((self.grid.nx * self.grid.ny * self.grid.nz)!=hdr[1]):
                     print('Error!')
                     print('Number of grid points in amr_grid.inp is not equal to that in '+fname)
-                else:
+                    return -1
 
-                    data = np.fromfile(fname, count=-1, sep="\n", dtype=np.float64)
-                    data = np.reshape(data[3:], [hdr[2],self.grid.nz,self.grid.ny,self.grid.nx])
-                    # We need to change the axis orders as Numpy always reads  in C-order while RADMC-3D
-                    # uses Fortran-order
-                    data = np.swapaxes(data,0,3)
-                    data = np.swapaxes(data,1,2)
-            
-            else:
-                data = -1
+                data = np.fromfile(f, count=-1, sep="\n", dtype=np.float64)
+                data = np.reshape(data, [hdr[2],self.grid.nz,self.grid.ny,self.grid.nx])
+                # We need to change the axis orders as Numpy always reads  in C-order while RADMC-3D
+                # uses Fortran-order
+                data = np.swapaxes(data,0,3)
+                data = np.swapaxes(data,1,2)
 
-            if rfile!=(-1):
-                rfile.close()
-        
         self.csdens = data
 # --------------------------------------------------------------------------------------------------
     def writeStellarsrcDensity(self, fname='', binary=False):
@@ -5757,7 +5738,6 @@ class radmc3dDustOpac(object):
             print(' No dustopac.inp file was found')
             return -1
 
-       
         # file format
         dum = rfile.readline()
         # nr of dust species
