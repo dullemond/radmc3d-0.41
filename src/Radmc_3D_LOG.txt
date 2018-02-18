@@ -8271,5 +8271,11 @@ finetuning: I noticed during some testing with a supersimple annulus model
             more robust when it comes to empty lines in the dust opacity
             files.
 
-
-           
+18.02.2018  main.f90, montecarlo_module.f90, namelist_module.f90,
+            rtglobal_module.f90:
+   MODIF!   All instances of nphot now integer*8, so that a larger number
+            of photon packages can be used. This is particularly
+            useful when you want to get smooth scattering images.
+            
+            
+            

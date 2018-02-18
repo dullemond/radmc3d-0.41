@@ -12,14 +12,15 @@ program radmc3d
   implicit none
   !
   ! Local variables for main program
-  ! 
-  integer :: inu,nphot,iformat,irestart,ir,it,idiff,ifill
+  !
+  integer*8 :: nphot,nphot_scat_original
+  integer :: inu,iformat,irestart,ir,it,idiff,ifill
   integer :: ispec,cntdump,ifile,iredo,i,l
   integer :: ntemp,nvstr,ivstrt,iterstr,iwarn,ierror_diff,ierr
   integer :: ierror
   doubleprecision :: temp0,temp1,error,incrraycost
   logical :: fex1,fex2,iqy,gotit,quit,selfcheck,inclines_bk
-  integer :: maxtasks,itask,nv,nphot_scat_original
+  integer :: maxtasks,itask,nv
   character*160 :: subboxfilename,samplefilename,species
   character*160 :: vtkfilename,vtktitle
   integer :: npt,imx,imy,iinu,nvm,bc_idir,bc_ilr
@@ -2240,11 +2241,11 @@ subroutine read_radmcinp_file()
      close(1)
   !$ call parse_input_integer('setthreads@                   ',setthreads)
      call parse_input_integer('mc_safetymode@                ',mc_safetymode)
-     call parse_input_integer('nphot@                        ',rt_mcparams%nphot_therm)
-     call parse_input_integer('nphot_therm@                  ',rt_mcparams%nphot_therm)
-     call parse_input_integer('nphot_scat@                   ',rt_mcparams%nphot_scat)
-     call parse_input_integer('nphot_spec@                   ',rt_mcparams%nphot_spec)
-     call parse_input_integer('nphot_mono@                   ',rt_mcparams%nphot_mono)
+     call parse_input_integer8('nphot@                        ',rt_mcparams%nphot_therm)
+     call parse_input_integer8('nphot_therm@                  ',rt_mcparams%nphot_therm)
+     call parse_input_integer8('nphot_scat@                   ',rt_mcparams%nphot_scat)
+     call parse_input_integer8('nphot_spec@                   ',rt_mcparams%nphot_spec)
+     call parse_input_integer8('nphot_mono@                   ',rt_mcparams%nphot_mono)
      call parse_input_integer('iseed@                        ',iseed)
      call parse_input_integer('imethod@                      ',imethod)
      call parse_input_integer('ifast@                        ',rt_mcparams%ifast)

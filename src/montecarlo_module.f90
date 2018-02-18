@@ -2193,9 +2193,10 @@ subroutine do_monte_carlo_bjorkmanwood(params,ierror,resetseed)
   doubleprecision :: ener,lumtotinv,entotal
   logical :: ievenodd
   logical,optional :: resetseed
-  integer :: ierror,ierrpriv,countwrite,cntdump,nphot,index,illum
-  integer :: inu,iphot,ispec,istar,icell,nsrc,nstarsrc
-  integer :: iseeddum,cnt,isd,ipstart,itemplate
+  integer :: ierror,ierrpriv,countwrite,index,illum
+  integer :: inu,ispec,istar,icell,nsrc,nstarsrc
+  integer*8 :: iphot,ipstart,nphot,cnt,cntdump
+  integer :: iseeddum,isd,itemplate
   logical :: mc_emergency_break
   !$ integer :: i
   !$ integer OMP_get_num_threads
@@ -2783,9 +2784,10 @@ subroutine do_monte_carlo_scattering(params,ierror,resetseed,scatsrc,meanint)
   logical,optional :: resetseed
   logical,optional :: scatsrc,meanint
   logical :: compute_scatsrc,compute_meanint
-  integer :: countwrite,cntdump,nphot,index
-  integer :: iphot,ispec,istar,icell,illum
-  integer :: iseeddum,cnt,isd,itemplate,nsrc,nstarsrc
+  integer*8 :: iphot,nphot,cnt,cntdump
+  integer :: countwrite,index
+  integer :: ispec,istar,icell,illum
+  integer :: iseeddum,isd,itemplate,nsrc,nstarsrc
   logical :: mc_emergency_break
   doubleprecision:: seconds
   !$ integer :: ierr,i

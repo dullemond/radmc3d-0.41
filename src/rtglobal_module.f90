@@ -7,18 +7,18 @@ module rtglobal_module
   ! single-frequency Monte Carlo. 
   !
   type mc_params
-     integer :: nphot_therm                 ! Number of photons emitted in 
+     integer*8 :: nphot_therm               ! Number of photons emitted in 
   !                                         ! total for the thermal Monte Carlo. 
-     integer :: nphot_scat                  ! Number of photons emitted in 
+     integer*8 :: nphot_scat                ! Number of photons emitted in 
   !                                         ! a single-wavelength scattering
   !                                         ! Monte Carlo simulation.
-     integer :: nphot_spec                  ! Like nphot_scat, but now for
+     integer*8 :: nphot_spec                ! Like nphot_scat, but now for
   !                                         ! spectra: typically you will
   !                                         ! have nphot_spec << nphot_scat
   !                                         ! to speed up the spectrum calc,
   !                                         ! and that is OK, because we will
   !                                         ! anyway integrate over the images.
-     integer :: nphot_mono                  ! Number of photons emitted in 
+     integer*8 :: nphot_mono                ! Number of photons emitted in 
   !                                         ! a monochromatic 
   !                                         ! Monte Carlo simulation.
      integer :: ifast                       ! ifast.ne.0 speeds up code, but 

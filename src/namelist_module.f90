@@ -259,6 +259,57 @@ subroutine parse_input_integer(nameorig,value)
 end subroutine parse_input_integer
 
 !-------------------------------------------------------------------
+!                       PARSING ROUTINE FOR INTEGER*8
+!-------------------------------------------------------------------
+subroutine parse_input_integer8(nameorig,value)
+  implicit none
+  character*30 nameorig
+  character*80 name
+  integer*8 :: value
+  !
+  common/parses/inpstring
+  save/parses/
+  character*160 inpstring(300)
+  common/parsei/nrstring,lineok
+  save/parsei/
+  integer nrstring,lineok(300)
+  !
+  integer iline,ichar
+  character*80 strname,strvalue
+  integer lenname,lenvalue,lenn
+  logical found,icomm
+  !
+  name(1:30)=nameorig
+  found=.false.
+  do ichar=2,30
+     if(name(ichar:ichar) == '@') goto 30
+  enddo
+  write(*,*) 'INTERNAL ERROR: Keywords must end with @!!!'
+  stop
+30 continue
+  lenn=ichar-1
+  do iline=1,nrstring
+     call parse_name_value(inpstring(iline), strname,lenname,           &
+          strvalue,lenvalue,icomm)
+     if(icomm) then
+        lineok(iline) = 1
+     elseif(stringcompare(strname,name,lenn) .and.                      &
+          (lenn == lenname)) then
+        if(found) then
+           write(*,*) 'Found one parameter more than once'
+           write(*,*) 'in the input file: ',strname(1:lenname)
+           write(*,*) '*** ABORTING ***'
+           stop
+        endif
+        read(strvalue(1:lenvalue),*) value
+        found=.true.
+        lineok(iline) = 1
+     endif
+  enddo
+  !
+end subroutine parse_input_integer8
+
+!-------------------------------------------------------------------
 !                       PARSING ROUTINE FOR WORD
 !-------------------------------------------------------------------
 subroutine parse_input_word(nameorig,value,len)
