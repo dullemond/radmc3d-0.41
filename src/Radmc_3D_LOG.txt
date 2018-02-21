@@ -8277,5 +8277,9 @@ finetuning: I noticed during some testing with a supersimple annulus model
             of photon packages can be used. This is particularly
             useful when you want to get smooth scattering images.
             
-            
+21.02.2018  ---> Judit Szulagyi made a first test of this, and found
+                 indeed improved signal/noise ratio in the images.
+                 Thanks, Judit!
+
+
             
