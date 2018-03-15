@@ -3,7 +3,7 @@ import numpy as np
 from scipy.interpolate import interp1d
 import math
 
-def compute_opac_mie(optconst_file,matdens,agraincm,lamcm,
+def compute_opac_mie(optconst_file,matdens,agraincm,lamcm,wgt=None,
                      theta=None,logawidth=None,wfact=3.0,na=20,
                      chopforward=0.0,errtol=0.01,verbose=False,
                      extrapolate=False):
@@ -22,7 +22,10 @@ def compute_opac_mie(optconst_file,matdens,agraincm,lamcm,
                       k-coefficient. See Jena optical constants database:
                       http://www.astro.uni-jena.de/Laboratory/Database/databases.html
       matdens       = Material density in g/cm^3
-      agraincm      = Grain radius in cm
+      agraincm      = Grain radius in cm (float or numpy array). If array, then
+                      the weighting must be set as well (see wgt).
+      wgt           = Optional: sets the grain size weighting when multiple grain
+                      sizes are specified.
       lamcm         = Wavelength grid in cm (a numpy array)
       theta         = Optional angular grid (a numpy array) between 0 and 180
                       which are the scattering angle sampling points at 
@@ -123,6 +126,7 @@ def compute_opac_mie(optconst_file,matdens,agraincm,lamcm,
       agr           = The grain sizes
       wgt           = The averaging weights of these grain (not the masses!)
                       The sum of wgt.sum() must be 1.
+                      If wgt was set as imput then the input value is returned.
 
     If chopforward>0 it will also return the unchopped versions:
       zscat_nochop  = The zscat before the forward scattering was chopped off
@@ -203,16 +207,21 @@ def compute_opac_mie(optconst_file,matdens,agraincm,lamcm,
         assert angles[nang-1]==0, "Error: Angle grid must extend from 0 to 180 degrees."
     #
     # Make a size distribution for the grains
+    # If a single size set and width is given then compute gaussian distribution around agraincm
     # If width is not set, then take just one size
     #
-    if logawidth is None:
-        agr   = np.array([agraincm])
-        wgt   = np.array([1.0])
-    else:
+    if (type(agraincm) in [list, np.ndarray]) and (logawidth is None):
+        agr = np.array(agraincm)
+        assert wgt != None, "Error: Range of grain sizes is given, but the weighting (wgt) is not set."
+        wgt = np.array(wgt)/np.array(wgt).sum() # make sure that the distribution is normalised
+    elif logawidth:
         agr   = np.exp(np.linspace(math.log(agraincm)-wfact*logawidth,
                                    math.log(agraincm)+wfact*logawidth,na))
         wgt   = np.exp(-0.5*((np.log(agr/agraincm))/logawidth)**2)
         wgt   = wgt/wgt.sum()
+    else:
+        agr   = np.array([agraincm])
+        wgt   = np.array([1.0])
     #
     # Get the true number of grain sizes
     #
