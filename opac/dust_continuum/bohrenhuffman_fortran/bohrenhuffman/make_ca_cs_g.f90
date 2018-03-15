@@ -106,7 +106,7 @@ program bhmakeopac
      !
      ! Number of angles
      !
-     IF(NANG0.GT.MXNANG)STOP'***Error: NANG > MXNANG'
+     IF(NANG0.GT.MXNANG) STOP'***Error: NANG > MXNANG'
      NANG=NANG0
      IF(NANG0.LT.2)NANG=2
      !
