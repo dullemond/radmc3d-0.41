@@ -31,3 +31,11 @@ which contains a reading routine for reading RADMC-3D-style opacity files.
 This routine is an extraction from the radmc3dPy/analyze.py package
 provided by Attila Juhasz. 
 
+----------------
+
+NOTE: Recently a new database for solid state optical data has been
+put online:
+
+https://www.sshade.eu
+
+2018.06.06
