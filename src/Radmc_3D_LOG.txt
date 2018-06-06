@@ -8288,4 +8288,11 @@ finetuning: I noticed during some testing with a supersimple annulus model
             not the phase function. Is now fixed. Marked by:
             BUGFIX 2018.06.06
             
+06.06.2018  Added do_lambda_starlight_single_scattering_simple()
+            This is a simplified version of the single scattering
+  ++        mode, valid only for a single pointsource star in
+            spherical coordinates. It is much faster than the
+            usual single scattering mode.
+            Not yet connected...
             
+

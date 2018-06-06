@@ -3730,6 +3730,371 @@ subroutine do_lambda_starlight_single_scattering(params,ierror,scatsrc,meanint)
 end subroutine do_lambda_starlight_single_scattering
 
 
+!--------------------------------------------------------------------------
+!         AN EVEN SIMPLER APPROXIMATION OF SINGLE-LAMBDA SCATTERING
+!
+! As do_lambda_starlight_single_scattering(), but now for the simplest
+! possible case: spherical coordinate, 1 pointlike star in the center,
+! single scattering.
+! --------------------------------------------------------------------------
+subroutine do_lambda_starlight_single_scattering_simple(params,ierror,scatsrc,meanint)
+  implicit none
+  type(mc_params) :: params
+  integer :: ierror,inu
+  doubleprecision :: dtau,dvol,g,luminosity
+  doubleprecision :: scatsrc0,alpha_tot,xp1,flux,theta,phi
+  logical,optional :: scatsrc,meanint
+  logical :: compute_scatsrc,compute_meanint
+  integer :: idir,ispec,istar,icell,iddr
+  integer :: ir,itheta,iphi
+  doubleprecision :: pos(1:3),cellx0(1:3),cellx1(1:3),src4(1:4)
+  !
+  ! Some consistency checks
+  ! 
+  if(star_sphere) then
+     write(stdo,*) 'ERROR in single scattering mode: finite-size stars not allowed.'
+     stop 4096
+  endif
+  if(present(scatsrc)) then
+     compute_scatsrc=scatsrc 
+  else 
+     compute_scatsrc=.false.
+  endif
+  if(present(meanint)) then
+     compute_meanint=meanint
+  else 
+     compute_meanint=.false.
+  endif
+  if((.not.compute_scatsrc).and.(.not.compute_meanint)) then
+     write(stdo,*) 'Single Scattering: Must set scatsrc or meanint.'
+     stop 3765
+  endif
+  if(compute_scatsrc.and.compute_meanint) then
+     write(stdo,*) 'Single Scattering: Cannot set BOTH scatsrc and meanint.'
+     stop 3766
+  endif
+  if(nrcells.le.0) then
+     write(stdo,*) 'ERROR: Spatial grid is not set.'
+     stop
+  endif
+  if(incl_quantum.ne.0) then
+     write(stdo,*) 'ERROR: At the moment quantum heated grains are not included yet'
+     stop
+  endif
+  if((mc_nrfreq.le.0).or.(.not.allocated(mc_frequencies))) then
+     write(stdo,*) 'ERROR: Cannot do scattering Monte Carlo without'
+     write(stdo,*) '       MC frequency array set.'
+     stop
+  endif
+  if((igrid_coord.lt.100).or.(igrid_coord.ge.200)) then
+     write(stdo,*) 'ERROR: The simple single scattering mode requires spherical coordinates'
+     stop
+  endif
+  if(amr_style.ne.0) then
+     write(stdo,*) 'ERROR: The simple single scattering mode cannot use AMR. Use simple grid instead.'
+     stop
+  endif
+  if(nstars.ne.1) then
+     write(stdo,*) 'ERROR: The simple single scattering mode has to have exactly 1 star.'
+     stop
+  endif
+  if((incl_stellarsrc.ne.0).or.(incl_extlum.ne.0).or. &
+     (incl_heatsource.ne.0).or.(incl_thermbc.ne.0)) then
+     write(stdo,*) 'ERROR: The simple single scattering mode can only handle a single energy source: the central star'
+     stop
+  endif
+  !
+  ! Initialize the Monte Carlo module by allocating the required arrays
+  ! and doing a number of standard checks
+  !
+  if(compute_scatsrc) then
+     call montecarlo_init(params,ierror,101,.false.)
+  elseif(compute_meanint) then
+     call montecarlo_init(params,ierror,102,.false.)
+  else
+     stop 6658
+  endif
+  !
+  ! Message
+  !
+  if(scattering_mode.ne.0) then
+     write(stdo,*) 'Using dust scattering mode ',scattering_mode
+  endif
+  !
+  ! Check if source of light is only stars
+  ! We ignore the thermal emission of the dust
+  !
+  if(stellarsrclumtot+emisquanttot+extlumtot+mc_bc_lumall.gt.0.d0) then
+     write(stdo,*) 'WARNING: The single-scattering approximation only includes stars as sources of radiation.'
+  endif
+  !
+  ! Get the opacities (assume global opacities for the moment)
+  ! ---> COMMENTED OUT 06.03.2017: Opacities are already installed since
+  !      montecarlo_init().
+  !
+  ! temp    = 100.d0     ! Arbitrary temperature...
+  ! do inu=1,mc_nrfreq
+  !    freq = mc_frequencies(inu)
+  !    do ispec=1,dust_nr_species
+  !       kappa_a(inu,ispec) = find_dust_kappa_interpol(freq,ispec,temp,1,0,0)
+  !       kappa_s(inu,ispec) = find_dust_kappa_interpol(freq,ispec,temp,0,1,0)
+  !       kappa_g(inu,ispec) = find_dust_kappa_interpol(freq,ispec,temp,0,0,1)
+  !    enddo
+  ! enddo
+  !
+  ! Loop over all mc_frequencies
+  !
+  do inu=1,mc_nrfreq
+     !
+     ! Message
+     !
+     write(stdo,*) 'Wavelength nr ',inu,' corresponding to lambda=',  &
+               1d4*cc/mc_frequencies(inu),' micron'
+     call flush(stdo)
+     !
+     ! Determine the luminosity of the star(s) in all these wavelength bins
+     !
+     call montecarlo_compute_freqdep_luminosities(params,mc_frequencies(inu))
+     !
+     ! Set ray_inu to inu
+     !
+     ray_inu = inu
+     !
+     ! Now do the loop over theta and phi coordinates
+     !
+     do itheta=1,amr_grid_ny
+        do iphi=1,amr_grid_nz
+           !
+           ! Determine the direction vector, passing through the center of
+           ! the theta-phi cell square
+           !
+           theta         = 0.5*(amr_grid_xi(itheta+1,2)+amr_grid_xi(itheta,2))
+           phi           = 0.5*(amr_grid_xi(iphi+1,3)+amr_grid_xi(iphi,3))
+           ray_cart_dirx = sin(theta)*cos(phi)
+           ray_cart_diry = sin(theta)*sin(phi)
+           ray_cart_dirz = cos(theta)
+           !
+           ! Initialize the ray-tracing at the star
+           !
+           luminosity = star_lum(1)
+           !
+           ! Now trace a ray radially from the start outside
+           !
+           do ir=1,amr_grid_nx
+              !
+              ! In which cell are we?
+              !
+              ray_index = ir+(itheta-1)*amr_grid_nx+(iphi-1)*amr_grid_nx*amr_grid_ny
+              !
+              ! Compute the ds in radial direction
+              !
+              ds = amr_grid_xi(ir+1,1) - amr_grid_xi(ir,1)
+              !
+              ! Compute the extinction within the cell
+              !
+              alpha_a_tot = 0.d0
+              alpha_s_tot = 0.d0
+              do ispec=1,dust_nr_species
+                 alpha_a(ispec) = dustdens(ispec,ray_index) * &
+                                  kappa_a(ray_inu,ispec) + 1d-99
+                 alpha_s(ispec) = dustdens(ispec,ray_index) * &
+                                  kappa_s(ray_inu,ispec) + 1d-99
+                 alpha_a_tot    = alpha_a_tot + alpha_a(ispec)
+                 alpha_s_tot    = alpha_s_tot + alpha_s(ispec)
+              enddo
+              alpha_tot = alpha_a_tot + alpha_s_tot
+              dtau      = alpha_tot * ds
+              albedo    = alpha_s_tot / alpha_tot
+              !
+              ! Compute the "volume" (4*pi/3)*(r_{i+1/2}^3-r_{i-1/2}^3)
+              !
+              dvol = (fourpi/3.) * ( amr_grid_xi(ir+1,1)**3 - amr_grid_xi(ir,1)**3 )
+              !
+              ! Compute xp1 = 1-exp(-tau)
+              !
+              if(dtau.lt.1e-6) then
+                 xp1 = dtau
+              else
+                 xp1 = 1.d0 - exp(-dtau)
+              endif
+              !
+              !!!!!!!!!!!!!!!!!!!!!jscat = albedo * luminosity * xp1 / ( fourpi * dvol )
+              !
+              ! Compute, for the anisotropic scattering, the flux
+              !
+              flux  = luminosity * xp1 / ( dvol * alpha_tot )
+              !
+              ! Update the luminosity 
+              !
+              luminosity = luminosity * exp(-dtau)
+              !
+              ! Now proceed depending on what we wish to calculate (scat source
+              ! or mean int)
+              !
+              if(compute_scatsrc) then
+                 !
+                 ! Prepare stuff in case of anisotropic scattering
+                 !
+                 if(scattering_mode.eq.2) then
+                    !
+                    ! Anisotropic scattering using the Henyey-Greenstein function
+                    !
+                    if(.not.mcscat_localobserver) then
+                       do idir=1,mcscat_nrdirs
+                          costheta = ray_cart_dirx*mcscat_dirs(1,idir) +              &
+                                     ray_cart_diry*mcscat_dirs(2,idir) +              &
+                                     ray_cart_dirz*mcscat_dirs(3,idir)
+                          do ispec=1,dust_nr_species
+                             g                            = kappa_g(ray_inu,ispec)
+                             mcscat_phasefunc(idir,ispec) = henyeygreenstein_phasefunc(g,costheta)
+                          enddo
+                       enddo
+                    else
+                       write(stdo,*) 'ERROR: For now, anisotropic scattering not allowed'
+                       write(stdo,*) '       in local observer mode.'
+                       stop 453
+                    endif
+                 elseif(scattering_mode.eq.3) then
+                    !
+                    ! Anisotropic scattering using tabulated phase function (the
+                    ! Z11 matrix elements)
+                    !
+                    if(.not.mcscat_localobserver) then
+                       do idir=1,mcscat_nrdirs
+                          costheta = ray_cart_dirx*mcscat_dirs(1,idir) +              &
+                                     ray_cart_diry*mcscat_dirs(2,idir) +              &
+                                     ray_cart_dirz*mcscat_dirs(3,idir)
+                          do ispec=1,dust_nr_species
+                             mcscat_phasefunc(idir,ispec) = anisoscat_phasefunc(ray_inu,ispec,costheta)
+                          enddo
+                       enddo
+                    else
+                       write(stdo,*) 'ERROR: For now, anisotropic scattering not allowed'
+                       write(stdo,*) '       in local observer mode.'
+                       stop 453
+                    endif
+                 endif
+                 !
+                 ! Check
+                 !
+                 if(.not.allocated(mcscat_scatsrc_iquv)) then
+                    write(stdo,*) 'ERROR: Strange thing in single scattering. Warn author.'
+                    stop 7449
+                 endif
+                 !
+                 ! Now add to the scattering source function
+                 !
+                 do idir=1,mcscat_nrdirs
+                    !
+                    ! Compute the scattering source function for the given 
+                    ! scattering mode
+                    !
+                    if(scattering_mode.eq.1) then
+                       !
+                       ! Isotropic scattering: simply add the source term
+                       !
+                       scatsrc0 = flux * albedo * alpha_tot / fourpi
+                       mcscat_scatsrc_iquv(ray_inu,ray_index,1,1) =                   &
+                            mcscat_scatsrc_iquv(ray_inu,ray_index,1,1) + scatsrc0
+                    elseif((scattering_mode.eq.2).or.(scattering_mode.eq.3)) then
+                       !
+                       ! Anisotropic scattering: add only for the given directions
+                       !
+                       do ispec=1,dust_nr_species
+                          mcscat_scatsrc_iquv(ray_inu,ray_index,1,idir) =             &
+                               mcscat_scatsrc_iquv(ray_inu,ray_index,1,idir) +        &
+                               mcscat_phasefunc(idir,ispec) * flux *                  &
+                               dustdens(ispec,ray_index) * kappa_s(inu,ispec) / fourpi
+                       enddo
+                       if(mcscat_localobserver) then
+                          write(stdo,*) 'ABORTING: For now, non-isotropic scattering and '
+                          write(stdo,*) '          local observer are not yet compatible.'
+                          stop
+                       endif
+                    elseif((scattering_mode.eq.4).or.(scattering_mode.eq.5)) then
+                       !
+                       ! Polarized scattering, full phase function
+                       !
+                       if(mcscat_localobserver) then
+                          !
+                          ! Polarized scattering and local-observer are mutually
+                          ! incompatible. NOTE: Also multiple directions (i.e.
+                          ! mcscat_nrdirs.gt.1) is not possible.
+                          !
+                          write(stdo,*) 'ERROR: Polarized scattering and local-observer are incompatible.'
+                          stop
+                       endif
+                       !
+                       ! Make the "phot" array for use with the polarization
+                       ! module. We choose an arbitrary S-vector, because the
+                       ! incoming light is assumed to be unpolarized.
+                       !
+                       photpkg%E    = flux
+                       photpkg%Q    = 0.d0
+                       photpkg%U    = 0.d0
+                       photpkg%V    = 0.d0
+                       photpkg%n(1) = ray_cart_dirx
+                       photpkg%n(2) = ray_cart_diry
+                       photpkg%n(3) = ray_cart_dirz
+                       call polarization_make_s_vector(photpkg%n,photpkg%s)   ! arb S-vector
+                       !
+                       ! Now add the scattering contribution of each of
+                       ! the dust species. Note that we do not
+                       ! need to divide by 4*pi here because we use 
+                       ! Z instead of kappa_scat.
+                       !
+                       do ispec=1,dust_nr_species
+                          call polarization_randomorient_scatsource(photpkg,  &
+                               mcscat_dirs(:,1),mcscat_svec(:,1),             &
+                               scat_munr,scat_mui_grid(:),                    &
+                               zmatrix(:,ray_inu,1,ispec),                    &
+                               zmatrix(:,ray_inu,2,ispec),                    &
+                               zmatrix(:,ray_inu,3,ispec),                    &
+                               zmatrix(:,ray_inu,4,ispec),                    &
+                               zmatrix(:,ray_inu,5,ispec),                    &
+                               zmatrix(:,ray_inu,6,ispec),                    &
+                               src4)
+                          mcscat_scatsrc_iquv(ray_inu,ray_index,1:4,1) =      &
+                               mcscat_scatsrc_iquv(ray_inu,ray_index,1:4,1) + &
+                               dustdens(ispec,ray_index) * src4(1:4)
+                    enddo
+                 else
+                    stop 2960
+                 endif
+              enddo
+           elseif(compute_meanint) then
+              !
+              ! Compute the mean intensity: despite the word "single scattering"
+              ! this does not include the single scattering effect in the 
+              ! mean intensity! It only includes the extinction of the 
+              ! starlight. So it is a bit trivial...
+              !
+              mcscat_meanint(ray_inu,ray_index) = &
+                   mcscat_meanint(ray_inu,ray_index) + flux / fourpi
+           else
+              write(stdo,*) 'Strange error in single scattering simple mode. Contact Author.'
+              stop 5491
+           endif
+        enddo
+     enddo
+  enddo
+  !
+  ! Close path file
+  !
+  if(params%debug_write_path.eq.1) then
+     close(5)
+  endif
+  !
+  ! If statistics writing active, close
+  !
+  if(params%debug_write_stats.ne.0) then
+     close(4)
+  endif
+  !
+  ! Done...
+  !
+end subroutine do_lambda_starlight_single_scattering_simple
+
 
 
 !--------------------------------------------------------------------------
