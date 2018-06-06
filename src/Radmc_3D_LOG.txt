@@ -8281,5 +8281,11 @@ finetuning: I noticed during some testing with a supersimple annulus model
                  indeed improved signal/noise ratio in the images.
                  Thanks, Judit!
 
-
+06.06.2018  do_lambda_starlight_single_scattering()
+   bugfix   This alternative to Monte Carlo scattering does not do the
+            anisotropic scattering for multiple species correct.
+            Only the "dum" was calculated as a loop over species, but
+            not the phase function. Is now fixed. Marked by:
+            BUGFIX 2018.06.06
+            
             

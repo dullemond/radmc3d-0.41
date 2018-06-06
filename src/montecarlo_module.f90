@@ -3602,6 +3602,10 @@ subroutine do_lambda_starlight_single_scattering(params,ierror,scatsrc,meanint)
                  write(stdo,*) 'ERROR: Strange thing in single scattering. Warn author.'
                  stop 7449
               endif
+              if(index.ne.ray_index) then
+                 write(stdo,*) 'INTERNAL ERROR. Warn author.'
+                 stop 2095
+              endif
               !
               ! Now add to the scattering source function
               !
@@ -3625,13 +3629,15 @@ subroutine do_lambda_starlight_single_scattering(params,ierror,scatsrc,meanint)
                     !
                     ! Anisotropic scattering: add only for the given directions
                     !
-                    dum = 0.d0
+                    ! BUGFIX 2018.06.06
+                    ! The phase function must be done for each species separately
+                    !
                     do ispec=1,dust_nr_species
-                       dum = dum + dustdens(ispec,index) * kappa_s(inu,ispec)
+                       mcscat_scatsrc_iquv(ray_inu,ray_index,1,idir) =             &
+                            mcscat_scatsrc_iquv(ray_inu,ray_index,1,idir) +        &
+                            mcscat_phasefunc(idir,ispec) * flux *                  &
+                            dustdens(ispec,index) * kappa_s(inu,ispec) / fourpi
                     enddo
-                    scatsrc0 = dum * mcscat_phasefunc(idir,ispec) * flux / fourpi
-                    mcscat_scatsrc_iquv(ray_inu,ray_index,1,idir) =                &
-                         mcscat_scatsrc_iquv(ray_inu,ray_index,1,idir) + scatsrc0
                     if(mcscat_localobserver) then
                        write(stdo,*) 'ABORTING: For now, non-isotropic scattering and '
                        write(stdo,*) '          local observer are not yet compatible.'
@@ -3695,8 +3701,10 @@ subroutine do_lambda_starlight_single_scattering(params,ierror,scatsrc,meanint)
               ! mean intensity! It only includes the extinction of the 
               ! starlight. So it is a bit trivial...
               !
-              mcscat_meanint(ray_inu,icell) = &
-                   mcscat_meanint(ray_inu,icell) + flux / fourpi
+              ! BUGFIX: 2018.06.01: icell --> ray_index
+              !
+              mcscat_meanint(ray_inu,ray_index) = &
+                   mcscat_meanint(ray_inu,ray_index) + flux / fourpi
            else
               write(stdo,*) 'Strange error in single scattering mode. Contact Author.'
               stop 5491
