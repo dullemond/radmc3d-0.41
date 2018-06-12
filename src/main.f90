@@ -3561,6 +3561,20 @@ subroutine interpet_command_line_options(gotit,fromstdi,quit)
         !
         camera_lambda_starlight_single_scat_mode = 1
         write(stdo,*) 'Warning: using lambda starlight single scattering mode now!'
+     elseif(buffer(1:10).eq.'simplescat') then
+        !
+        ! Use do_lambda_starlight_single_scattering_simple() routine instead of
+        ! do_monte_carlo_scattering(). This mode works only under very special
+        ! conditions: spherical coordinates, a single pointlike star at the center,
+        ! single scattering. The scattering source function for the images is computed
+        ! only for the direct (extincted) stellar light. No multiple scattering is
+        ! computed. Only point source starlight is allowed as source. No thermal emission
+        ! from dust or other diffuse sources can be used. 
+        !
+        ! Note: This mode is not Monte-Carlo style: it is deterministic.
+        !
+        camera_lambda_starlight_single_scat_mode = 2
+        write(stdo,*) 'Warning: using simple starlight single scattering mode now!'
      elseif(buffer(1:9).eq.'maxnrscat') then
         !
         ! Set the max number of scattering events included in the 

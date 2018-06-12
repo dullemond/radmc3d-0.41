@@ -1,0 +1,38 @@
+Here I validate the 1-D spherical coordinates ray tracing and isotropic
+scattering, as well as the new "simplescat" mode in which no Monte Carlo is done
+for the scattering and instead only single scattering is done. This is only
+valid, of course, in the optically thin limit, because at larger optical depths
+the effect of multiple scattering is important.
+
+To test the ray-tracing I compare against a very simple python-based ray-tracer
+for 1-D spherical coordinates.
+
+Manual:
+
+  python problem_setup.py
+  radmc3d mctherm
+  radmc3d image lambda 0.5 nostar simplescat
+  python plot_compare.py
+  
+This should show a plot with the intensity along a slit passing through the
+center of the spherical coordinate system. The curve is the result of RADMC-3D
+using the simple single-scattering mode "simplescat", while the dots are the
+python-based ray-tracer and python-based computation of the scattering source
+terms. Note that the results should be the (virtually) same if you use
+
+  radmc3d image lambda 0.5 nostar maxnrscat 1
+
+(instead of radmc3d image lambda 0.5 nostar simplescat). In this case Monte
+Carlo is done, but photons are dropped after the first scattering. The advantage
+of "radmc3d image lambda 0.5 nostar simplescat" is that it is faster and, in
+3-D, will produce less noise. But that mode is only available in spherical
+coordinates with a single star in the middle. Also no thermal emission is
+included as source for the scattering (which means that the results might
+deviate a bit from "radmc3d image lambda 0.5 nostar maxnrscat 1", where
+dust emission is included as source).
+
+But for this test setup the results overlap very well. This shows that the
+ray-tracing of the scattering appears to work well, at least in the optically
+thin limit with isotropic scattering.
+
+2018.06.11

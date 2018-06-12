@@ -3741,7 +3741,7 @@ subroutine do_lambda_starlight_single_scattering_simple(params,ierror,scatsrc,me
   implicit none
   type(mc_params) :: params
   integer :: ierror,inu
-  doubleprecision :: dtau,dvol,g,luminosity
+  doubleprecision :: dtau,dvol,g,luminosity,albedo,ds,costheta
   doubleprecision :: scatsrc0,alpha_tot,xp1,flux,theta,phi
   logical,optional :: scatsrc,meanint
   logical :: compute_scatsrc,compute_meanint
@@ -4057,24 +4057,25 @@ subroutine do_lambda_starlight_single_scattering_simple(params,ierror,scatsrc,me
                           mcscat_scatsrc_iquv(ray_inu,ray_index,1:4,1) =      &
                                mcscat_scatsrc_iquv(ray_inu,ray_index,1:4,1) + &
                                dustdens(ispec,ray_index) * src4(1:4)
-                    enddo
-                 else
-                    stop 2960
-                 endif
-              enddo
-           elseif(compute_meanint) then
-              !
-              ! Compute the mean intensity: despite the word "single scattering"
-              ! this does not include the single scattering effect in the 
-              ! mean intensity! It only includes the extinction of the 
-              ! starlight. So it is a bit trivial...
-              !
-              mcscat_meanint(ray_inu,ray_index) = &
-                   mcscat_meanint(ray_inu,ray_index) + flux / fourpi
-           else
-              write(stdo,*) 'Strange error in single scattering simple mode. Contact Author.'
-              stop 5491
-           endif
+                       enddo
+                    else
+                       stop 2960
+                    endif
+                 enddo
+              elseif(compute_meanint) then
+                 !
+                 ! Compute the mean intensity: despite the word "single scattering"
+                 ! this does not include the single scattering effect in the 
+                 ! mean intensity! It only includes the extinction of the 
+                 ! starlight. So it is a bit trivial...
+                 !
+                 mcscat_meanint(ray_inu,ray_index) = &
+                      mcscat_meanint(ray_inu,ray_index) + flux / fourpi
+              else
+                 write(stdo,*) 'Strange error in single scattering simple mode. Contact Author.'
+                 stop 5491
+              endif
+           enddo
         enddo
      enddo
   enddo

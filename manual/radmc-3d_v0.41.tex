@@ -2431,6 +2431,32 @@ contribution is compared to single scattering. But of course, it is always
 safer to simply increase {\small\tt nphot\_scat} and patiently wait until
 the Monte Carlo run is finished.
 
+\subsection{Simplified single-scattering mode (spherical coordinates)}
+\label{sec-simple-single-scattering}
+%
+If you are sure that multiple scattering is rare (low albedo and/or low optical
+depth), then you may be interested in using a simpler (non-Monte-Carlo) mode for
+including scattering in your images.  But please first read Section
+\ref{sec-single-multiple-scattering} and test if multiple scattering is indeed
+unimportant. If so, and if you are using spherical coordinates, a single star at
+the center which is point-like, and if you are confident that at the wavelength
+you are interested in the thermal dust emission is not strong enough to be a
+considerable source of light that can be scattered into the line-of-sight
+(i.e.~all scattered light is scattered {\em star}light), then you can use the
+simplified single-scattering mode.
+
+This mode does not use the Monte Carlo method to compute the scattering source
+function, but instead uses direct integration of the starlight through the
+grid. It is much faster than Monte Carlo, and it does not contain noise.
+
+By adding {\small\tt simplescat} to the command line when making an image or
+spectrum, you switch this mode on. Please compare first to the single-scattering
+Monte Carlo method (see Section \ref{sec-single-multiple-scattering}; it should
+yield very similar result, but without noise) and then to the full multiple
+scattering Monte Carlo. The full multiple scattering case will likely produce
+more flux. If the difference is large, then you should not use the simple
+single scattering mode. However, if the difference is minor, then the single
+scattering approximation is reasonable.
 
 \subsection{Warning when using an-isotropic scattering}
 An important issue with anisotropic scattering is that if the phase function

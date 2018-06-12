@@ -3862,8 +3862,10 @@ subroutine camera_make_rect_image(img,tausurf)
            endif
         elseif(camera_lambda_starlight_single_scat_mode.eq.1) then
            call do_lambda_starlight_single_scattering(rt_mcparams,ierror,scatsrc=.true.)
+        elseif(camera_lambda_starlight_single_scat_mode.eq.2) then
+           call do_lambda_starlight_single_scattering_simple(rt_mcparams,ierror,scatsrc=.true.)
         else
-           write(stdo,*) 'Lambda single scattering mode cannot be other than 0 or 1 for now.'
+           write(stdo,*) 'Lambda single scattering mode cannot be other than 0 or 1 or 2 for now.'
            stop 8762
         endif
      endif
@@ -3988,8 +3990,10 @@ subroutine camera_make_rect_image(img,tausurf)
               endif
            elseif(camera_lambda_starlight_single_scat_mode.eq.1) then
               call do_lambda_starlight_single_scattering(rt_mcparams,ierror,scatsrc=.true.)
+           elseif(camera_lambda_starlight_single_scat_mode.eq.2) then
+              call do_lambda_starlight_single_scattering_simple(rt_mcparams,ierror,scatsrc=.true.)
            else
-              write(stdo,*) 'Lambda single scattering mode cannot be other than 0 or 1 for now.'
+              write(stdo,*) 'Lambda single scattering mode cannot be other than 0 or 1 or 2 for now.'
               stop 8762
            endif
         endif
@@ -6853,8 +6857,10 @@ subroutine camera_make_circ_image()
            endif
         elseif(camera_lambda_starlight_single_scat_mode.eq.1) then
            call do_lambda_starlight_single_scattering(rt_mcparams,ierror,scatsrc=.true.)
+        elseif(camera_lambda_starlight_single_scat_mode.eq.2) then
+           call do_lambda_starlight_single_scattering_simple(rt_mcparams,ierror,scatsrc=.true.)
         else
-           write(stdo,*) 'Lambda single scattering mode cannot be other than 0 or 1 for now.'
+           write(stdo,*) 'Lambda single scattering mode cannot be other than 0 or 1 or 2 for now.'
            stop 8762
         endif
      endif
@@ -6979,8 +6985,10 @@ subroutine camera_make_circ_image()
               endif
            elseif(camera_lambda_starlight_single_scat_mode.eq.1) then
               call do_lambda_starlight_single_scattering(rt_mcparams,ierror,scatsrc=.true.)
+           elseif(camera_lambda_starlight_single_scat_mode.eq.2) then
+              call do_lambda_starlight_single_scattering_simple(rt_mcparams,ierror,scatsrc=.true.)
            else
-              write(stdo,*) 'Lambda single scattering mode cannot be other than 0 or 1 for now.'
+              write(stdo,*) 'Lambda single scattering mode cannot be other than 0 or 1 or 2 for now.'
               stop 8762
            endif
         endif
