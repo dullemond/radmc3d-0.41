@@ -3742,7 +3742,7 @@ subroutine do_lambda_starlight_single_scattering_simple(params,ierror,scatsrc,me
   type(mc_params) :: params
   integer :: ierror,inu
   doubleprecision :: dtau,dvol,g,luminosity,albedo,ds,costheta
-  doubleprecision :: scatsrc0,alpha_tot,xp1,flux,theta,phi
+  doubleprecision :: scatsrc0,alpha_tot,xp1,flux,r,theta,phi
   doubleprecision :: cosdphi,sindphi,deltaphi,xbk,ybk,levent,cosphievent,sinphievent
   logical,optional :: scatsrc,meanint
   logical :: compute_scatsrc,compute_meanint
@@ -3890,6 +3890,13 @@ subroutine do_lambda_starlight_single_scattering_simple(params,ierror,scatsrc,me
               ! Compute the ds in radial direction
               !
               ds = amr_grid_xi(ir+1,1) - amr_grid_xi(ir,1)
+              !
+              ! Determine location
+              !
+              r          = 0.5*(amr_grid_xi(ir+1,1)+amr_grid_xi(ir,1))
+              ray_cart_x = r * ray_cart_dirx
+              ray_cart_y = r * ray_cart_diry
+              ray_cart_z = r * ray_cart_dirz
               !
               ! Compute the extinction within the cell
               !
