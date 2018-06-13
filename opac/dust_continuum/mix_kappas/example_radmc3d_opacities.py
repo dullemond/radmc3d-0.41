@@ -82,7 +82,7 @@ opacmix["gscat"][:] = 0.0
 opacmix["zscat"][:] = 0.0
 if "zscat_nochop" in opacmix: opac["zscat_nochop"][:] = 0.0
 if "kscat_nochop" in opacmix: opac["kscat_nochop"][:] = 0.0
-
+mdav = 0.0
 for ispec in range(len(optconst)):
     opacmix["kabs"][:]  += abun[ispec]*opaclist[ispec]["kabs"]
     opacmix["kscat"][:] += abun[ispec]*opaclist[ispec]["kscat"]
@@ -90,7 +90,9 @@ for ispec in range(len(optconst)):
     opacmix["zscat"][:] += abun[ispec]*opaclist[ispec]["zscat"]
     if "zscat_nochop" in opacmix: opac["zscat_nochop"][:] += abun[ispec]*opaclist[ispec]["zscat_nochop"]
     if "kscat_nochop" in opacmix: opac["kscat_nochop"][:] += abun[ispec]*opaclist[ispec]["kscat_nochop"]
-    
+    mdav += abun[ispec]/opaclist[ispec]["matdens"]
+mdav = 1./mdav
+opacmix["matdens"] = mdav
 #
 # Now write it out to a RADMC-3D opacity file:
 #
