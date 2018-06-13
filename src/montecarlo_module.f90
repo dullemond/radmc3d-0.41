@@ -3743,6 +3743,7 @@ subroutine do_lambda_starlight_single_scattering_simple(params,ierror,scatsrc,me
   integer :: ierror,inu
   doubleprecision :: dtau,dvol,g,luminosity,albedo,ds,costheta
   doubleprecision :: scatsrc0,alpha_tot,xp1,flux,theta,phi
+  doubleprecision :: cosdphi,sindphi,deltaphi,xbk,ybk,levent,cosphievent,sinphievent
   logical,optional :: scatsrc,meanint
   logical :: compute_scatsrc,compute_meanint
   integer :: idir,ispec,istar,icell,iddr
@@ -3984,68 +3985,107 @@ subroutine do_lambda_starlight_single_scattering_simple(params,ierror,scatsrc,me
                  !
                  ! Now add to the scattering source function
                  !
-                 do idir=1,mcscat_nrdirs
+                 ! Compute the scattering source function for the given 
+                 ! scattering mode
+                 !
+                 if(scattering_mode.eq.1) then
                     !
-                    ! Compute the scattering source function for the given 
-                    ! scattering mode
+                    ! Isotropic scattering: simply add the source term
                     !
-                    if(scattering_mode.eq.1) then
-                       !
-                       ! Isotropic scattering: simply add the source term
-                       !
-                       scatsrc0 = flux * albedo * alpha_tot / fourpi
-                       mcscat_scatsrc_iquv(ray_inu,ray_index,1,1) =                   &
-                            mcscat_scatsrc_iquv(ray_inu,ray_index,1,1) + scatsrc0
-                    elseif((scattering_mode.eq.2).or.(scattering_mode.eq.3)) then
-                       !
-                       ! Anisotropic scattering: add only for the given directions
-                       !
+                    scatsrc0 = flux * albedo * alpha_tot / fourpi
+                    mcscat_scatsrc_iquv(ray_inu,ray_index,1,1) =                   &
+                         mcscat_scatsrc_iquv(ray_inu,ray_index,1,1) + scatsrc0
+                 elseif((scattering_mode.eq.2).or.(scattering_mode.eq.3)) then
+                    !
+                    ! Anisotropic scattering: add only for the given directions
+                    !
+                    if(mcscat_localobserver) then
+                       write(stdo,*) 'ABORTING: For now, non-isotropic scattering and '
+                       write(stdo,*) '          local observer are not yet compatible.'
+                       stop
+                    endif
+                    do idir=1,mcscat_nrdirs
                        do ispec=1,dust_nr_species
                           mcscat_scatsrc_iquv(ray_inu,ray_index,1,idir) =             &
                                mcscat_scatsrc_iquv(ray_inu,ray_index,1,idir) +        &
                                mcscat_phasefunc(idir,ispec) * flux *                  &
                                dustdens(ispec,ray_index) * kappa_s(inu,ispec) / fourpi
                        enddo
-                       if(mcscat_localobserver) then
-                          write(stdo,*) 'ABORTING: For now, non-isotropic scattering and '
-                          write(stdo,*) '          local observer are not yet compatible.'
-                          stop
+                    enddo
+                 elseif((scattering_mode.eq.4).or.(scattering_mode.eq.5)) then
+                    !
+                    ! Polarized scattering, full phase function
+                    !
+                    if(mcscat_localobserver) then
+                       !
+                       ! Polarized scattering and local-observer are mutually
+                       ! incompatible. NOTE: Also multiple directions (i.e.
+                       ! mcscat_nrdirs.gt.1) is not possible.
+                       !
+                       write(stdo,*) 'ERROR: Polarized scattering and local-observer are incompatible.'
+                       stop
+                    endif
+                    !
+                    ! Make the "phot" array for use with the polarization
+                    ! module. We choose an arbitrary S-vector, because the
+                    ! incoming light is assumed to be unpolarized.
+                    !
+                    photpkg%E    = flux
+                    photpkg%Q    = 0.d0
+                    photpkg%U    = 0.d0
+                    photpkg%V    = 0.d0
+                    photpkg%n(1) = ray_cart_dirx
+                    photpkg%n(2) = ray_cart_diry
+                    photpkg%n(3) = ray_cart_dirz
+                    call polarization_make_s_vector(photpkg%n,photpkg%s)   ! arb S-vector
+                    !
+                    ! If 2-D axisymmetric anisotropic scattering mode,
+                    ! then we must rotate the photpkg%n and photpkg%s
+                    ! vectors appropriately
+                    !
+                    if(dust_2daniso) then
+                       !
+                       ! Safety check. Note: the last phi point is
+                       ! 360 degrees == first one. This makes it easier
+                       ! lateron to interpolate, even though it costs
+                       ! a tiny bit more memory and is a tiny bit slower.
+                       !
+                       if(mcscat_nrdirs.ne.dust_2daniso_nphi+1) stop 2067
+                       !
+                       ! Rotate n and s vector such that the event lies
+                       ! in the x-z-plane (positive x)
+                       !
+                       levent      = sqrt(ray_cart_x**2+ray_cart_y**2)
+                       if(levent.gt.0.d0) then
+                          cosphievent  = ray_cart_x/levent
+                          sinphievent  = ray_cart_y/levent
+                          xbk          = photpkg%n(1)
+                          ybk          = photpkg%n(2)
+                          photpkg%n(1) =  cosphievent * xbk + sinphievent * ybk
+                          photpkg%n(2) = -sinphievent * xbk + cosphievent * ybk
+                          xbk          = photpkg%s(1)
+                          ybk          = photpkg%s(2)
+                          photpkg%s(1) =  cosphievent * xbk + sinphievent * ybk
+                          photpkg%s(2) = -sinphievent * xbk + cosphievent * ybk
                        endif
-                    elseif((scattering_mode.eq.4).or.(scattering_mode.eq.5)) then
                        !
-                       ! Polarized scattering, full phase function
+                       ! Pre-compute the cos and sin of the small incremental
+                       ! rotations
                        !
-                       if(mcscat_localobserver) then
-                          !
-                          ! Polarized scattering and local-observer are mutually
-                          ! incompatible. NOTE: Also multiple directions (i.e.
-                          ! mcscat_nrdirs.gt.1) is not possible.
-                          !
-                          write(stdo,*) 'ERROR: Polarized scattering and local-observer are incompatible.'
-                          stop
-                       endif
-                       !
-                       ! Make the "phot" array for use with the polarization
-                       ! module. We choose an arbitrary S-vector, because the
-                       ! incoming light is assumed to be unpolarized.
-                       !
-                       photpkg%E    = flux
-                       photpkg%Q    = 0.d0
-                       photpkg%U    = 0.d0
-                       photpkg%V    = 0.d0
-                       photpkg%n(1) = ray_cart_dirx
-                       photpkg%n(2) = ray_cart_diry
-                       photpkg%n(3) = ray_cart_dirz
-                       call polarization_make_s_vector(photpkg%n,photpkg%s)   ! arb S-vector
-                       !
-                       ! Now add the scattering contribution of each of
-                       ! the dust species. Note that we do not
-                       ! need to divide by 4*pi here because we use 
-                       ! Z instead of kappa_scat.
-                       !
+                       deltaphi = twopi / dust_2daniso_nphi
+                       cosdphi  = cos(deltaphi)
+                       sindphi  = sin(deltaphi)
+                    endif
+                    !
+                    ! Now add the scattering contribution of each of
+                    ! the dust species. Note that we do not
+                    ! need to divide by 4*pi here because we use 
+                    ! Z instead of kappa_scat.
+                    !
+                    do idir=1,mcscat_nrdirs
                        do ispec=1,dust_nr_species
                           call polarization_randomorient_scatsource(photpkg,  &
-                               mcscat_dirs(:,1),mcscat_svec(:,1),             &
+                               mcscat_dirs(:,idir),mcscat_svec(:,idir),       &
                                scat_munr,scat_mui_grid(:),                    &
                                zmatrix(:,ray_inu,1,ispec),                    &
                                zmatrix(:,ray_inu,2,ispec),                    &
@@ -4054,14 +4094,29 @@ subroutine do_lambda_starlight_single_scattering_simple(params,ierror,scatsrc,me
                                zmatrix(:,ray_inu,5,ispec),                    &
                                zmatrix(:,ray_inu,6,ispec),                    &
                                src4)
-                          mcscat_scatsrc_iquv(ray_inu,ray_index,1:4,1) =      &
-                               mcscat_scatsrc_iquv(ray_inu,ray_index,1:4,1) + &
+                          mcscat_scatsrc_iquv(ray_inu,ray_index,1:4,idir) =       &
+                               mcscat_scatsrc_iquv(ray_inu,ray_index,1:4,idir)  + &
                                dustdens(ispec,ray_index) * src4(1:4)
                        enddo
-                    else
-                       stop 2960
-                    endif
-                 enddo
+                       !
+                       ! If 2-D axisymmetric anisotropic scattering mode,
+                       ! then we must rotate the photpkg%n and photpkg%s
+                       ! vectors appropriately
+                       !
+                       if(dust_2daniso) then
+                          xbk = photpkg%n(1)
+                          ybk = photpkg%n(2)
+                          photpkg%n(1) =  cosdphi * xbk - sindphi * ybk
+                          photpkg%n(2) =  sindphi * xbk + cosdphi * ybk
+                          xbk = photpkg%s(1)
+                          ybk = photpkg%s(2)
+                          photpkg%s(1) =  cosdphi * xbk - sindphi * ybk
+                          photpkg%s(2) =  sindphi * xbk + cosdphi * ybk
+                       endif
+                    enddo
+                 else
+                    stop 2960
+                 endif
               elseif(compute_meanint) then
                  !
                  ! Compute the mean intensity: despite the word "single scattering"
