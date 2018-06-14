@@ -1,0 +1,25 @@
+Here I compare multiple scattering against single scattering for a disklike
+geometry. Also I compare single scattering Monte Carlo with simple single
+scattering. The single scattering Monte Carlo still includes all physics such as
+thermal dust emission as a source of scattered light, finite size star
+(optional), and multiple stellar sources. But the simple single scattering
+(command-line option "simplescat") is directer and does not use Monte Carlo.
+Is therefore has no Monte Carlo noise.
+
+Manual:
+
+  python problem_setup.py
+  radmc3d mctherm
+  python plot_compare.py
+
+This spawns 5 figures. As you can see, the single scattering and simple
+single scattering images are virtually identical. That shows that the
+simple single scattering mode works (also for anisotropic scattering).
+
+The full scattering image is, however, subtantially different. It is brighter,
+and the surface layer is vertically more extended (mostly downward into the
+disk). This is because of the high albedo of the dust: kappa_scat / ( kappa_abs
++ kappa_scat ) = 0.686, or in other words: kappa_scat/kappa_abs=2.2. Multiple
+scattering is therefore prominent. This also explains the much brighter disk.
+
+2018.06.14
