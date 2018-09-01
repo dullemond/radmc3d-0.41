@@ -3117,19 +3117,41 @@ if(chsp.and.((amr_coordsystem.ge.100).and.(amr_coordsystem.lt.200))) then
          endif
       enddo
       !
+      ! For very fine theta grids near the equator with insufficient precision, sometimes
+      ! the adjustment to pi/2 is accidently skipped (see 1e-4 factors above). Check for
+      ! this, and stop if necessary.
+      !
+      if(abs(yi(ny+1)-pihalf)<1e-2*abs(yi(ny+1)-yi(1))) then
+         !
+         ! Should be mirror symmetry case
+         !
+         if(yi(ny+1).ne.pihalf) then
+            write(stdo,*) 'SAFETY STOP: It seems that you want to use mirror symmetry in the'
+            write(stdo,*) '   equatorial plane by putting the highest theta_i to pi/2. But'
+            write(stdo,*) '   presumably you did not use high enough precision in the '
+            write(stdo,*) '   theta_i list in the amr_grid.inp file. The mirror symmetry'
+            write(stdo,*) '   is not set. Stopping for safety. If you are absolutely sure'
+            write(stdo,*) '   you know what you are doing, you can comment out this stop.'
+            stop
+         endif
+      endif
+      !
       ! If theta goes beyond pi/2 then at least ONE theta interface must
       ! be exactly pihalf
       !
       if(yi(ny+1).gt.pihalf) then
          midplane=.false.
          do iy=2,ny
-            if(abs(yi(iy)-pihalf).lt.1d-10) then
+            !if(abs(yi(iy)-pihalf).lt.1d-10) then
+            if(yi(iy).eq.pihalf) then
                midplane=.true.
             endif
          enddo
          if(.not.midplane) then
             write(stdo,*) 'ERROR: Theta grid crosses midplane, but there is no'
-            write(stdo,*) '       interface at pi/2.'
+            write(stdo,*) '       interface at pi/2. Maybe check the precision '
+            write(stdo,*) '       of the theta-grid: the equator interface must'
+            write(stdo,*) '       be really exactly pi/2 to 12 digits or more.'
             stop
          endif
       endif
