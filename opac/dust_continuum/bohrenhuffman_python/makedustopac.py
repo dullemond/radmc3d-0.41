@@ -350,11 +350,15 @@ def compute_opac_mie(optconst_file,matdens,agraincm,lamcm,wgt=None,
             zscat[i,iang,4]     = zscat[i,iiang,4]
             zscat[i,iang,5]     = zscat[i,iiang,5]
             mu  = np.cos(angles*math.pi/180.)
+            mui = 0.5*(mu[1:nang]+mu[0:nang-1])
             dmu = np.abs(mu[1:nang]-mu[0:nang-1])
             zav = 0.5 * ( zscat[i,1:nang,0] + zscat[i,0:nang-1,0] )
             dum = 0.5 * zav*dmu
             sum = dum.sum() * 4 * math.pi
             kscat[i] = sum
+            dum = 0.5 * zav*mui*dmu
+            sum = dum.sum() * 4 * math.pi
+            gscat[i] = sum/kscat[i]
     #
     # If error found, then warn
     #
