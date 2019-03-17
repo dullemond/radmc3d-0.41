@@ -2963,6 +2963,19 @@ subroutine interpet_command_line_options(gotit,fromstdi,quit)
      !$   iarg = iarg+1
      !$   read(buffer,*) setthreads
      !$   gotit = .true.
+     elseif(buffer(1:11).eq.'nphot_therm') then
+        !
+        ! Set the nr of photons for the therm monte carlo
+        !
+        if(iarg.gt.numarg) then
+           write(stdo,*) 'ERROR while reading command line options: cannot read nphot_therm.'
+           write(stdo,*) ' Expecting 1 integer after nphot_therm.'
+           stop
+        endif
+        call ggetarg(iarg,buffer,fromstdi)
+        iarg = iarg+1
+        read(buffer,*) rt_mcparams%nphot_therm
+        gotit = .true.
      elseif(buffer(1:10).eq.'nphot_scat') then
         !
         ! Set the nr of photons for the scattering monte carlo
