@@ -32,7 +32,7 @@ from functools import partial
 
 from radmc3dPy.natconst import *
 import radmc3dPy.crd_trans  as crd_trans 
-from staratm import StellarAtm
+from .staratm import StellarAtm
 
 class radmc3dOctree(object):
     """
