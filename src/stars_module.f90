@@ -1581,6 +1581,22 @@ subroutine read_anisotropic_star_factor()
      do aniso_star_iphi=1,aniso_star_nphi+1
         read(1,*) aniso_star_phi_grid(aniso_star_iphi)
      enddo
+     if(abs(aniso_star_theta_grid(1)).gt.1e-3) then
+        write(stdo,*) 'ERROR: Anisotropic star theta grid must start at theta=0'
+        stop
+     endif
+     if(abs(aniso_star_theta_grid(aniso_star_ntheta+1)-pi).gt.1e-3) then
+        write(stdo,*) 'ERROR: Anisotropic star theta grid must end at theta=pi'
+        stop
+     endif
+     if(abs(aniso_star_phi_grid(1)).gt.1e-3) then
+        write(stdo,*) 'ERROR: Anisotropic star phi grid must start at phi=0'
+        stop
+     endif
+     if(abs(aniso_star_phi_grid(aniso_star_nphi+1)-twopi).gt.1e-3) then
+        write(stdo,*) 'ERROR: Anisotropic star phi grid must end at phi=2*pi'
+        stop
+     endif
      allocate(aniso_star_theta_factor(nstars,aniso_star_ntheta))
      allocate(aniso_star_phi_factor(nstars,aniso_star_nphi))
      do aniso_star_istar=1,nstars
