@@ -1326,6 +1326,10 @@ subroutine stars_cleanup
   incl_stellarsrc           = 0
   stellarsrc_nrtemplates    = 0
   nstars                    = 0
+  if(allocated(aniso_star_theta_grid)) deallocate(aniso_star_theta_grid)
+  if(allocated(aniso_star_phi_grid)) deallocate(aniso_star_phi_grid)
+  if(allocated(aniso_star_theta_factor)) deallocate(aniso_star_theta_factor)
+  if(allocated(aniso_star_phi_factor)) deallocate(aniso_star_phi_factor)
 end subroutine stars_cleanup
 
 
