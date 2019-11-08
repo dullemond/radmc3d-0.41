@@ -1603,6 +1603,10 @@ subroutine read_anisotropic_star_factor()
         write(stdo,*) 'ERROR: Anisotropic star phi grid must end at phi=2*pi'
         stop
      endif
+     aniso_star_theta_grid(1) = -1e-5
+     aniso_star_theta_grid(aniso_star_ntheta+1) = pi+1e-5
+     aniso_star_phi_grid(1) = -1e-5
+     aniso_star_phi_grid(aniso_star_nphi+1) = twopi+1e-5
      if(allocated(aniso_star_theta_factor)) deallocate(aniso_star_theta_factor)
      if(allocated(aniso_star_phi_factor)) deallocate(aniso_star_phi_factor)
      allocate(aniso_star_theta_factor(nstars,aniso_star_ntheta))
