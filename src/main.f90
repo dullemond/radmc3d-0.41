@@ -2258,6 +2258,13 @@ subroutine read_radmcinp_file()
      call parse_input_integer('iquantum@                     ',incl_quantum)
      call parse_input_integer('incl_quantum@                 ',incl_quantum)
      call parse_input_integer('istar_sphere@                 ',inc_star_size)
+     idum=-1
+     call parse_input_integer('aniso_star_mode@              ',idum)
+     if(idum.eq.0) then
+        aniso_star_mode=.false.
+     elseif(idum.eq.1) then
+        aniso_star_mode=.true.
+     endif
      call parse_input_integer('nphotdiff@                    ',rt_mcparams%nphotdiff)
      call parse_input_double ('errtol@                       ',rt_mcparams%errtoldiff)
      call parse_input_double ('errtoldiff@                   ',rt_mcparams%errtoldiff)
