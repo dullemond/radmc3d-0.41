@@ -36,6 +36,15 @@ doubleprecision,allocatable :: illum_flux_unprojected(:,:)
 doubleprecision,allocatable :: illum_flux_unprojected_cum(:,:)
 doubleprecision,allocatable :: illum_fluxtot(:)
 doubleprecision,allocatable :: illum_fluxtot_cum(:)
+!
+! Anisotropic star mode
+!
+logical :: aniso_star_mode=.false.
+integer :: aniso_star_ntheta=0,aniso_star_nphi=0
+double precision,allocatable :: aniso_star_theta_grid(:)
+double precision,allocatable :: aniso_star_phi_grid(:)
+double precision,allocatable :: aniso_star_theta_factor(:,:)
+double precision,allocatable :: aniso_star_phi_factor(:,:)
 
 !$OMP THREADPRIVATE(stellarsrc_cum)
 !$OMP THREADPRIVATE(star_fraclum)
@@ -1539,5 +1548,55 @@ subroutine read_internal_heatsource(action)
   incl_heatsource = 1
   !
 end subroutine read_internal_heatsource
+
+!-------------------------------------------------------------------------
+!                    READ ANISOTROPIC STAR FACTOR
+!-------------------------------------------------------------------------
+subroutine read_anisotropic_star_factor()
+  implicit none
+  integer :: aniso_star_nstars,aniso_star_itheta,aniso_star_iphi,aniso_star_istar
+  !
+  ! Allocate, if necessary, the anisotropic star stuff
+  !
+  if(aniso_star_mode) then
+     if(.not.weighted_photons) then
+        write(stdo,*) 'ERROR: Anisotropic star mode only possible with weighted photons'
+        stop
+     endif
+     open(unit=1,file='aniso_star_factor.inp')
+     read(1,*) aniso_star_nstars,aniso_star_ntheta,aniso_star_nphi
+     if(aniso_star_nstars.ne.nstars) then
+        write(stdo,*) 'ERROR: File aniso_star_factor.inp must have nstars equal to nr of stars'
+        stop
+     endif
+     if(aniso_star_ntheta.eq.0) then
+        write(stdo,*) 'ERROR: Anisotropic star mode requires aniso_star_ntheta>=1'
+        stop
+     endif
+     if(aniso_star_nphi.eq.0) then
+        write(stdo,*) 'ERROR: Anisotropic star mode requires aniso_star_nphi>=1'
+        stop
+     endif
+     allocate(aniso_star_theta_grid(aniso_star_ntheta+1))
+     allocate(aniso_star_phi_grid(aniso_star_nphi+1))
+     do aniso_star_itheta=1,aniso_star_ntheta+1
+        read(1,*) aniso_star_theta_grid(aniso_star_itheta)
+     enddo
+     do aniso_star_iphi=1,aniso_star_nphi+1
+        read(1,*) aniso_star_phi_grid(aniso_star_iphi)
+     enddo
+     allocate(aniso_star_theta_factor(nstars,aniso_star_ntheta))
+     allocate(aniso_star_phi_factor(nstars,aniso_star_nphi))
+     do aniso_star_istar=1,nstars
+        do aniso_star_itheta=1,aniso_star_ntheta
+           read(1,*) aniso_star_theta_factor(aniso_star_istar,aniso_star_itheta)
+        enddo
+        do aniso_star_iphi=1,aniso_star_nphi
+           read(1,*) aniso_star_phi_factor(aniso_star_istar,aniso_star_iphi)
+        enddo
+     enddo
+     close(1)
+  endif
+end subroutine read_anisotropic_star_factor
 
 end module stars_module
