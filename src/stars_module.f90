@@ -1577,6 +1577,8 @@ subroutine read_anisotropic_star_factor()
         write(stdo,*) 'ERROR: Anisotropic star mode requires aniso_star_nphi>=1'
         stop
      endif
+     if(allocated(aniso_star_theta_grid)) deallocate(aniso_star_theta_grid)
+     if(allocated(aniso_star_phi_grid)) deallocate(aniso_star_phi_grid)
      allocate(aniso_star_theta_grid(aniso_star_ntheta+1))
      allocate(aniso_star_phi_grid(aniso_star_nphi+1))
      do aniso_star_itheta=1,aniso_star_ntheta+1
@@ -1601,6 +1603,8 @@ subroutine read_anisotropic_star_factor()
         write(stdo,*) 'ERROR: Anisotropic star phi grid must end at phi=2*pi'
         stop
      endif
+     if(allocated(aniso_star_theta_factor)) deallocate(aniso_star_theta_factor)
+     if(allocated(aniso_star_phi_factor)) deallocate(aniso_star_phi_factor)
      allocate(aniso_star_theta_factor(nstars,aniso_star_ntheta))
      allocate(aniso_star_phi_factor(nstars,aniso_star_nphi))
      do aniso_star_istar=1,nstars
