@@ -1119,6 +1119,15 @@ subroutine montecarlo_init(params,ierr,mcaction,resetseed)
      endif
   endif
   !
+  ! If anisotropic star mode, do checks
+  !
+  if(aniso_star_mode) then
+     if(.not.weighted_photons) then
+        write(stdo,*) 'ERROR: Anisotropic star mode only possible with weighted photons'
+        stop
+     endif
+  endif
+  !
   ! If photon statistics are requested, then allocate the arrays
   !
   if(params%debug_write_stats.ne.0) then

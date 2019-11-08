@@ -1559,10 +1559,6 @@ subroutine read_anisotropic_star_factor()
   ! Allocate, if necessary, the anisotropic star stuff
   !
   if(aniso_star_mode) then
-     if(.not.weighted_photons) then
-        write(stdo,*) 'ERROR: Anisotropic star mode only possible with weighted photons'
-        stop
-     endif
      open(unit=1,file='aniso_star_factor.inp')
      read(1,*) aniso_star_nstars,aniso_star_ntheta,aniso_star_nphi
      if(aniso_star_nstars.ne.nstars) then
