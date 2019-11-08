@@ -1611,4 +1611,38 @@ subroutine read_anisotropic_star_factor()
   endif
 end subroutine read_anisotropic_star_factor
 
+!-------------------------------------------------------------------------
+!                   RETRIEVE ANISOTROPIC STAR FACTOR
+!-------------------------------------------------------------------------
+function get_anisotropic_star_factor(istar,dirx,diry,dirz)
+  implicit none
+  double precision :: get_anisotropic_star_factor
+  double precision :: dirx,diry,dirz
+  double precision :: theta,phi,factor_theta,factor_phi
+  integer :: istar,itheta,iphi
+  theta   = acos(dirz)
+  if(dirx.ne.0.d0) then
+     phi     = atan(diry/dirx)
+     if(dirx.gt.0.d0) then
+        if(diry.lt.0.d0) then
+           phi = phi + twopi
+        endif
+     else
+        phi = phi + pi
+     endif
+  else
+     if(diry.ge.0.d0) then
+        phi = pihalf
+     else
+        phi = 3.d0*pihalf
+     endif
+  endif
+  call hunt(aniso_star_theta_grid,aniso_star_ntheta,theta,itheta)
+  call hunt(aniso_star_phi_grid,aniso_star_nphi,phi,iphi)
+  factor_theta = aniso_star_theta_factor(istar,itheta)
+  factor_phi   = aniso_star_phi_factor(istar,iphi)
+  get_anisotropic_star_factor = factor_theta * factor_phi
+  return 
+end function get_anisotropic_star_factor
+
 end module stars_module
