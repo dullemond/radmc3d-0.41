@@ -4194,6 +4194,7 @@ subroutine walk_full_path_bjorkmanwood(params,ierror)
   integer :: index_prev,count_samecell,iddr,idim,icoord
   logical :: ok,arrived,therm,usesphere,nospheres,incell
   type(amr_branch), pointer :: acell
+  double precision :: factor_aniso_star
   !$ logical::continue
   !
   ! Do checks
@@ -4408,6 +4409,14 @@ subroutine walk_full_path_bjorkmanwood(params,ierror)
               !
               call montecarlo_randomdir(ray_cart_dirx,ray_cart_diry,  &
                                         ray_cart_dirz)
+              !
+              ! If anisotropic stellar radiation, then implement this here
+              ! NOTE: Only works with weighted photons (is checked in montecarlo_init())
+              !
+              if(aniso_star_mode) then
+                 factor_aniso_star = get_anisotropic_star_factor(istar,ray_cart_dirx,ray_cart_diry,ray_cart_dirz)
+                 energy = energy * factor_aniso_star
+              endif
            else
               !
               ! Focused toward the model grid (the star lies outside the grid)
