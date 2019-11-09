@@ -5507,6 +5507,7 @@ subroutine walk_full_path_scat(params,inu,ierror)
   integer :: ibnd,bc_idir,bc_ilr,ix,iy,iz,illum,ierr
   logical :: ok,arrived,usesphere,todo_photpkg
   type(amr_branch), pointer :: acell
+  double precision :: factor_aniso_star
   !
   ! Do checks
   !
@@ -5700,6 +5701,14 @@ subroutine walk_full_path_scat(params,inu,ierror)
               !
               call montecarlo_randomdir(ray_cart_dirx,ray_cart_diry,  &
                                         ray_cart_dirz)
+              !
+              ! If anisotropic stellar radiation, then implement this here
+              ! NOTE: Only works with weighted photons (is checked in montecarlo_init())
+              !
+              if(aniso_star_mode) then
+                 factor_aniso_star = get_anisotropic_star_factor(istar,ray_cart_dirx,ray_cart_diry,ray_cart_dirz)
+                 energy = energy * factor_aniso_star
+              endif
            else
               !
               ! Focused toward the model grid (the star lies outside the grid)
