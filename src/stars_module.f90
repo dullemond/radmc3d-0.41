@@ -1563,6 +1563,10 @@ subroutine read_anisotropic_star_factor()
   ! Allocate, if necessary, the anisotropic star stuff
   !
   if(aniso_star_mode) then
+     if(star_sphere) then
+        write(stdo,*) 'ERROR: For aniso_star_mode the stars must be a point source.'
+        stop
+     endif
      open(unit=1,file='aniso_star_factor.inp')
      read(1,*) aniso_star_nstars,aniso_star_ntheta,aniso_star_nphi
      if(aniso_star_nstars.ne.nstars) then
