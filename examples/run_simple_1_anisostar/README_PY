@@ -1,0 +1,57 @@
+This example demonstrates, in a simplistic way, the "anisotropic star" mode. The idea is that
+one may want to model the effect of a star that is surrounded by some material close to the
+star which casts shadows out to very large distances. One may not want to actually model the
+stuff around the star itself, but one is interested in the effect of the anisotropic luminosity
+of the star on its surroundings. The correct solution is to make sure (with either spherical
+coordinates or Adaptive Mesh Refinement) to resolve both these surroundings at large distance
+as well as the stuff close to the star. But this is also somewhat cumbersome. A simple "fix"
+is to implement an "anisotropically radiating star". This example shows how this can be done.
+
+WARNING: Experimental mode, so not everything is well tested.
+
+The way to do this is to add the following line to radmc3d.inp:
+
+aniso_star_mode = 1
+
+And then to create a file called aniso_star_factor.inp which gives the factor f
+by which the luminosity in a particular direction is reduced. This file contains
+a theta-grid and a phi-grid, which maps the sky of the star (or: of each
+star). If you use spherical coordinates: the theta and phi are of course aligned
+with the polar grid. For cartesial coordinates: the theta,phi polar coordinates
+are aligned with the z-direction. Then follows, for each star, the reduction
+factor as a function of these polar coordinates on the sky. In fact, the factor
+f is not given literally in all directions (as a 2-D array), but is split into
+f_theta and f_phi (as two 1-D arrays), with f being the product of the two. This
+is indeed a bit restrictive (it might be better to have an f that is a
+completely free function of theta and phi), but for now it is this simplified
+form.
+
+NOTE: In principle f should be a reduction factor, i.e. f<=1, with f=1 is the
+      normal unreduced f. Please note that the total luminosity of the star is
+      changing when you choose f unequal to 1. Example: if you set f=1 for
+      0<theta<=pi/2 and f=1E-8 for pi/2<theta<pi, then effectively your star's
+      luminosity is now reduced by a factor of 2.
+
+Restrictions:
+
+ - Only works for stellar point sources, i.e. not for finite-size stellar spheres.
+
+ - Only works for mc_weighted_photons=.true. mode.
+
+What the aniso_star mode it does:
+
+ - In the thermal Monte Carlo the energy of the stellar photon packages are, before they
+   are launched, multiplied by f. This means that the temperature of the dust heated
+   by this direct stellar light will be lower.
+
+ - Also in the scattering Monte Carlo the energy of the stellar photon packages
+   are, before they are launched, multiplied by f. This means that the scattered light
+   from the dust illuminated by the star is reduced by this factor.
+
+ - In the camera_module.f90, when the stellar point sources are introduced into the
+   image, the starting intensity is multiplied by f.
+
+This example run: This example model is only demonstrating the effect of this
+mode on the thermal Monte Carlo in Cartesian coordinates.
+
+2019.11.09
