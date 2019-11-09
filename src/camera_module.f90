@@ -4364,6 +4364,9 @@ subroutine camera_make_rect_image(img,tausurf)
              do inu=inu00,inu11
                 camera_intensity_iquv(inu,1) =                               &
                      find_starlight_interpol(camera_frequencies(inu),istar)
+                camera_intensity_iquv(inu,2) = 0.
+                camera_intensity_iquv(inu,3) = 0.
+                camera_intensity_iquv(inu,4) = 0.
              enddo
              !
              ! Do ray tracing
