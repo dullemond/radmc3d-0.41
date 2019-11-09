@@ -4164,6 +4164,7 @@ subroutine camera_make_rect_image(img,tausurf)
     integer :: inuu
     integer :: backup_nrrefine,backup_tracemode
     logical :: warn_tausurf_problem,flag_quv_too_big
+    double precision :: factor_aniso_star
     !
     ! Reset some non-essential counters
     !
@@ -4365,6 +4366,15 @@ subroutine camera_make_rect_image(img,tausurf)
                 camera_intensity_iquv(inu,1) =                               &
                      find_starlight_interpol(camera_frequencies(inu),istar)
              enddo
+             !
+             ! If anisotropic star mode, then modify this initial intensity
+             !
+             if(aniso_star_mode) then
+                factor_aniso_star = get_anisotropic_star_factor(istar,dirx,diry,dirz)
+                do inu=inu00,inu11
+                   camera_intensity_iquv(inu,1) = camera_intensity_iquv(inu,1) * factor_aniso_star
+                enddo
+             endif
              !
              ! Do ray tracing
              !
