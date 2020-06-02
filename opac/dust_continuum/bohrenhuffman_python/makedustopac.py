@@ -126,7 +126,11 @@ def compute_opac_mie(optconst_file,matdens,agraincm,lamcm,wgt=None,
       agr           = The grain sizes
       wgt           = The averaging weights of these grain (not the masses!)
                       The sum of wgt.sum() must be 1.
-                      If wgt was set as imput then the input value is returned.
+                      If wgt was set as input then the input value is returned.
+    NOTE: This is meant to smear a single size out over a narrow Gaussian
+          distribution. So logawidth is meant to be small. If you want
+          to implement a wide log-normal distribution, you may need to 
+          adjust the code according to your definition of this distribution.
 
     If chopforward>0 it will also return the unchopped versions:
       zscat_nochop  = The zscat before the forward scattering was chopped off
