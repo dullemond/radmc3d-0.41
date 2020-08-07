@@ -2431,9 +2431,9 @@ subroutine camera_serial_raytrace(nrfreq,inu0,inu1,x,y,z,dx,dy,dz,distance,   &
                              thscale = theomax(1)/qdr(1)
                              qdr(1:4) = qdr(1:4) * thscale
                           endif
-                          qdr(2) = min(qdr(2),theomax(2))
-                          qdr(3) = min(qdr(3),theomax(3))
-                          qdr(4) = min(qdr(4),theomax(4))
+                          qdr(2) = sign(min(abs(qdr(2)),abs(theomax(2))),theomax(2))
+                          qdr(3) = sign(min(abs(qdr(3)),abs(theomax(3))),theomax(3))
+                          qdr(4) = sign(min(abs(qdr(4)),abs(theomax(4))),theomax(4))
                           intensity(inu,1:4) = xp * intensity(inu,1:4) + qdr(1:4)
                        else
                           if(dtau1.gt.1e-9) then
