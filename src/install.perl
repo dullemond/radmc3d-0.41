@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 #=======================================================
 #           INSTALL ROUTINE FOR "RADMC-3D"
 #=======================================================
@@ -32,7 +32,7 @@ if(!(-e $radmc3dlnk)) {
     print "------ Warning: file $radmc3dlnk did not exist previously. You might want to type 'rehash'\n" ;
 }
 open(FILE,">$radmc3dlnk") || die "Could not open file\n" ;
-print FILE "#!/usr/bin/perl\n" ;
+print FILE "#!/usr/bin/env perl\n" ;
 print FILE "system(\"$radmc3d \@ARGV\");" ;
 close (FILE) ;
 `chmod u+rwx $radmc3dlnk` ;
