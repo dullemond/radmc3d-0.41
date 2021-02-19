@@ -24,4 +24,16 @@ files:
 
 23.03.11
 
+For testing purposes and/or to get familiar with the physics of line
+transfer, there is a super-simple one-zone LTE line transfer python code
+included in this directory:
 
+  onezone_lte_line_trans/
+
+The example is for CO but you can put in any other molecule from the
+Leiden LAMDA database.
+
+You can also use it to test the outcomes of RADMC-3D models for simplified
+test cases.
+
+2017.08.21

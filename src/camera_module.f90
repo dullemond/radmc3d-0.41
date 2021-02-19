@@ -1125,6 +1125,11 @@ subroutine camera_serial_raytrace(nrfreq,inu0,inu1,x,y,z,dx,dy,dz,distance,   &
 !     if(.not.allocated(camera_ray_jnu)) stop 4560
 !     if(.not.allocated(camera_ray_alpnu)) stop 4561
   endif
+  if(camera_secondorder.and.(inu0.ne.inu1)) then
+     write(stdo,*) 'ERROR: With second order integration it is impossible to '
+     write(stdo,*) 'raytrace multiple frequencies at the same time'
+     stop
+  endif
   !
   ! Set defaults
   !
@@ -2433,9 +2438,9 @@ subroutine camera_serial_raytrace(nrfreq,inu0,inu1,x,y,z,dx,dy,dz,distance,   &
                              thscale = theomax(1)/qdr(1)
                              qdr(1:4) = qdr(1:4) * thscale
                           endif
-                          qdr(2) = min(qdr(2),theomax(2))
-                          qdr(3) = min(qdr(3),theomax(3))
-                          qdr(4) = min(qdr(4),theomax(4))
+                          qdr(2) = sign(min(abs(qdr(2)),abs(theomax(2))),theomax(2))
+                          qdr(3) = sign(min(abs(qdr(3)),abs(theomax(3))),theomax(3))
+                          qdr(4) = sign(min(abs(qdr(4)),abs(theomax(4))),theomax(4))
                           intensity(inu,1:4) = xp * intensity(inu,1:4) + qdr(1:4)
                        else
                           if(dtau1.gt.1e-9) then
@@ -3867,8 +3872,10 @@ subroutine camera_make_rect_image(img,tausurf)
            endif
         elseif(camera_lambda_starlight_single_scat_mode.eq.1) then
            call do_lambda_starlight_single_scattering(rt_mcparams,ierror,scatsrc=.true.)
+        elseif(camera_lambda_starlight_single_scat_mode.eq.2) then
+           call do_lambda_starlight_single_scattering_simple(rt_mcparams,ierror,scatsrc=.true.)
         else
-           write(stdo,*) 'Lambda single scattering mode cannot be other than 0 or 1 for now.'
+           write(stdo,*) 'Lambda single scattering mode cannot be other than 0 or 1 or 2 for now.'
            stop 8762
         endif
      endif
@@ -4065,8 +4072,10 @@ subroutine camera_make_rect_image(img,tausurf)
               endif
            elseif(camera_lambda_starlight_single_scat_mode.eq.1) then
               call do_lambda_starlight_single_scattering(rt_mcparams,ierror,scatsrc=.true.)
+           elseif(camera_lambda_starlight_single_scat_mode.eq.2) then
+              call do_lambda_starlight_single_scattering_simple(rt_mcparams,ierror,scatsrc=.true.)
            else
-              write(stdo,*) 'Lambda single scattering mode cannot be other than 0 or 1 for now.'
+              write(stdo,*) 'Lambda single scattering mode cannot be other than 0 or 1 or 2 for now.'
               stop 8762
            endif
         endif
@@ -4465,6 +4474,9 @@ subroutine camera_make_rect_image(img,tausurf)
              do inu=inu00,inu11
                 camera_intensity_iquv(inu,1) =                               &
                      find_starlight_interpol(camera_frequencies(inu),istar)
+                camera_intensity_iquv(inu,2) = 0.
+                camera_intensity_iquv(inu,3) = 0.
+                camera_intensity_iquv(inu,4) = 0.
              enddo
              !
              ! Do ray tracing
@@ -6961,8 +6973,10 @@ subroutine camera_make_circ_image()
            endif
         elseif(camera_lambda_starlight_single_scat_mode.eq.1) then
            call do_lambda_starlight_single_scattering(rt_mcparams,ierror,scatsrc=.true.)
+        elseif(camera_lambda_starlight_single_scat_mode.eq.2) then
+           call do_lambda_starlight_single_scattering_simple(rt_mcparams,ierror,scatsrc=.true.)
         else
-           write(stdo,*) 'Lambda single scattering mode cannot be other than 0 or 1 for now.'
+           write(stdo,*) 'Lambda single scattering mode cannot be other than 0 or 1 or 2 for now.'
            stop 8762
         endif
      endif
@@ -7159,8 +7173,10 @@ subroutine camera_make_circ_image()
               endif
            elseif(camera_lambda_starlight_single_scat_mode.eq.1) then
               call do_lambda_starlight_single_scattering(rt_mcparams,ierror,scatsrc=.true.)
+           elseif(camera_lambda_starlight_single_scat_mode.eq.2) then
+              call do_lambda_starlight_single_scattering_simple(rt_mcparams,ierror,scatsrc=.true.)
            else
-              write(stdo,*) 'Lambda single scattering mode cannot be other than 0 or 1 for now.'
+              write(stdo,*) 'Lambda single scattering mode cannot be other than 0 or 1 or 2 for now.'
               stop 8762
            endif
         endif

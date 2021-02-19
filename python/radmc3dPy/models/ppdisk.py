@@ -31,20 +31,20 @@ by a given fractor.
 try:
     import numpy as np
 except:
-    print 'ERROR'
-    print ' Numpy cannot be imported '
-    print ' To use the python module of RADMC-3D you need to install Numpy'
+    print('ERROR')
+    print(' Numpy cannot be imported ')
+    print(' To use the python module of RADMC-3D you need to install Numpy')
 
 
 from radmc3dPy.natconst import *
 try:
     import matplotlib.pylab as plb
 except:
-    print ' WARNING'
-    print ' matploblib.pylab cannot be imported ' 
-    print ' To used the visualization functionality of the python module of RADMC-3D you need to install matplotlib'
-    print ' Without matplotlib you can use the python module to set up a model but you will not be able to plot things or'
-    print ' display images'
+    print(' WARNING')
+    print(' matploblib.pylab cannot be imported ' )
+    print(' To used the visualization functionality of the python module of RADMC-3D you need to install matplotlib')
+    print(' Without matplotlib you can use the python module to set up a model but you will not be able to plot things or')
+    print(' display images')
 
 import radmc3dPy.analyze as analyze
 import sys
@@ -415,9 +415,9 @@ def getGasAbundance(grid=None, ppar=None, ispec=''):
         try: 
             data = analyze.readData(ddens=True, dtemp=True, binary=False)
         except:
-            print 'WARNING!!'
-            print 'No data could be read in binary or in formatted ascii format'
-            print '  '
+            print('WARNING!!')
+            print('No data could be read in binary or in formatted ascii format')
+            print('  ')
             return 0
 
     # Calculate continuum optical depth 
@@ -452,10 +452,10 @@ def getGasAbundance(grid=None, ppar=None, ispec=''):
 
     else:
         gasabun = np.zeros([grid.nx, grid.ny, grid.nz], dtype=np.float64) + 1e-10
-        print 'WARNING !!!'
-        print 'Molecule name "'+ispec+'" is not found in gasspec_mol_name'
-        print 'A default 1e-10 abundance will be used'
-        print ' ' 
+        print('WARNING !!!')
+        print('Molecule name "'+ispec+'" is not found in gasspec_mol_name')
+        print('A default 1e-10 abundance will be used')
+        print(' ' )
 
 
 

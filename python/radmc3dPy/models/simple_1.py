@@ -5,9 +5,9 @@ Original IDL model by Kees Dullemond, Python translation by Attila Juhasz
 try:
     import numpy as np
 except:
-    print 'ERROR'
-    print ' Numpy cannot be imported '
-    print ' To use the python module of RADMC-3D you need to install Numpy'
+    print('ERROR')
+    print(' Numpy cannot be imported ')
+    print(' To use the python module of RADMC-3D you need to install Numpy')
 
 from radmc3dPy.natconst import *
 

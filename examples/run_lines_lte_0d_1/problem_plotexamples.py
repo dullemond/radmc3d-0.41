@@ -27,4 +27,7 @@ mol = readMol('co')
 #
 # Plot line spectrum with doppler shift as x-axis
 #
-plotSpectrum(s,mol=mol,iline=1)
+plotSpectrum(s,mol=mol,ilin=1)
+
+
+plt.show()

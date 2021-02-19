@@ -5,19 +5,19 @@ to do some simple analysis/diagnostics of the model.
 try:
     import numpy as np
 except:
-    print 'ERROR'
-    print ' Numpy cannot be imported '
-    print ' To use the python module of RADMC-3D you need to install Numpy'
+    print('ERROR')
+    print(' Numpy cannot be imported ')
+    print(' To use the python module of RADMC-3D you need to install Numpy')
 
 
 try:
     import matplotlib.pylab as plb
 except:
-    print ' WARNING'
-    print ' matploblib.pylab cannot be imported ' 
-    print ' To used the visualization functionality of the python module of RADMC-3D you need to install matplotlib'
-    print ' Without matplotlib you can use the python module to set up a model but you will not be able to plot things or'
-    print ' display images'
+    print(' WARNING')
+    print(' matploblib.pylab cannot be imported ' )
+    print(' To used the visualization functionality of the python module of RADMC-3D you need to install matplotlib')
+    print(' Without matplotlib you can use the python module to set up a model but you will not be able to plot things or')
+    print(' display images')
 
 from matplotlib.colors import LogNorm
 import matplotlib.patches as patches
@@ -32,7 +32,7 @@ from functools import partial
 
 from radmc3dPy.natconst import *
 import radmc3dPy.crd_trans  as crd_trans 
-from staratm import StellarAtm
+from .staratm import StellarAtm
 
 class radmc3dOctree(object):
     """
@@ -349,8 +349,8 @@ class radmc3dOctree(object):
 
         if (wbound==None)|(nw==None):
             if (ppar==None): 
-                print 'ERROR!'
-                print 'Either the boundaries or the number of gridpoints has not be specified in the wavelength grid'
+                print('ERROR!')
+                print('Either the boundaries or the number of gridpoints has not be specified in the wavelength grid')
                 return
             
         self.nwav = nw[0]
@@ -394,8 +394,8 @@ class radmc3dOctree(object):
         try :
             rfile = open('wavelength_micron.inp', 'r')
         except:
-            print 'Error!' 
-            print 'wavelength_micron.inp was not found!'
+            print('Error!' )
+            print('wavelength_micron.inp was not found!')
             return 
 
         self.nwav = int(rfile.readline())
@@ -425,7 +425,7 @@ class radmc3dOctree(object):
             if fname=='':
                 fname = 'wavelength_micron.inp'
 
-            print 'Writing '+fname
+            print('Writing '+fname)
             wfile = open(fname, 'w')
             wfile.write('%d\n'%self.nwav)
             for ilam in range(self.nwav):
@@ -437,11 +437,11 @@ class radmc3dOctree(object):
             try :
                 wfile = open(fname, 'w')
             except:
-                print 'Error!' 
-                print fname+' cannot be opened!'
+                print('Error!' )
+                print(fname+' cannot be opened!')
                 return 
            
-            print 'Writing '+fname
+            print('Writing '+fname)
             wfile.write("%d\n"%self.nfreq)
             wfile.write(" \n")
             #
@@ -665,17 +665,17 @@ class radmc3dOctree(object):
                 dfunc = self.model.decisionFunction
             
             else:
-                print 'ERROR'
-                print 'Tree cannot be built as no decision function for AMR refinement has been specified.'
-                print 'It is required to decide when a node / cell should be resolved'
-                print 'Decision function should be given either as a dfunc keyword argument in setup function call'
-                print 'or should be implemented in the model as decisionFunction()'
+                print('ERROR')
+                print('Tree cannot be built as no decision function for AMR refinement has been specified.')
+                print('It is required to decide when a node / cell should be resolved')
+                print('Decision function should be given either as a dfunc keyword argument in setup function call')
+                print('or should be implemented in the model as decisionFunction()')
                 return
 
         if levelMaxLimit is None:
             if not 'levelMaxLimit' in ppar.keys():
-                print 'ERROR'
-                print 'levelMaxLimit is not specified but it is required for an octree AMR mesh generation'
+                print('ERROR')
+                print('levelMaxLimit is not specified but it is required for an octree AMR mesh generation')
                 return
             else:
                 self.levelMaxLimit = ppar['levelMaxLimit']
@@ -740,18 +740,18 @@ class radmc3dOctree(object):
             self.nChild = 2**(np.array(self.act_dim, dtype=int).sum())
       
         if self.nChild > 0:
-            print 'Adaptive Mesh Refinement (AMR) is active'
+            print('Adaptive Mesh Refinement (AMR) is active')
         txt = 'Active dimensions : '
         for i in range(3):
             if self.act_dim[i] == 1:
                 txt += ("%d "%i)
-        print txt
+        print(txt)
 
         #
         # Now go level by level and check which cells are to be resolved and resolve what's necessary
         #
         for ilev in range(self.levelMaxLimit):
-            print "Resolving level " + ("%d"%ilev)
+            print("Resolving level " + ("%d"%ilev))
             #
             # Select the cells at the current level
             #
@@ -770,22 +770,22 @@ class radmc3dOctree(object):
                 #
                 if True in jj:
                     ncell2resolve = cID[ii][jj].shape[0]
-                    print 'Cells to resolve at this level : ', ncell2resolve
+                    print('Cells to resolve at this level : ', ncell2resolve)
                     self.resolveNodes(rsIDs=cID[ii][jj])
                     self.levelMax += 1
                 else:
-                    print 'No cells to resolve at this level'
+                    print('No cells to resolve at this level')
             else:
-                print 'No cells to resolve at this level'
+                print('No cells to resolve at this level')
         
         self.childID = np.array(self.childID)
         #
         # Print out some statistics
         #
-        print 'Tree building done'
-        print 'Maximum tree depth : ', self.levelMax
-        print 'Nr of branches     : ', self.nBranch
-        print 'Nr of leaves       : ', self.nLeaf
+        print('Tree building done')
+        print('Maximum tree depth : ', self.levelMax)
+        print('Nr of branches     : ', self.nBranch)
+        print('Nr of leaves       : ', self.nLeaf)
         ncells_fullgrid = self.nChild**self.levelMax * self.nxRoot*self.nyRoot*self.nzRoot
         cell_fraction =  float(self.nLeaf + self.nBranch) / ncells_fullgrid
         #print 'Using '+("%.3f"%(cell_fraction*100))+'% memory of a regular grid at max resolution'
@@ -809,10 +809,10 @@ class radmc3dOctree(object):
             try:
                 self.model  = __import__('radmc3dPy.models.'+model, fromlist=['']) 
             except:
-                print 'ERROR'
-                print ' '+model+'.py could not be imported'
-                print ' The model files should either be in the current working directory or'
-                print ' in the radmc3d python module directory'
+                print('ERROR')
+                print(' '+model+'.py could not be imported')
+                print(' The model files should either be in the current working directory or')
+                print(' in the radmc3d python module directory')
                 return
     
     def _selfCheckCounterRec(self, cellID=None):
@@ -841,22 +841,22 @@ class radmc3dOctree(object):
         for i in range(nRoot):
             self._selfCheckCounterRec(cellID=i)
        
-        print 'Tree consistency check'
-        print 'Tree depth      : ' + ("%d"%self.levelMax)
-        print 'Nr of leaves    : ' + ("%d"%self.counter[0]) + " should be " + ("%d"%self.nLeaf)
-        print 'Nr of branches  : ' + ("%d"%self.counter[1]) + " should be " + ("%d"%self.nBranch)
-        print 'Nr of cells     : ' + ("%d"%self.nCell) + " should be " + ("%d"%(self.nBranch+self.nLeaf))
-        print 'Leaf array      : ' + ("%d"%self.isLeaf.shape[0])
-        print 'Level array     : ' + ("%d"%self.level.shape[0])
-        print 'ParentID array  : ' + ("%d"%self.parentID.shape[0])
-        print 'ChildID list    : ' + ("%d"%len(self.childID))
-        print 'Max childID     : ' + ("%d"%self.counter[2])
-        print 'x array         : ' + ("%d"%self.x.shape[0])
-        print 'y array         : ' + ("%d"%self.y.shape[0])
-        print 'z array         : ' + ("%d"%self.z.shape[0])
-        print 'dx array        : ' + ("%d"%self.dx.shape[0])
-        print 'dy array        : ' + ("%d"%self.dy.shape[0])
-        print 'dz array        : ' + ("%d"%self.dz.shape[0])
+        print('Tree consistency check')
+        print('Tree depth      : ' + ("%d"%self.levelMax))
+        print('Nr of leaves    : ' + ("%d"%self.counter[0]) + " should be " + ("%d"%self.nLeaf))
+        print('Nr of branches  : ' + ("%d"%self.counter[1]) + " should be " + ("%d"%self.nBranch))
+        print('Nr of cells     : ' + ("%d"%self.nCell) + " should be " + ("%d"%(self.nBranch+self.nLeaf)))
+        print('Leaf array      : ' + ("%d"%self.isLeaf.shape[0]))
+        print('Level array     : ' + ("%d"%self.level.shape[0]))
+        print('ParentID array  : ' + ("%d"%self.parentID.shape[0]))
+        print('ChildID list    : ' + ("%d"%len(self.childID)))
+        print('Max childID     : ' + ("%d"%self.counter[2]))
+        print('x array         : ' + ("%d"%self.x.shape[0]))
+        print('y array         : ' + ("%d"%self.y.shape[0]))
+        print('z array         : ' + ("%d"%self.z.shape[0]))
+        print('dx array        : ' + ("%d"%self.dx.shape[0]))
+        print('dy array        : ' + ("%d"%self.dy.shape[0]))
+        print('dz array        : ' + ("%d"%self.dz.shape[0]))
 
         return
 
@@ -877,14 +877,14 @@ class radmc3dOctree(object):
         Function to generate the cell index mapping from arrays containing the full tree and those containing only the leaves
         """
       
-        print 'Generating leaf indices'
+        print('Generating leaf indices')
         self.leafID = np.zeros(self.nCell,dtype=np.int)-1
         self.cellIDCur  = -1
         nRoot = self.nxRoot * self.nyRoot * self.nzRoot
         for i in range(nRoot):
             self._generateLeafIDRec(i)
         
-        print 'Done'
+        print('Done')
     
     def convArrLeaf2Tree(self, var=None):
         """
@@ -910,9 +910,9 @@ class radmc3dOctree(object):
             for i in range(var.shape[1]):
                 treeVar[ii,i] = var[self.leafID[ii],i]
         else:
-            print 'ERROR'
-            print 'Input variable is a three dimensional array. Octree AMR only supports one or two dimensional arrays'
-            print ' with the first dimension beeing the cell / spatial dimension'
+            print('ERROR')
+            print('Input variable is a three dimensional array. Octree AMR only supports one or two dimensional arrays')
+            print(' with the first dimension beeing the cell / spatial dimension')
             return
 
         return treeVar
@@ -942,9 +942,9 @@ class radmc3dOctree(object):
             for i in range(var.shape[1]):
                 leafVar[self.leafID[ii],i] = var[ii,i]
         else:
-            print 'ERROR'
-            print 'Input variable is a three dimensional array. Octree AMR only supports one or two dimensional arrays'
-            print ' with the first dimension beeing the cell / spatial dimension'
+            print('ERROR')
+            print('Input variable is a three dimensional array. Octree AMR only supports one or two dimensional arrays')
+            print(' with the first dimension beeing the cell / spatial dimension')
             return
 
         return leafVar
@@ -964,7 +964,7 @@ class radmc3dOctree(object):
         if fname=='':
             fname = 'amr_grid.inp'
 
-        print 'Writing '+fname
+        print('Writing '+fname)
         wfile = open(fname, 'w')
         wfile.write('%d\n'%1)                    # Format number
         
@@ -1044,17 +1044,17 @@ class radmc3dOctree(object):
         try:
             rfile       = open(fname, 'r')
         except IOError:
-            print fname+' cannot be opened'
+            print(fname+' cannot be opened')
             return
         else:
-            print 'Reading '+fname
+            print('Reading '+fname)
 
         form        = float(rfile.readline())
         dum = rfile.readline()
         grid_style  = float(rfile.readline())
         if int(grid_style) != 1:
-            print 'ERROR'
-            print 'Unsupported AMR style in the amr_grid.inp file. Currently only Octree AMR is supported.'
+            print('ERROR')
+            print('Unsupported AMR style in the amr_grid.inp file. Currently only Octree AMR is supported.')
             return 
 
         crd_system  = int(rfile.readline())
@@ -1066,9 +1066,9 @@ class radmc3dOctree(object):
             self.crd_sys = 'cyl'
         else:
             rfile.close()
-            print 'ERROR'
-            print ' unsupported coordinate system in the amr_grid.inp file'
-            print crd_system
+            print('ERROR')
+            print(' unsupported coordinate system in the amr_grid.inp file')
+            print(crd_system)
             return
 
         grid_info   = float(rfile.readline())
@@ -1174,7 +1174,7 @@ class radmc3dOctree(object):
             self.nLeaf   += self.nChild
             if (self.levelMax < self.level[cellID]+1):
                 self.levelMax = self.level[cellID]+1
-                print 'Tree depth : ', self.levelMax
+                print('Tree depth : ', self.levelMax)
            
             #
             # Generate the cell center offsets for a proper octree
@@ -1349,8 +1349,8 @@ class radmc3dGrid(object):
 
         if (wbound==None)|(nw==None):
             if (ppar==None): 
-                print 'ERROR!'
-                print 'Either the boundaries or the number of gridpoints has not be specified in the wavelength grid'
+                print('ERROR!')
+                print('Either the boundaries or the number of gridpoints has not be specified in the wavelength grid')
                 return
             
         self.nwav = nw[0]
@@ -1386,7 +1386,7 @@ class radmc3dGrid(object):
             if fname=='':
                 fname = 'wavelength_micron.inp'
 
-            print 'Writing '+fname
+            print('Writing '+fname)
             wfile = open(fname, 'w')
             wfile.write('%d\n'%self.nwav)
             for ilam in range(self.nwav):
@@ -1398,11 +1398,11 @@ class radmc3dGrid(object):
             try :
                 wfile = open(fname, 'w')
             except:
-                print 'Error!' 
-                print fname+' cannot be opened!'
+                print('Error!' )
+                print(fname+' cannot be opened!')
                 return 
            
-            print 'Writing '+fname
+            print('Writing '+fname)
             wfile.write("%d\n"%self.nfreq)
             wfile.write(" \n")
             #
@@ -1455,7 +1455,7 @@ class radmc3dGrid(object):
                 if ppar.has_key('xbound'):
                     xbound = ppar['xbound']
                 else:
-                    print ' No boundary for the first dimension is given, first dimension is deactivated.'
+                    print(' No boundary for the first dimension is given, first dimension is deactivated.')
                     self.act_dim[0] = 0
             if not nxi:
                 if ppar.has_key('nx'):
@@ -1472,7 +1472,7 @@ class radmc3dGrid(object):
                 if ppar.has_key('ybound'):
                     ybound = ppar['ybound']
                 else:
-                    print ' No boundary for the second dimension is given, second dimension is deactivated.'
+                    print(' No boundary for the second dimension is given, second dimension is deactivated.')
                     self.act_dim[1] = 0
             if not nyi:
                 if ppar.has_key('ny'):
@@ -1493,7 +1493,7 @@ class radmc3dGrid(object):
                 if ppar.has_key('zbound'):
                     zbound = ppar['zbound']
                 else:
-                    print ' No boundary for the third dimension is given, third dimension is deactivated.'
+                    print(' No boundary for the third dimension is given, third dimension is deactivated.')
                     self.act_dim[2] = 0
             if not nzi:
                 if (ppar.has_key('nz'))&(ppar['nz']>0.):
@@ -1512,25 +1512,25 @@ class radmc3dGrid(object):
 # First check whether the grid boundaries are specified
 #
             if (xbound==None): 
-                print 'ERROR'
-                print 'Boundaries on the cartesian x-axis is not specified'
-                print 'Without the boundaries no grid can be created'
+                print('ERROR')
+                print('Boundaries on the cartesian x-axis is not specified')
+                print('Without the boundaries no grid can be created')
                 return
             
             if (ybound==None): 
-                print 'ERROR'
-                print 'Boundaries on the cartesian y-axis is not specified'
-                print 'Without the boundaries no grid can be created'
+                print('ERROR')
+                print('Boundaries on the cartesian y-axis is not specified')
+                print('Without the boundaries no grid can be created')
                 return
             if (zbound==None): 
-                print 'ERROR'
-                print 'Boundaries on the cartesian z-axis is not specified'
-                print 'Without the boundaries no grid can be created'
+                print('ERROR')
+                print('Boundaries on the cartesian z-axis is not specified')
+                print('Without the boundaries no grid can be created')
                 return
             
             if ((nxi==None)|(nyi==None)|(nzi==None)):
-                print 'ERROR'
-                print 'Number of grid points is not specified'
+                print('ERROR')
+                print('Number of grid points is not specified')
                 return
 
 #
@@ -1630,17 +1630,17 @@ class radmc3dGrid(object):
 # r->x, theta->y, phi-z            
 #
             if (xbound==None): 
-                print 'ERROR'
-                print 'Boundaries on the radius is not specified'
-                print 'Without the boundaries no grid can be created'
+                print('ERROR')
+                print('Boundaries on the radius is not specified')
+                print('Without the boundaries no grid can be created')
                 return
 
             if (ybound==None): ybound = [0.0, np.pi]
             if (zbound==None): zbound = [0.0, 2.0*np.pi]
 
             if ((nxi==None)|(nyi==None)|(nzi==None)):
-                print 'ERROR'
-                print 'Number of grid points is not specified'
+                print('ERROR')
+                print('Number of grid points is not specified')
                 return
 
 #
@@ -1846,7 +1846,7 @@ class radmc3dGrid(object):
             if fname=='':
                 fname = 'amr_grid.inp'
 
-            print 'Writing '+fname
+            print('Writing '+fname)
             wfile = open(fname, 'w')
             wfile.write('%d\n'%1)                    # Format number
             wfile.write('%d\n'%0)                    # AMR self.style (0=regular self. NO AMR)
@@ -1873,11 +1873,11 @@ class radmc3dGrid(object):
             try :
                 wfile = open(fname, 'w')
             except:
-                print 'Error!' 
-                print fname+' cannot be opened!'
+                print('Error!' )
+                print(fname+' cannot be opened!')
                 return
 
-            print 'Writing '+fname
+            print('Writing '+fname)
             x = np.sqrt(self.xi[1:] * self.xi[:-1])
             wfile.write("%d\n"%self.nx)
             wfile.write(" \n")
@@ -1889,11 +1889,11 @@ class radmc3dGrid(object):
             try :
                 wfile = open(fname, 'w')
             except:
-                print 'Error!' 
-                print fname+' cannot be opened!'
+                print('Error!' )
+                print(fname+' cannot be opened!')
                 return
 
-            print 'Writing '+fname
+            print('Writing '+fname)
             wfile.write("%d 1\n"%(self.ny/2))
             wfile.write(" \n")
             for i in range(self.ny/2):
@@ -1931,8 +1931,8 @@ class radmc3dGrid(object):
             try :
                 rfile = open(fname, 'r')
             except:
-                print 'Error!' 
-                print  fname+' was not found!'
+                print('Error!' )
+                print( fname+' was not found!')
                 return 
 
             self.nwav = int(rfile.readline())
@@ -1954,8 +1954,8 @@ class radmc3dGrid(object):
             try: 
                 rfile = open('frequency.inp')
             except:
-                print 'Error!' 
-                print fname+' was not found!'
+                print('Error!' )
+                print(fname+' was not found!')
                 return 
 
             self.nfreq = int(rfile.readline())
@@ -1994,8 +1994,8 @@ class radmc3dGrid(object):
             try :
                 rfile = open(fname, 'r')
             except:
-                print 'Error!' 
-                print 'amr_grid.inp was not found!'
+                print('Error!' )
+                print('amr_grid.inp was not found!')
                 return 
         
             form        = float(rfile.readline())
@@ -2009,9 +2009,9 @@ class radmc3dGrid(object):
                 self.crd_sys = 'cyl'
             else:
                 rfile.close()
-                print 'ERROR'
-                print ' unsupported coordinate system in the amr_grid.inp file'
-                print crd_system
+                print('ERROR')
+                print(' unsupported coordinate system in the amr_grid.inp file')
+                print(crd_system)
                 return
 
             grid_info   = float(rfile.readline())
@@ -2025,9 +2025,13 @@ class radmc3dGrid(object):
             self.yi           = np.zeros(self.ny+1, dtype=np.float64)
             self.zi           = np.zeros(self.nz+1, dtype=np.float64)
            
-            for i in range(self.nxi): self.xi[i] = float(rfile.readline())
-            for i in range(self.nyi): self.yi[i] = float(rfile.readline())
-            for i in range(self.nzi): self.zi[i] = float(rfile.readline())
+            #for i in range(self.nxi): self.xi[i] = float(rfile.readline())
+            #for i in range(self.nyi): self.yi[i] = float(rfile.readline())
+            #for i in range(self.nzi): self.zi[i] = float(rfile.readline())
+
+            self.xi[:] = np.fromfile(rfile,dtype=np.float64,count=self.nxi,sep=' ')
+            self.yi[:] = np.fromfile(rfile,dtype=np.float64,count=self.nyi,sep=' ')
+            self.zi[:] = np.fromfile(rfile,dtype=np.float64,count=self.nzi,sep=' ')
 
             if self.crd_sys=='car':
                 self.x = (self.xi[0:self.nx] +  self.xi[1:self.nx+1]) * 0.5
@@ -2053,8 +2057,8 @@ class radmc3dGrid(object):
             try: 
                 rfile = open('radius.inp')
             except:
-                print 'Error!' 
-                print 'radius.inp was not found!'
+                print('Error!' )
+                print('radius.inp was not found!')
                 return 
 
             self.nx  = int(rfile.readline())
@@ -2076,8 +2080,8 @@ class radmc3dGrid(object):
             try: 
                 rfile = open('theta.inp')
             except:
-                print 'Error!' 
-                print 'theta.inp was not found!'
+                print('Error!' )
+                print('theta.inp was not found!')
                 return 
 
     
@@ -2317,10 +2321,10 @@ class radmc3dGrid(object):
         if self.crd_sys=='sph':
 
             if self.act_dim[0]==0:
-                print '----------------------------------------------------------'
-                print 'ERROR'
-                print 'The r-dimension of a spherical grid is switched off'
-                print '----------------------------------------------------------'
+                print('----------------------------------------------------------')
+                print('ERROR')
+                print('The r-dimension of a spherical grid is switched off')
+                print('----------------------------------------------------------')
             elif self.act_dim[1]==0:
                 #print '----------------------------------------------------------'
                 #print 'ERROR'
@@ -2363,8 +2367,8 @@ class radmc3dGrid(object):
                     for iy in range(self.ny):
                         vol[ix,iy,:] = 1./3. * diff_r3[ix] * diff_cost[iy] * diff_phi
         else:
-            print 'ERROR!'
-            print "coordinate system '" + self.crd_sys+ "' is not yet supported"
+            print('ERROR!')
+            print("coordinate system '" + self.crd_sys+ "' is not yet supported")
             return 0
 
         return vol
@@ -2474,10 +2478,10 @@ class radmc3dData(object):
                 elif len(data.shape) == 2:
                     hdr = np.array([1, 8, data.shape[0], data.shape[1]], dtype=np.int)
                 else:
-                    print 'For octree type grid field variables should be stored in a 1D or 2D arrays with the second'
-                    print 'dimension being the dust species'
-                    print 'The data array to be written has a shape of ', data.shape
-                    print 'No data has been written'
+                    print('For octree type grid field variables should be stored in a 1D or 2D arrays with the second')
+                    print('dimension being the dust species')
+                    print('The data array to be written has a shape of ', data.shape)
+                    print('No data has been written')
                     return
                 hdr.tofile(wfile)
                 data.flatten(order='f').tofile(wfile)
@@ -2497,9 +2501,9 @@ class radmc3dData(object):
                     data = np.swapaxes(data,0,2)
                     data.tofile(wfile)
                 else:
-                    print 'ERROR'
-                    print 'Unknown array shape  : '
-                    print data.shape
+                    print('ERROR')
+                    print('Unknown array shape  : ')
+                    print(data.shape)
                     return
         else:
             if octree:
@@ -2508,10 +2512,10 @@ class radmc3dData(object):
                 elif len(data.shape) == 2:
                     hdr = np.array([1, data.shape[0], data.shape[1]], dtype=np.int)
                 else:
-                    print 'For octree type grid field variables should be stored in a 1D or 2D arrays with the second'
-                    print 'dimension being the dust species'
-                    print 'The data array to be written has a shape of ', data.shape
-                    print 'No data has been written'
+                    print('For octree type grid field variables should be stored in a 1D or 2D arrays with the second')
+                    print('dimension being the dust species')
+                    print('The data array to be written has a shape of ', data.shape)
+                    print('No data has been written')
                     return
                 
                 hdr.tofile(wfile, sep=" ", format="%d\n")
@@ -2535,9 +2539,9 @@ class radmc3dData(object):
                     data = np.swapaxes(data,1,2)
                     data.tofile(wfile, sep=" ", format="%.9e\n")
                 else:
-                    print 'ERROR'
-                    print 'Unknown array shape  : '
-                    print data.shape
+                    print('ERROR')
+                    print('Unknown array shape  : ')
+                    print(data.shape)
                     return
             
         wfile.close()
@@ -2566,96 +2570,86 @@ class radmc3dData(object):
 
         if binary:
             if octree:
-                hdr = np.fromfile(fname, count=4, dtype=int)
-                if hdr[2] != self.grid.nLeaf:
-                    print 'Error!'
-                    print 'Number of cells in '+fname+' is different from that in amr_grid.inp'
-                    print hdr[1], self.grid.nLeaf
-                    return -1
+                with open(fname,'r') as f:
+                    hdr = np.fromfile(f, count=4, dtype=int)
+                    if hdr[2] != self.grid.nLeaf:
+                        print('Error!')
+                        print('Number of cells in '+fname+' is different from that in amr_grid.inp')
+                        print(hdr[1], self.grid.nLeaf)
+                        return -1
                 
-                if hdr[1]==8:
-                    data = np.fromfile(fname, count=-1, dtype=np.float64)
-                elif hdr[1]==4:
-                    data = np.fromfile(fname, count=-1, dtype=float)
-                else:
-                    print 'ERROR'
-                    print 'Unknown datatype in '+fname
-                    return
+                    if hdr[1]==8:
+                        data = np.fromfile(f, count=-1, dtype=np.float64)
+                    elif hdr[1]==4:
+                        data = np.fromfile(f, count=-1, dtype=np.float32)
+                    else:
+                        print('ERROR')
+                        print('Unknown datatype in '+fname)
+                        return
                 
-                if data.shape[0]==(hdr[2]+3):
-                    data = np.reshape(data[3:], [self.grid.nLeaf, 1], order='f')
-                elif data.shape[0]==(hdr[2]*hdr[3]+4):
-                    data = np.reshape(data[4:], [self.grid.nLeaf, hdr[3]], order='f')
+                    data = np.reshape(data, [self.grid.nLeaf, hdr[3]], order='f')
 
             else:
-                # hdr[0] = format number
-                # hdr[1] = data precision (4=single, 8=double)
-                # hdr[2] = nr of cells
-                # hdr[3] = nr of dust species
-                hdr = np.fromfile(fname, count=4, dtype=int)
-                if hdr[2]!=(self.grid.nx*self.grid.ny*self.grid.nz):
-                    print ' ERROR'
-                    print ' Number of grid points in '+fname+' is different from that in amr_grid.inp'
-                    print npoints
-                    print hdr[2]
-                    return
+                with open(fname,'r') as f:
+                    # hdr[0] = format number
+                    # hdr[1] = data precision (4=single, 8=double)
+                    # hdr[2] = nr of cells
+                    # hdr[3] = nr of dust species
+                    hdr = np.fromfile(f, count=4, dtype=int)
+                    if hdr[2]!=(self.grid.nx*self.grid.ny*self.grid.nz):
+                        print(' ERROR')
+                        print(' Number of grid points in '+fname+' is different from that in amr_grid.inp')
+                        print(npoints)
+                        print(hdr[2])
+                        return
 
-                if hdr[1]==8:
-                    data = np.fromfile(fname, count=-1, dtype=np.float64)
-                elif hdr[1]==4:
-                    data = np.fromfile(fname, count=-1, dtype=float)
-                else:
-                    print 'ERROR'
-                    print 'Unknown datatype in '+fname
-                    return
+                    if hdr[1]==8:
+                        data = np.fromfile(f, count=-1, dtype=np.float64)
+                    elif hdr[1]==4:
+                        data = np.fromfile(f, count=-1, dtype=np.float32)
+                    else:
+                        print('ERROR')
+                        print('Unknown datatype in '+fname)
+                        return
                 
-
-                if data.shape[0]==(hdr[2]+3):
-                    data = np.reshape(data[3:], [1, self.grid.nz,self.grid.ny,self.grid.nx])
-                elif data.shape[0]==(hdr[2]*hdr[3]+4):
-                    data = np.reshape(data[4:], [hdr[3],self.grid.nz,self.grid.ny,self.grid.nx])
-
-                
-                #data = reshape(data, [hdr[3],self.grid.nz,self.grid.ny,self.grid.nx])
-                # We need to change the axis orders as Numpy always writes binaries in C-order while RADMC-3D
-                # uses Fortran-order
-                data = np.swapaxes(data,0,3)
-                data = np.swapaxes(data,1,2)
+                    data = np.reshape(data, [hdr[3],self.grid.nz,self.grid.ny,self.grid.nx])
+                    # We need to change the axis orders as Numpy always writes binaries in C-order while RADMC-3D
+                    # uses Fortran-order
+                    data = np.swapaxes(data,0,3)
+                    data = np.swapaxes(data,1,2)
 
         else:
             if not os.path.isfile(fname):
-                print 'Error!' 
-                print fname+' was not found!'
+                print('Error!' )
+                print(fname+' was not found!')
                 return -1
 
             if octree:
-                hdr = np.fromfile(fname, count=3, sep="\n", dtype=int)
-                if hdr[1] != self.grid.nLeaf:
-                    print 'Error!'
-                    print 'Number of cells in '+fname+' is different from that in amr_grid.inp'
-                    print hdr[1], self.grid.nLeaf
-                    return -1
-                data = np.fromfile(fname, count=-1, sep="\n", dtype=np.float64)[3:]
-                data = data.reshape([hdr[1], hdr[2]], order='f')
+                with open(fname,'r') as f:
+                    hdr = np.fromfile(f, count=3, sep="\n", dtype=int)
+                    if hdr[1] != self.grid.nLeaf:
+                        print('Error!')
+                        print('Number of cells in '+fname+' is different from that in amr_grid.inp')
+                        print(hdr[1], self.grid.nLeaf)
+                        return -1
+                    data = np.fromfile(f, count=-1, sep="\n", dtype=np.float64)
+                    data = data.reshape([hdr[1], hdr[2]], order='f')
             
             else:
-                hdr = np.fromfile(fname, count=3, sep="\n", dtype=int)
+                with open(fname,'r') as f:
+                    hdr = np.fromfile(f, count=3, sep="\n", dtype=int)
                 
-                if ((self.grid.nx * self.grid.ny * self.grid.nz)!=hdr[1]):
-                    print 'Error!'
-                    print 'Number of grid points in amr_grid.inp is not equal to that in '+fname
-                else:
+                    if ((self.grid.nx * self.grid.ny * self.grid.nz)!=hdr[1]):
+                        print('Error!')
+                        print('Number of grid points in amr_grid.inp is not equal to that in '+fname)
+                        return -1
 
-                    data = np.fromfile(fname, count=-1, sep="\n", dtype=np.float64)
-                    if data.shape[0]==hdr[1]+2:
-                        data = np.reshape(data[2:], [1, self.grid.nz,self.grid.ny,self.grid.nx])
-                    elif data.shape[0]==hdr[1]*hdr[2]+3:
-                        data = np.reshape(data[3:], [hdr[2],self.grid.nz,self.grid.ny,self.grid.nx])
+                    data = np.fromfile(f, count=-1, sep="\n", dtype=np.float64)
+                    data = np.reshape(data, [hdr[2],self.grid.nz,self.grid.ny,self.grid.nx])
                     # We need to change the axis orders as Numpy always reads  in C-order while RADMC-3D
                     # uses Fortran-order
                     data = np.swapaxes(data,0,3)
                     data = np.swapaxes(data,1,2)
-        
 
         return data
 
@@ -2759,8 +2753,8 @@ class radmc3dData(object):
             idust = np.arange(ndust)
 
         if max(idust)>ndust:
-            print 'ERROR'
-            print ' There are less number of dust species than some of the indices in idust'
+            print('ERROR')
+            print(' There are less number of dust species than some of the indices in idust')
             return -1
 
 
@@ -2769,8 +2763,8 @@ class radmc3dData(object):
         if kappa:
             # Safety check
             if len(kappa)!=len(idust):
-                print 'ERROR'
-                print ' The number of kappa values should be identical to the number of specified dust species '
+                print('ERROR')
+                print(' The number of kappa values should be identical to the number of specified dust species ')
                 return -1
         else: 
             if not old:
@@ -2780,8 +2774,8 @@ class radmc3dData(object):
                 dummy_ext = mo['ext']
                 scatmat = mo['scatmat']
                 if len(dummy_ext)<=max(idust):
-                    print 'ERROR'
-                    print 'There are less dust species specified in dustopac.inp than some of the specified idust indices'
+                    print('ERROR')
+                    print('There are less dust species specified in dustopac.inp than some of the specified idust indices')
                     return -1
                 else:
                     ext = [dummy_ext[i] for i in idust]
@@ -2808,7 +2802,7 @@ class radmc3dData(object):
                 else:
                     ksca = np.array(kabs)*0.
             
-                print ' Opacity at '+("%.2f"%wav)+'um : ', kabs+ksca
+                print(' Opacity at '+("%.2f"%wav)+'um : ', kabs+ksca)
                 dum  = self.getTauOneDust(i, axis=axis, kappa=kabs + ksca)
             else:
                 dum  = self.getTauOneDust(i, axis=axis, kappa=kappa[i])
@@ -2918,7 +2912,7 @@ class radmc3dData(object):
                 self.grid = radmc3dGrid()
                 self.grid.readGrid(old=old)
             
-        print 'Reading dust density'
+        print('Reading dust density')
 
         # 
         # Read radmc3d output 
@@ -2941,8 +2935,8 @@ class radmc3dData(object):
             try :
                 rfile = open('dustdens.inp', 'r')
             except:
-                print 'Error!' 
-                print 'dustdens.inp was not found!'
+                print('Error!' )
+                print('dustdens.inp was not found!')
                 return 
            
             dum = rfile.readline().split()
@@ -2987,7 +2981,7 @@ class radmc3dData(object):
                 self.grid = radmc3dGrid()
                 self.grid.readGrid(old=old)
             
-        print 'Reading dust temperature'
+        print('Reading dust temperature')
 
         if not old:
             if binary:
@@ -3002,8 +2996,8 @@ class radmc3dData(object):
             try :
                 rfile = open('dusttemp_final.dat', 'r')
             except:
-                print 'Error!' 
-                print 'dusttemp_final.dat was not found!'
+                print('Error!' )
+                print('dusttemp_final.dat was not found!')
                 return 
            
             dum = rfile.readline().split()
@@ -3053,50 +3047,54 @@ class radmc3dData(object):
             if fname=='':
                 fname = 'gas_velocity.binp'
 
-            print 'Reading gas velocity'
+            print('Reading gas velocity')
             if os.path.isfile(fname):
                 # If we have an octree grid
                 if isinstance(self.grid, radmc3dOctree):
-                    hdr = np.fromfile(fname, count=3, dtype=int)
-                    if (hdr[2]!=self.grid.nLeaf):
-                        print 'ERROR'
-                        print 'Number of grid points in '+fname+' is different from that in amr_grid.inp'
-                        print self.grid.nx, self.grid.ny, self.grid.nz
-                        print hdr[1]
-                        return
+                    with open(fname,'r') as f:
+                        hdr = np.fromfile(f, count=3, dtype=int)
+                        if (hdr[2]!=self.grid.nLeaf):
+                            print('ERROR')
+                            print('Number of grid points in '+fname+' is different from that in amr_grid.inp')
+                            print(self.grid.nx, self.grid.ny, self.grid.nz)
+                            print(hdr[1])
+                            return
                     
-                    if hdr[1]==8:
-                        self.gasvel = np.fromfile(fname, count=-1, dtype=np.float64)
-                    elif hdr[1]==4:
-                        self.gasvel = np.fromfile(fname, count=-1, dtype=float)
-                    else:
-                        print 'ERROR'
-                        print 'Unknown datatype in '+fname
-                        return
-                    self.gasvel = np.reshape(self.gasvel[3:], [self.nLeaf, 3], order='f')
+                        if hdr[1]==8:
+                            self.gasvel = np.fromfile(f, count=-1, dtype=np.float64)
+                        elif hdr[1]==4:
+                            self.gasvel = np.fromfile(f, count=-1, dtype=np.float32)
+                        else:
+                            print('ERROR')
+                            print('Unknown datatype in '+fname)
+                            return
+                        
+                        self.gasvel = np.reshape(self.gasvel, [self.nLeaf, 3], order='f')
 
                 else:
-                    hdr = np.fromfile(fname, count=3, dtype=int)
-                    if (hdr[2]!=self.grid.nx*self.grid.ny*self.grid.nz):
-                        print 'ERROR'
-                        print 'Number of grid points in '+fname+' is different from that in amr_grid.inp'
-                        print self.grid.nx, self.grid.ny, self.grid.nz
-                        print hdr[1]
-                        return
+                    with open(fname,'r') as f:
+                        hdr = np.fromfile(f, count=3, dtype=int)
+                        if (hdr[2]!=self.grid.nx*self.grid.ny*self.grid.nz):
+                            print('ERROR')
+                            print('Number of grid points in '+fname+' is different from that in amr_grid.inp')
+                            print(self.grid.nx, self.grid.ny, self.grid.nz)
+                            print(hdr[1])
+                            return
 
-                    if hdr[1]==8:
-                        self.gasvel = np.fromfile(fname, count=-1, dtype=np.float64)
-                    elif hdr[1]==4:
-                        self.gasvel = np.fromfile(fname, count=-1, dtype=float)
-                    else:
-                        print 'ERROR'
-                        print 'Unknown datatype in '+fname
-                        return
-                    self.gasvel = np.reshape(self.gasvel[3:], [self.grid.nz,self.grid.ny,self.grid.nx,3])
-                    self.gasvel = np.swapaxes(self.gasvel, 0, 2)
+                        if hdr[1]==8:
+                            self.gasvel = np.fromfile(f, count=-1, dtype=np.float64)
+                        elif hdr[1]==4:
+                            self.gasvel = np.fromfile(f, count=-1, dtype=np.float32)
+                        else:
+                            print('ERROR')
+                            print('Unknown datatype in '+fname)
+                            return
+                        
+                        self.gasvel = np.reshape(self.gasvel, [self.grid.nz,self.grid.ny,self.grid.nx,3])
+                        self.gasvel = np.swapaxes(self.gasvel, 0, 2)
             else:
-                print 'Error!' 
-                print fname+' was not found!'
+                print('Error!' )
+                print(fname+' was not found!')
                 return
                 
 
@@ -3108,19 +3106,19 @@ class radmc3dData(object):
             try :
                 rfile = open(fname, 'r')
             except:
-                print 'Error!' 
-                print fname+' was not found!'
+                print('Error!' )
+                print(fname+' was not found!')
                 return
             
-            print 'Reading gas velocity'
+            print('Reading gas velocity')
             dum = rfile.readline()
             dum = int(rfile.readline())
 
             # If we have an octree grid
             if octree:
                 if ((self.grid.nLeaf)!=dum):
-                    print 'ERROR'
-                    print 'Number of grid points in amr_grid.inp is different from that in gas_velocity.inp'
+                    print('ERROR')
+                    print('Number of grid points in amr_grid.inp is different from that in gas_velocity.inp')
                     rfile.close()
                     return
 
@@ -3133,8 +3131,8 @@ class radmc3dData(object):
             else:
                 
                 if ((self.grid.nx * self.grid.ny * self.grid.nz)!=dum):
-                    print 'Error!'
-                    print 'Number of grid points in amr_grid.inp is not equal to that in gas_velocity.inp'
+                    print('Error!')
+                    print('Number of grid points in amr_grid.inp is not equal to that in gas_velocity.inp')
                     return
 
                 self.gasvel = np.zeros([self.grid.nx, self.grid.ny, self.grid.nz, 3], dtype=np.float64)
@@ -3174,7 +3172,7 @@ class radmc3dData(object):
                 self.grid = radmc3dGrid()
                 self.grid.readGrid(old=old)
             
-        print 'Reading microturbulence'
+        print('Reading microturbulence')
 
         if binary:
             if fname=='':
@@ -3217,7 +3215,7 @@ class radmc3dData(object):
         else:
             fname = 'numberdens_'+ispec+'.inp'
             
-        print 'Reading gas density ('+fname+')'
+        print('Reading gas density ('+fname+')')
         self.ndens_mol = self._scalarfieldReader(fname=fname, binary=binary, octree=octree)
         if octree:
             self.ndens_mol = np.squeeze(self.ndens_mol)
@@ -3248,7 +3246,7 @@ class radmc3dData(object):
                 self.grid = radmc3dGrid()
                 self.grid.readGrid(old=old)
             
-        print 'Reading gas temperature'
+        print('Reading gas temperature')
 
         if binary:
             if fname=='':
@@ -3291,7 +3289,7 @@ class radmc3dData(object):
                 else:
                     fname = 'dust_density.inp'
 
-            print 'Writing '+fname
+            print('Writing '+fname)
 
             if octree:
                 self._scalarfieldWriter(data=self.grid.convArrTree2Leaf(self.rhodust), fname=fname, binary=binary, octree=True)
@@ -3303,9 +3301,9 @@ class radmc3dData(object):
         #
         else:
             if self.rhodust.shape[2]>1:
-                print 'ERROR'
-                print 'You are trying to write a 3D dust density structure for a 2D model'
-                print 'The "old" keyword is set meaning that the input is meant for the previous 2D version of radmc'
+                print('ERROR')
+                print('You are trying to write a 3D dust density structure for a 2D model')
+                print('The "old" keyword is set meaning that the input is meant for the previous 2D version of radmc')
                 return
 
             if fname=='':
@@ -3313,8 +3311,8 @@ class radmc3dData(object):
             try :
                 wfile = open(fname, 'w')
             except:
-                print 'Error!' 
-                print fname+' cannot be opened!'
+                print('Error!' )
+                print(fname+' cannot be opened!')
                 return 
           
             wfile.write("%d %d %d 1\n"%(self.rhodust.shape[3], self.grid.nx, self.grid.ny/2))# self.rhodust.shape[0], self.rhodust.shape[1]))
@@ -3347,7 +3345,7 @@ class radmc3dData(object):
             else:
                 fname = 'dust_temperature.dat'
 
-        print 'Writing '+fname
+        print('Writing '+fname)
         if octree:
             self._scalarfieldWriter(data=self.grid.convArrTree2Leaf(self.dusttemp), fname=fname, binary=binary, octree=True)
         else:
@@ -3375,9 +3373,9 @@ class radmc3dData(object):
                   If the data is defined on an octree-like AMR
         """
         if ispec=='':
-            print 'ERROR'
-            print 'ispec keyword was not specified. This keyword is required to generate the '
-            print "output file name 'numberdens_ispec.dat'" 
+            print('ERROR')
+            print('ispec keyword was not specified. This keyword is required to generate the ')
+            print("output file name 'numberdens_ispec.dat'" )
             return -1
         else:
             if fname=='':
@@ -3386,7 +3384,7 @@ class radmc3dData(object):
                 else:
                     fname = 'numberdens_'+ispec+'.inp'
 
-            print 'Writing '+fname
+            print('Writing '+fname)
             if octree:
                 self._scalarfieldWriter(data=self.grid.convArrTree2Leaf(self.ndens_mol), fname=fname, binary=binary, octree=True)
             else:
@@ -3416,7 +3414,7 @@ class radmc3dData(object):
             else:
                 fname = 'gas_temperature.inp'
 
-        print 'Writing '+fname
+        print('Writing '+fname)
         if octree:
             self._scalarfieldWriter(data=self.grid.convArrTree2Leaf(self.gastemp), fname=fname, binary=binary, octree=True)
         else:
@@ -3487,7 +3485,7 @@ class radmc3dData(object):
                     try:
                         np.savetxt(fname, self.gasvel, fmt="%.9e %.9e %.9e", header=hdr, comments='')
                     except Exception as e:
-                        print e
+                        print(e)
                 else:
                     hdr = "1\n"
                     hdr += ("%d\n"%self.grid.nLeaf)
@@ -3495,7 +3493,7 @@ class radmc3dData(object):
                     try:
                         np.savetxt(fname, dummy, fmt="%.9e %.9e %.9e", header=hdr, comments='')
                     except Exception as e:
-                        print e
+                        print(e)
                     
             else:
                 #hdr = "1\n"
@@ -3513,7 +3511,7 @@ class radmc3dData(object):
                             wfile.write("%9e %9e %9e\n"%(self.gasvel[ix,iy,iz,0], self.gasvel[ix,iy,iz,1], self.gasvel[ix,iy,iz,2]))
                         
                 wfile.close()
-        print 'Writing '+fname
+        print('Writing '+fname)
 # --------------------------------------------------------------------------------------------------
     def writeVTurb(self, fname='', binary=True, octree=False):
         """Writes the microturbulence file.
@@ -3538,7 +3536,7 @@ class radmc3dData(object):
             else:
                 fname = 'microturbulence.inp'
 
-        print 'Writing '+fname
+        print('Writing '+fname)
         if octree:
             self._scalarfieldWriter(data=self.grid.convArrTree2Leaf(self.vturb), fname=fname, binary=binary, octree=True)
         else:
@@ -3625,9 +3623,9 @@ class radmc3dData(object):
 # Write out the coordinates of the cell corners 
 # 
         wfile.write('%s\n'%('POINTS '+str(nxi*nyi*nzi).strip()+' double'))
-        print 'Writing POINTS: '
+        print('Writing POINTS: ')
         for ix in range(nxi):
-            print ix, nxi
+            print(ix, nxi)
             for iy in range(nyi):
                 for iz in range(nzi):
                     crd = crd_trans.ctrans_sph2cart([x[ix],z[iz],y[iy]])
@@ -3654,7 +3652,7 @@ class radmc3dData(object):
 
 
         for ix in range(nxi-1):
-            print 'Writing CELL COORDINATES: ', ix, self.grid.nxi-2
+            print('Writing CELL COORDINATES: ', ix, self.grid.nxi-2)
             for iy in range(nyi-1):
                 for iz in range(nzi-1):                
                 
@@ -3688,7 +3686,7 @@ class radmc3dData(object):
             wfile.write('%s %d\n'%('POINT_DATA', (nxi*nyi*nzi)))
             wfile.write('%s\n'%'VECTORS gas_velocity double')
             for ix in range(nxi):
-                print 'Writing velocity : ', ix, nxi-1
+                print('Writing velocity : ', ix, nxi-1)
                 for iy in range(nyi):
                     for iz in range(nzi):      
                         vsph = np.array([vgas[ix,iy,iz,0],vgas[ix,iy,iz,2],vgas[ix,iy,iz,1]])
@@ -3708,7 +3706,7 @@ class radmc3dData(object):
                 wfile.write('%s\n'%'LOOKUP_TABLE default')
 
                 for ix in range(nxi-1):
-                    print 'Writing dust density : ', ix, nxi-2
+                    print('Writing dust density : ', ix, nxi-2)
                     for iy in range(nyi-1):
                         for iz in range(nzi-1):
                             wfile.write('%.9e\n'%self.rhodust[ix,iy,iz,ids])
@@ -3719,7 +3717,7 @@ class radmc3dData(object):
                 wfile.write('%s\n'%'LOOKUP_TABLE default')
 
                 for ix in range(nxi-1):
-                    print 'writing dust temperature : ', ix, nxi-2
+                    print('writing dust temperature : ', ix, nxi-2)
                     for iy in range(nyi-1):
                         for iz in range(nzi-1):
                             wfile.write('%.9e\n'%self.dusttemp[ix,iy,iz,ids])
@@ -3730,7 +3728,7 @@ class radmc3dData(object):
             wfile.write('%s\n'%'LOOKUP_TABLE default')
 
             for ix in range(nxi-1):
-                print 'writing gas density : ', ix, nxi-2
+                print('writing gas density : ', ix, nxi-2)
                 for iy in range(nyi-1):
                     for iz in range(nzi-1):
                         wfile.write('%.9e\n'%self.ndens_mol[ix,iy,iz])
@@ -3741,7 +3739,7 @@ class radmc3dData(object):
                 wfile.write('%s\n'%'LOOKUP_TABLE default')
 
                 for ix in range(nxi-1):
-                    print 'writing dust temperature : ', ix, nxi-2
+                    print('writing dust temperature : ', ix, nxi-2)
                     for iy in range(nyi-1):
                         for iz in range(nzi-1):
                             wfile.write('%.9e\n'%self.gastemp[ix,iy,iz])
@@ -3994,16 +3992,16 @@ class radmc3dRadSources(object):
         try:
             rfile = open(fname, 'r')
         except:
-            print ' ERROR '
-            print fname+' cannot be opened '
+            print(' ERROR ')
+            print(fname+' cannot be opened ')
             return
 
         dum = rfile.readline()
         iformat = int(dum)
         if iformat!=2:
-            print ' ERROR '
-            print ' Unknown file format '
-            print ' Format number : ', iformat
+            print(' ERROR ')
+            print(' Unknown file format ')
+            print(' Format number : ', iformat)
             rfile.close()
             return
 
@@ -4096,7 +4094,7 @@ class radmc3dRadSources(object):
             #self.pstar = ppar['pstar']
            
 
-            print 'Writing stars.inp'
+            print('Writing stars.inp')
             wfile = open('stars.inp', 'w')
             wfile.write('%d\n'%2)
             wfile.write('%d %d\n'%(self.nstar,self.grid.nwav))
@@ -4165,13 +4163,13 @@ class radmc3dRadSources(object):
                     self.fnustar[:,istar] = self.fnustar[::-1,istar]
                 
 
-            print 'Writing starinfo.inp'
+            print('Writing starinfo.inp')
             fname = 'starinfo.inp'
             try :
                 wfile = open(fname, 'w')
             except:
-                print 'Error!' 
-                print fname+' cannot be opened!'
+                print('Error!' )
+                print(fname+' cannot be opened!')
                 return 
             wfile.write("1\n")
             wfile.write("%.7e\n"%ppar['rstar'][0])
@@ -4179,13 +4177,13 @@ class radmc3dRadSources(object):
             wfile.write("%.7e\n"%ppar['tstar'][0])
             wfile.close()
 
-            print 'Writing starspectrum.inp'
+            print('Writing starspectrum.inp')
             fname = 'starspectrum.inp'
             try :
                 wfile = open(fname, 'w')
             except:
-                print 'Error!' 
-                print fname+' cannot be opened!'
+                print('Error!' )
+                print(fname+' cannot be opened!')
                 return 
 
 
@@ -4243,13 +4241,13 @@ class radmc3dRadSources(object):
                 tstar = [tstar]
             dum1 = len(tstar)
             if lstar and rstar: 
-                print 'ERROR'
-                print ' Only two of the input variables tstar, rstar, lstar should be set not all three'
+                print('ERROR')
+                print(' Only two of the input variables tstar, rstar, lstar should be set not all three')
                 return 0
             elif lstar:
                 if len(lstar)!=dum1:
-                    print 'ERROR'
-                    print 'lstar and tstar have different number of elements'
+                    print('ERROR')
+                    print('lstar and tstar have different number of elements')
                     return 0
                 else:
                     self.tstar = np.array(tstar)
@@ -4259,8 +4257,8 @@ class radmc3dRadSources(object):
         else:
             if lstar and rstar:
                 if len(lstar)!=len(rstar):
-                    print 'ERROR'
-                    print 'lstar and rstar have different number of elements'
+                    print('ERROR')
+                    print('lstar and rstar have different number of elements')
                     return 0
                 else:
                     self.lstar = np.array(lstar)
@@ -4302,8 +4300,8 @@ class radmc3dRadSources(object):
                 self.fnustar[:,istar]   = dum['lnu'] / (4. * np.pi * pc**2)
             
             else:
-                print 'ERROR'
-                print 'Unknown stellar atmosphere model : ', self.staremis_type[istar]
+                print('ERROR')
+                print('Unknown stellar atmosphere model : ', self.staremis_type[istar])
                 return
         
 # --------------------------------------------------------------------------------------------------
@@ -4464,11 +4462,11 @@ class radmc3dRadSources(object):
                 res['lnu_star'][istar] = 4.*np.pi*self.rstar[istar]**2*ss*self.tstar[istar]**4
 
             if self.accrate==0.:
-                print 'Viscsous accretion is switched off'
+                print('Viscsous accretion is switched off')
                 res['lnu_spot'] = 0.
                 res['lnu_accdisk'] = 0.
             if not self.incl_accretion:
-                print 'Viscsous accretion is switched off'
+                print('Viscsous accretion is switched off')
                 res['lnu_spot'] = 0.
                 res['lnu_accdisk'] = 0.
             else:
@@ -4591,8 +4589,8 @@ class radmc3dRadSources(object):
 
         if self.incl_accretion:
             if self.grid.crd_sys != 'sph':
-                print 'ERROR'
-                print ' Viscous accretion is currently available only in spherical coordinate system'
+                print('ERROR')
+                print(' Viscous accretion is currently available only in spherical coordinate system')
                 return False
             else:
                 if abs(self.grid.yi[self.grid.ny]-np.pi)<1e-8:
@@ -4628,8 +4626,8 @@ class radmc3dRadSources(object):
         try :
             rfile = open(fname, 'r')
         except:
-            print 'Error!' 
-            print fname+' was not found!'
+            print('Error!' )
+            print(fname+' was not found!')
         
         if (rfile!=(-1)):
             
@@ -4638,8 +4636,8 @@ class radmc3dRadSources(object):
             hdr = np.fromfile(fname, count=3, sep="\n", dtype=int)
             
             if (self.grid.nwav!=hdr[2]):
-                print 'Error!'
-                print 'Number of grid points in wavelength_micron.inp is not equal to that in '+fname
+                print('Error!')
+                print('Number of grid points in wavelength_micron.inp is not equal to that in '+fname)
             else:
                 self.csntemplate = hdr[1] 
                 dum = ''
@@ -4652,9 +4650,9 @@ class radmc3dRadSources(object):
                 for i in range(hdr[2]):
                     dummy = float(rfile.readline())
                     if abs((cc/dummy*1e4 - self.grid.wav[i]) / self.grid.wav[i])>1e-4:
-                        print 'ERROR'
-                        print 'The wavelength grid in wavelength_micron.inp is different than that in '+fname
-                        print cc/dummy*1e4, self.grid.wav[i]
+                        print('ERROR')
+                        print('The wavelength grid in wavelength_micron.inp is different than that in '+fname)
+                        print(cc/dummy*1e4, self.grid.wav[i])
 
                 dum = rfile.readline()
                 if float(dum)>0:
@@ -4730,8 +4728,8 @@ class radmc3dRadSources(object):
         if len(self.cststar)==0:
             if len(self.cstemp)==0:
                 if os.path.exists('stellarsrc_templates.inp'):
-                    print 'The continuous starlike source seems to be inactive (zero input luminosity)'
-                    print ' still stellarsrc_templates.inp file is present in the current working directory.'
+                    print('The continuous starlike source seems to be inactive (zero input luminosity)')
+                    print(' still stellarsrc_templates.inp file is present in the current working directory.')
                     dum = raw_input('Can it be deleted (yes/no)')
                     if dum.strip().lower()[0]=='y':
                         os.system('rm stellarsrc_templates.inp')
@@ -4740,8 +4738,8 @@ class radmc3dRadSources(object):
             else:
                 if abs(self.cstemp).max()==0.:
                     if os.path.exists('stellarsrc_templates.inp'):
-                        print 'The continuous starlike source seems to be inactive (zero input luminosity)'
-                        print ' still stellarsrc_templates.inp file is present in the current working directory.'
+                        print('The continuous starlike source seems to be inactive (zero input luminosity)')
+                        print(' still stellarsrc_templates.inp file is present in the current working directory.')
                         dum = raw_input('Can it be deleted (yes/no)')
                         if dum.strip().lower()[0]=='y':
                             os.system('rm stellarsrc_templates.inp')
@@ -4751,8 +4749,8 @@ class radmc3dRadSources(object):
         else:
             if abs(self.cststar).max()==0.:
                 if os.path.exists('stellarsrc_templates.inp'):
-                    print 'The continuous starlike source seems to be inactive (zero input luminosity)'
-                    print ' still stellarsrc_templates.inp file is present in the current working directory.'
+                    print('The continuous starlike source seems to be inactive (zero input luminosity)')
+                    print(' still stellarsrc_templates.inp file is present in the current working directory.')
                     dum = raw_input('Can it be deleted (yes/no)')
                     if dum.strip().lower()[0]=='y':
                         os.system('rm stellarsrc_templates.inp')
@@ -4760,7 +4758,7 @@ class radmc3dRadSources(object):
                 return
 
         
-        print 'Writing '+fname
+        print('Writing '+fname)
         wfile = open(fname, 'w')
         # Format number
         wfile.write("%d\n"%1)
@@ -4794,9 +4792,9 @@ class radmc3dRadSources(object):
                 for inu in range(self.grid.nwav):
                     wfile.write("%.9e\n"%self.cstemp[itemp,inu])
         else:
-            print 'ERROR'
-            print 'Unknown cstemptype for the continuous starlike source'
-            print self.cstemptype
+            print('ERROR')
+            print('Unknown cstemptype for the continuous starlike source')
+            print(self.cstemptype)
             wfile.close()
             return False
 
@@ -4820,57 +4818,44 @@ class radmc3dRadSources(object):
         self.grid = readGrid()
 
         if binary:
-            hdr = np.fromfile(fname, count=4, dtype=int)
+            with open(fname,'r') as f:
+                hdr = np.fromfile(f, count=4, dtype=int)
             
-            if hdr[2]!=(self.grid.nx*self.grid.ny*self.grid.nz):
-                print ' ERROR'
-                print ' Number of grid points in '+fname+' is different from that in amr_grid.inp'
-                print npoints
-                print hdr[2]
-                return
+                if hdr[2]!=(self.grid.nx*self.grid.ny*self.grid.nz):
+                    print(' ERROR')
+                    print(' Number of grid points in '+fname+' is different from that in amr_grid.inp')
+                    print(npoints)
+                    print(hdr[2])
+                    return
 
-            if hdr[1]==8:
-                data = np.fromfile(fname, count=-1, dtype=np.float64)
-            elif hdr[1]==4:
-                data = np.fromfile(fname, count=-1, dtype=float)
-            else:
-                print 'ERROR'
-                print 'Unknown datatype in '+fname
-                return
+                if hdr[1]==8:
+                    data = np.fromfile(f, count=-1, dtype=np.float64)
+                elif hdr[1]==4:
+                    data = np.fromfile(f, count=-1, dtype=np.float32)
+                else:
+                    print('ERROR')
+                    print('Unknown datatype in '+fname)
+                    return
             
-            data = np.reshape(data[4:], [hdr[3],self.grid.nz,self.grid.ny,self.grid.nx])
-            data = np.swapaxes(data,0,3)
-            data = np.swapaxes(data,1,2)
+                data = np.reshape(data, [hdr[3],self.grid.nz,self.grid.ny,self.grid.nx])
+                data = np.swapaxes(data,0,3)
+                data = np.swapaxes(data,1,2)
         else:
-            rfile = -1
-            try :
-                rfile = open(fname, 'r')
-            except:
-                print 'Error!' 
-                print fname+' was not found!'
-            
-            if (rfile!=(-1)):
-
-                hdr = np.fromfile(fname, count=3, sep="\n", dtype=int)
+            with open(fname,'r') as f:
+                hdr = np.fromfile(f, count=3, sep="\n", dtype=int)
                 
                 if ((self.grid.nx * self.grid.ny * self.grid.nz)!=hdr[1]):
-                    print 'Error!'
-                    print 'Number of grid points in amr_grid.inp is not equal to that in '+fname
-                else:
+                    print('Error!')
+                    print('Number of grid points in amr_grid.inp is not equal to that in '+fname)
+                    return -1
 
-                    data = np.fromfile(fname, count=-1, sep="\n", dtype=np.float64)
-                    data = np.reshape(data[3:], [hdr[2],self.grid.nz,self.grid.ny,self.grid.nx])
-                    # We need to change the axis orders as Numpy always reads  in C-order while RADMC-3D
-                    # uses Fortran-order
-                    data = np.swapaxes(data,0,3)
-                    data = np.swapaxes(data,1,2)
-            
-            else:
-                data = -1
+                data = np.fromfile(f, count=-1, sep="\n", dtype=np.float64)
+                data = np.reshape(data, [hdr[2],self.grid.nz,self.grid.ny,self.grid.nx])
+                # We need to change the axis orders as Numpy always reads  in C-order while RADMC-3D
+                # uses Fortran-order
+                data = np.swapaxes(data,0,3)
+                data = np.swapaxes(data,1,2)
 
-            if rfile!=(-1):
-                rfile.close()
-        
         self.csdens = data
 # --------------------------------------------------------------------------------------------------
     def writeStellarsrcDensity(self, fname='', binary=False):
@@ -4895,9 +4880,9 @@ class radmc3dRadSources(object):
         if len(self.cststar)==0:
             if len(self.cstemp)==0:
                 if (os.path.exists('stellarsrc_density.inp'))|(os.path.exists('stellarsrc_density.binp')):
-                    print 'The continuous starlike source seems to be inactive (zero input luminosity)'
-                    print ' still stellarsrc_density.inp/stellarsrc_density.binp file is present in the current '
-                    print ' working directory.'
+                    print('The continuous starlike source seems to be inactive (zero input luminosity)')
+                    print(' still stellarsrc_density.inp/stellarsrc_density.binp file is present in the current ')
+                    print(' working directory.')
                     dum = raw_input('Can it be deleted (yes/no)')
                     if dum.strip().lower()[0]=='y':
                         os.system('rm stellarsrc_density.inp')
@@ -4907,9 +4892,9 @@ class radmc3dRadSources(object):
             else:
                 if abs(self.cstemp).max()==0.:
                     if (os.path.exists('stellarsrc_density.inp'))|(os.path.exists('stellarsrc_density.binp')):
-                        print 'The continuous starlike source seems to be inactive (zero input luminosity)'
-                        print ' still stellarsrc_density.inp/stellarsrc_density.binp file is present in the current '
-                        print ' working directory.'
+                        print('The continuous starlike source seems to be inactive (zero input luminosity)')
+                        print(' still stellarsrc_density.inp/stellarsrc_density.binp file is present in the current ')
+                        print(' working directory.')
                         dum = raw_input('Can it be deleted (yes/no)')
                         if dum.strip().lower()[0]=='y':
                             os.system('rm stellarsrc_density.inp')
@@ -4920,9 +4905,9 @@ class radmc3dRadSources(object):
         else:
             if abs(self.cststar).max()==0.:
                 if (os.path.exists('stellarsrc_density.inp'))|(os.path.exists('stellarsrc_density.binp')):
-                    print 'The continuous starlike source seems to be inactive (zero input luminosity)'
-                    print ' still stellarsrc_density.inp/stellarsrc_density.binp file is present in the current '
-                    print ' working directory.'
+                    print('The continuous starlike source seems to be inactive (zero input luminosity)')
+                    print(' still stellarsrc_density.inp/stellarsrc_density.binp file is present in the current ')
+                    print(' working directory.')
                     dum = raw_input('Can it be deleted (yes/no)')
                     if dum.strip().lower()[0]=='y':
                         os.system('rm stellarsrc_density.inp')
@@ -4934,7 +4919,7 @@ class radmc3dRadSources(object):
         if binary:
             if fname.strip()=='':
                 fname = 'stellarsrc_density.binp'
-            print 'Writing '+fname
+            print('Writing '+fname)
             wfile = open(fname, 'w')
             hdr = np.array([1, 8, self.grid.nx*self.grid.ny*self.grid.nz, self.csntemplate], dtype=int)
             hdr.tofile(wfile)
@@ -5086,10 +5071,10 @@ class radmc3dDustOpac(object):
 
         if (len(ext)==1)&(ext[0]!=''):
             if idust!=None:
-                print 'ERROR'
-                print 'Either idust or ext should be specified, but not both'
-                print idust
-                print ext
+                print('ERROR')
+                print('Either idust or ext should be specified, but not both')
+                print(idust)
+                print(ext)
                 return [-1]
         
         # Read the master dust opacity file to get the dust indices and dustkappa file name extensions
@@ -5100,8 +5085,8 @@ class radmc3dDustOpac(object):
             ext = []
             for ispec in idust:
                 if (ispec+1)>len(mopac['ext']):    
-                    print 'ERROR'
-                    print 'No dust species found at index ', ispec
+                    print('ERROR')
+                    print('No dust species found at index ', ispec)
                     return [-1]
                 else:
                     ext.append(mopac['ext'][ispec])
@@ -5123,11 +5108,11 @@ class radmc3dDustOpac(object):
                 try:
                     rfile = open('dustkapscatmat_'+ext[i]+'.inp', 'r')
                 except:
-                    print 'ERROR'
-                    print ' No dustkapscatmat_'+ext[i]+'.inp file was found'
+                    print('ERROR')
+                    print(' No dustkapscatmat_'+ext[i]+'.inp file was found')
                     return -1
                 
-                print 'Reading dustkapscatmat_'+ext[i]+'.inp ....'
+                print('Reading dustkapscatmat_'+ext[i]+'.inp ....')
 
                 self.ext.append(ext[i])
                 
@@ -5144,8 +5129,8 @@ class radmc3dDustOpac(object):
                 iformat = int(dum)
                 #iformat = int(rfile.readline())
                 if iformat!=1:
-                    print 'ERROR'
-                    print 'Format number of the file dustkapscatmat_'+ext[i]+'.inp (iformat='+("%d"%iformat)+') is unkown'
+                    print('ERROR')
+                    print('Format number of the file dustkapscatmat_'+ext[i]+'.inp (iformat='+("%d"%iformat)+') is unkown')
                     return [-1]
 
                 # Read the number of wavelengths in the file
@@ -5156,7 +5141,9 @@ class radmc3dDustOpac(object):
                 idu = len(self.nwav)-1
                 
                 # Read the scattering angular grid
-                self.nang.append(int(rfile.readline()))
+                dum = rfile.readline()
+                while len(dum.strip())<2: dum = rfile.readline()
+                self.nang.append(int(dum))
                 wav     = np.zeros(self.nwav[idu], dtype = np.float64)
                 kabs    = np.zeros(self.nwav[idu], dtype = np.float64)
                 ksca    = np.zeros(self.nwav[idu], dtype = np.float64)
@@ -5168,27 +5155,28 @@ class radmc3dDustOpac(object):
                 z33     = np.zeros([self.nwav[idu], self.nang[idu]], dtype=np.float64) 
                 z34     = np.zeros([self.nwav[idu], self.nang[idu]], dtype=np.float64) 
                 z44     = np.zeros([self.nwav[idu], self.nang[idu]], dtype=np.float64) 
-            
-                print 'Reading the opacities..'
-                dum = rfile.readline()
+                print('Reading the opacities..')
                 for ilam in range(self.nwav[idu]):
-                    dum      = rfile.readline().split()
+                    dum      = rfile.readline()
+                    while len(dum.strip())<2: dum = rfile.readline()
+                    dum = dum.split()
                     wav[ilam]  = float(dum[0])
                     kabs[ilam] = float(dum[1])
                     ksca[ilam] = float(dum[2])
                     phase_g[ilam] = float(dum[3])
 
-                print 'Reading the angular grid..'
-                dum = rfile.readline()
+                print('Reading the angular grid..')
                 for iang in range(self.nang[idu]):
                     dum        = rfile.readline()
+                    while len(dum.strip())<2: dum = rfile.readline()
                     scatang[iang] = float(dum)
 
-                print 'Reading the scattering matrix..'
+                print('Reading the scattering matrix..')
                 for ilam in range(self.nwav[idu]):
-                    dum = rfile.readline()
                     for iang in range(self.nang[idu]):
-                        dum        = rfile.readline().split()
+                        dum = rfile.readline()
+                        while len(dum.strip())<2: dum = rfile.readline()
+                        dum = dum.split()
                         z11[ilam,iang] = float(dum[0])
                         z12[ilam,iang] = float(dum[1])
                         z22[ilam,iang] = float(dum[2])
@@ -5215,8 +5203,8 @@ class radmc3dDustOpac(object):
                     try:
                         rfile = open('dustkappa_'+ext[i]+'.inp', 'r')
                     except:
-                        print 'ERROR'
-                        print ' No dustkappa_'+ext[i]+'.inp file was found'
+                        print('ERROR')
+                        print(' No dustkappa_'+ext[i]+'.inp file was found')
                         return -1
 
                     self.ext.append(ext[i])
@@ -5224,14 +5212,15 @@ class radmc3dDustOpac(object):
                     # Read the file format
                     iformat = int(rfile.readline())
                     if (iformat<1)|(iformat>3):
-                        print 'ERROR'
-                        print 'Unknown file format in the dust opacity file'
+                        print('ERROR')
+                        print('Unknown file format in the dust opacity file')
                         rfile.close()
                         return -1
 
 
                     # Read the number of wavelengths in the file
                     dum = rfile.readline()
+                    while len(dum.strip())<2: dum = rfile.readline()
                     self.nwav.append(int(dum))
                     self.nfreq.append(int(dum))
                     self.idust.append(idust[i])
@@ -5242,7 +5231,9 @@ class radmc3dDustOpac(object):
                         wav = np.zeros(self.nwav[idu], dtype=np.float64)
                         kabs = np.zeros(self.nwav[idu], dtype=np.float64)
                         for ilam in range(self.nwav[idu]):
-                            dum = rfile.readline().split()
+                            dum = rfile.readline()
+                            while len(dum.strip())<2: dum = rfile.readline()
+                            dum = dum.split()
                             wav[ilam] = float(dum[0])
                             kabs[ilam] = float(dum[1])
                         self.wav.append(wav)
@@ -5256,7 +5247,9 @@ class radmc3dDustOpac(object):
                         kabs = np.zeros(self.nwav[idu], dtype=np.float64)
                         ksca = np.zeros(self.nwav[idu], dtype=np.float64)
                         for ilam in range(self.nwav[idu]):
-                            dum = rfile.readline().split()
+                            dum = rfile.readline()
+                            while len(dum.strip())<2: dum = rfile.readline()
+                            dum = dum.split()
                             wav[ilam] = float(dum[0])
                             kabs[ilam] = float(dum[1])
                             ksca[ilam] = float(dum[2]) 
@@ -5273,7 +5266,9 @@ class radmc3dDustOpac(object):
                         ksca = np.zeros(self.nwav[idu], dtype=np.float64)
                         phase_g = np.zeros(self.nwav[idu], dtype=np.float64)
                         for ilam in range(self.nwav[idu]):
-                            dum = rfile.readline().split()
+                            dum = rfile.readline()
+                            while len(dum.strip())<2: dum = rfile.readline()
+                            dum = dum.split()
                             wav[ilam] = float(dum[0])
                             kabs[ilam] = float(dum[1])
                             ksca[ilam] = float(dum[2])
@@ -5290,8 +5285,8 @@ class radmc3dDustOpac(object):
                     try:
                         rfile = open('dustopac_'+ext[i]+'.inp', 'r')
                     except:
-                        print 'ERROR'
-                        print ' No dustopac_'+ext[i]+'.inp file was found'
+                        print('ERROR')
+                        print(' No dustopac_'+ext[i]+'.inp file was found')
                         return -1
                  
                     freq = np.fromfile('frequency.inp', count=-1, sep="\n", dtype=float)
@@ -5301,8 +5296,8 @@ class radmc3dDustOpac(object):
                     self.ext.append(ext[i])
                     dum   = rfile.readline().split()
                     if int(dum[0])!=nfreq:
-                        print 'ERROR'
-                        print 'dustopac_'+ext[i]+'.inp contains a different number of frequencies than frequency.inp'
+                        print('ERROR')
+                        print('dustopac_'+ext[i]+'.inp contains a different number of frequencies than frequency.inp')
                         return
 
                     wav     = cc/freq*1e4
@@ -5372,8 +5367,8 @@ class radmc3dDustOpac(object):
                 try:
                     rfile = open(ppar['lnk_fname'][idust], 'r')
                 except:
-                    print 'ERROR'
-                    print ppar['lnk_fname'][idust] + ' could not be opened'
+                    print('ERROR')
+                    print(ppar['lnk_fname'][idust] + ' could not be opened')
                     return
 
                 try:
@@ -5390,8 +5385,8 @@ class radmc3dDustOpac(object):
 
                     rfile.close()
                 except:
-                    print 'ERROR'
-                    print ppar['lnk_fname'][idust] + ' could not be read'
+                    print('ERROR')
+                    print(ppar['lnk_fname'][idust] + ' could not be read')
                     return
 
                 w = np.array(w, dtype=float)
@@ -5431,9 +5426,9 @@ class radmc3dDustOpac(object):
                     
                         ext.append('igsize_'+str(igs+1))
                 else:
-                    print 'ERROR'
-                    print ' mixabun and lnk_fname should have the same number of elements.'
-                    print ' To disable mixing either set mixabun to an empty list ([]) or comment it out in the problem_params.inp file'
+                    print('ERROR')
+                    print(' mixabun and lnk_fname should have the same number of elements.')
+                    print(' To disable mixing either set mixabun to an empty list ([]) or comment it out in the problem_params.inp file')
                     return
             
             therm = [True for i in range(len(ext))]
@@ -5448,8 +5443,8 @@ class radmc3dDustOpac(object):
             try:
                 rfile = open(ppar['lnk_fname'][0], 'r')
             except:
-                print 'ERROR'
-                print ppar['lnk_fname'][0] + ' could not be opened'
+                print('ERROR')
+                print(ppar['lnk_fname'][0] + ' could not be opened')
                 return
             try:
                 w = []
@@ -5465,8 +5460,8 @@ class radmc3dDustOpac(object):
 
                 rfile.close()
             except:
-                print 'ERROR'
-                print ppar['lnk_fname'][0] + ' could not be read'
+                print('ERROR')
+                print(ppar['lnk_fname'][0] + ' could not be read')
                 return
 
             w = np.array(w, dtype=float)
@@ -5541,24 +5536,24 @@ class radmc3dDustOpac(object):
                 if ppar!=None:
                     mixnames = ppar['mixnames']
                 else:
-                    print 'ERROR'
-                    print ' Neither ppar nor mixnames are set in mixOpac '
+                    print('ERROR')
+                    print(' Neither ppar nor mixnames are set in mixOpac ')
                     return
 
         if len(mixspecs)==0:
             if ppar!=None:
                 mixspecs = ppar['mixspecs']
             else:
-                print 'ERROR'
-                print ' Neither ppar nor mixspecs are set in mixOpac '
+                print('ERROR')
+                print(' Neither ppar nor mixspecs are set in mixOpac ')
                 return
             
         if len(mixabun)==0:
             if ppar!=None:
                 mixabun = ppar['mixabun']
             else:
-                print 'ERROR'
-                print ' Neither ppar nor mixabun are set in mixOpac '
+                print('ERROR')
+                print(' Neither ppar nor mixabun are set in mixOpac ')
                 return
 
         mwav  = []
@@ -5585,12 +5580,12 @@ class radmc3dDustOpac(object):
                         if ((oform==0)|(oform==1)):
                             oform = 1
                         else:
-                            print ' '
-                            print 'WARNING'
-                            print ' You are trying to mix opacity tables with different formats'
-                            print ' Some of the tables contain scattering coefficients while (format>=2) while other do not (format=1)'
-                            print ' If you wish to continue mixing will only be done for the absorption and the output opacity table'
-                            print ' will have a format number of 1.'
+                            print(' ')
+                            print('WARNING')
+                            print(' You are trying to mix opacity tables with different formats')
+                            print(' Some of the tables contain scattering coefficients while (format>=2) while other do not (format=1)')
+                            print(' If you wish to continue mixing will only be done for the absorption and the output opacity table')
+                            print(' will have a format number of 1.')
                             dum = raw_input('Do you wish to continue (1-yes, 0-no) ?')
                             if dum.strip()!='1':
                                 return
@@ -5602,12 +5597,12 @@ class radmc3dDustOpac(object):
                         if ((oform==0)|(oform==2)):
                             oform=2
                         else:
-                            print ' '
-                            print 'WARNING'
-                            print ' You are trying to mix opacity tables with different formats'
-                            print ' Some of the tables contain scattering coefficients while (format>=2) while other do not (format=1)'
-                            print ' If you wish to continue mixing will only be done for the absorption and the output opacity table'
-                            print ' will have a format number of 1.'
+                            print(' ')
+                            print('WARNING')
+                            print(' You are trying to mix opacity tables with different formats')
+                            print(' Some of the tables contain scattering coefficients while (format>=2) while other do not (format=1)')
+                            print(' If you wish to continue mixing will only be done for the absorption and the output opacity table')
+                            print(' will have a format number of 1.')
                             dum = raw_input('Do you wish to continue (1-yes, 0-no) ?')
                             if dum.strip()!='1':
                                 return
@@ -5618,12 +5613,12 @@ class radmc3dDustOpac(object):
                         if ((oform==0)|(oform==3)):
                             oform=3
                         else:
-                            print ' '
-                            print 'WARNING'
-                            print ' You are trying to mix opacity tables with different formats'
-                            print ' Some of the tables contain scattering coefficients while (format>=2) while other do not (format=1)'
-                            print ' If you wish to continue mixing will only be done for the absorption and the output opacity table'
-                            print ' will have a format number of 1.'
+                            print(' ')
+                            print('WARNING')
+                            print(' You are trying to mix opacity tables with different formats')
+                            print(' Some of the tables contain scattering coefficients while (format>=2) while other do not (format=1)')
+                            print(' If you wish to continue mixing will only be done for the absorption and the output opacity table')
+                            print(' will have a format number of 1.')
                             dum = raw_input('Do you wish to continue (1-yes, 0-no) ?')
                             if dum.strip()!='1':
                                 return
@@ -5631,22 +5626,22 @@ class radmc3dDustOpac(object):
                             dum = rfile.readline().split()
                             dw[iwav], dcabs[iwav], dcsca[iwav], gsym[iwav] = float(dum[0]), float(dum[1]), float(dum[2]), float(dum[3])
                     if form>3:
-                        print ' '
-                        print ' ERROR'
-                        print ' Unsupported dust opacity table format (format number: '+form+')'
-                        print ' Currently only format number 1 and 2 are supported'
+                        print(' ')
+                        print(' ERROR')
+                        print(' Unsupported dust opacity table format (format number: '+form+')')
+                        print(' Currently only format number 1 and 2 are supported')
                         return
                     rfile.close()
 
                     if dw[1]<dw[0]:
-                        print ' Dust opacity table seems to be sorted in frequency instead of wavelength'
-                        print ' Reversing the arrays'
+                        print(' Dust opacity table seems to be sorted in frequency instead of wavelength')
+                        print(' Reversing the arrays')
                         dw = dw[::-1]
                         dcabs = dcabs[::-1]
                         dcsca = dcsca[::-1]
                 except:
-                    print 'ERROR'
-                    print mixspecs[i][j]+ ' could not be read'
+                    print('ERROR')
+                    print(mixspecs[i][j]+ ' could not be read')
                     return
 
                 if j==0:
@@ -5739,11 +5734,10 @@ class radmc3dDustOpac(object):
         try: 
             rfile = open('dustopac.inp', 'r')
         except:
-            print 'Error'
-            print ' No dustopac.inp file was found'
+            print('Error')
+            print(' No dustopac.inp file was found')
             return -1
 
-       
         # file format
         dum = rfile.readline()
         # nr of dust species
@@ -5794,11 +5788,11 @@ class radmc3dDustOpac(object):
                 If set to True the file format of the previous, 2D version of radmc will be used
         """
 
-        print 'Writing dustopac.inp'
+        print('Writing dustopac.inp')
        
         if not ext:
-            print 'ERROR'
-            print 'No file name extension is specified. Without it dustopac.inp cannot be written'
+            print('ERROR')
+            print('No file name extension is specified. Without it dustopac.inp cannot be written')
             return -1
         else:
             if (type(ext).__name__=='str'):  ext = [ext]
@@ -5806,8 +5800,8 @@ class radmc3dDustOpac(object):
         if therm:
             if (type(therm).__name__=='int'): therm = [therm]
             if (len(ext)!=len(therm)):
-                print 'ERROR'
-                print ' The number of dust species in ext and in therm are different'
+                print('ERROR')
+                print(' The number of dust species in ext and in therm are different')
                 return -1
         else:
             # If therm is not specified it is assumed that all grains are thermal, no quantum heating
@@ -5937,11 +5931,11 @@ class radmc3dDustOpac(object):
             try :
                 wfile = open(fname, 'w')
             except:
-                print 'Error!' 
-                print fname+' cannot be opened!'
+                print('Error!' )
+                print(fname+' cannot be opened!')
                 return 
             
-            print 'Writing '+fname
+            print('Writing '+fname)
 
             wfile = open(fname, 'w')
             wfile.write("%d 1\n"%nfreq)
@@ -6129,17 +6123,17 @@ class radmc3dPar(object):
             ind = dumlist[iline].find('=')
             if ind<=0:
                 if dumlist[iline].find('Block')<=0:
-                    print 'ERROR'
-                    print ' Invalid expression in line ', iline
-                    print dumlist[iline]
-                    print dumlist[iline+1]
+                    print('ERROR')
+                    print(' Invalid expression in line ', iline)
+                    print(dumlist[iline])
+                    print(dumlist[iline+1])
                     return
                 else:
                     if dumlist[iline].find(':')<=0:
-                        print 'ERROR'
-                        print 'Invalid block identified'
-                        print 'The syntax of the block name field is :'
-                        print ' # Block : Blockname '
+                        print('ERROR')
+                        print('Invalid block identified')
+                        print('The syntax of the block name field is :')
+                        print(' # Block : Blockname ')
                         return
                     else:
                         blockname = dumlist[iline].split(':')[1].strip()
@@ -6248,7 +6242,7 @@ class radmc3dPar(object):
                     val= eval(varlist[i][1], loc)
                     loc[varlist[i][0].strip()] = val
                 except:
-                    print 'Unknown expression "'+varlist[i][1]+'"'
+                    print('Unknown expression "'+varlist[i][1]+'"')
             self.ppar[varlist[i][0].strip()] = val
             self.pvalstr[varlist[i][0].strip()] = varlist[i][1].strip()
             self.pdesc[varlist[i][0].strip()] = varlist[i][2].strip()
@@ -6282,11 +6276,11 @@ class radmc3dPar(object):
         new_par = False
         if len(parlist)==2:
             if not self.ppar.keys().__contains__(parname):
-                print ' ERROR'
-                print ' The argument of radmc3dPar.setPar() should be a four element list if a new'
-                print ' parameter is defined 1) parameter name, 2) parameter expression/value as a string'
-                print ' 3) Parameter description (= comment field in the parameter file)'
-                print ' 4) The name of the block in which the parameter must be placed in the problem_params.inp file'
+                print(' ERROR')
+                print(' The argument of radmc3dPar.setPar() should be a four element list if a new')
+                print(' parameter is defined 1) parameter name, 2) parameter expression/value as a string')
+                print(' 3) Parameter description (= comment field in the parameter file)')
+                print(' 4) The name of the block in which the parameter must be placed in the problem_params.inp file')
                 return
         else:
             new_par = True
@@ -6305,14 +6299,14 @@ class radmc3dPar(object):
         try:
             self.ppar[parname] = eval(parlist[1].strip(), glob)
             glob[parname] = self.ppar[parname]
-        except Exception, e:
-            print e
+        except Exception as e:
+            print(e)
             try:
                 self.ppar[parname] = eval(parlist[1].strip(), loc)
                 loc[parname] = self.ppar[parname]
-            except Exception, e:
-                print 'Unknown expression '+parlist[1].strip()
-                print e
+            except Exception as e:
+                print('Unknown expression '+parlist[1].strip())
+                print(e)
                 return
 
         self.pvalstr[parname] = parlist[1].strip()
@@ -6423,10 +6417,10 @@ class radmc3dPar(object):
                 try:
                     mdl  = __import__('radmc3dPy.models.'+model, fromlist=['']) 
                 except:
-                    print 'ERROR'
-                    print ' '+model+'.py could not be imported'
-                    print ' The model files should either be in the current working directory or'
-                    print ' in the radmc3d python module directory'
+                    print('ERROR')
+                    print(' '+model+'.py could not be imported')
+                    print(' The model files should either be in the current working directory or')
+                    print(' in the radmc3d python module directory')
                     return
 
             modpar = mdl.getDefaultParams()
@@ -6463,10 +6457,10 @@ class radmc3dPar(object):
         # Print the parameters by blocks 
         #
         for iblock in blocknames:
-            print ('%s'%'# -------------------------------------------------------------------------------------------------------------------------')
+            print(('%s'%'# -------------------------------------------------------------------------------------------------------------------------'))
             txt = '# Block: '+iblock
-            print ('%s'%txt)
-            print ('%s'%'# -------------------------------------------------------------------------------------------------------------------------')
+            print(('%s'%txt))
+            print(('%s'%'# -------------------------------------------------------------------------------------------------------------------------'))
            
 
             keys = []
@@ -6476,7 +6470,7 @@ class radmc3dPar(object):
 
             keys.sort()
             for key in keys:
-                print (key.ljust(25) + ' = ' + self.pvalstr[key].strip() + '  # ' + self.pdesc[key].strip())
+                print((key.ljust(25) + ' = ' + self.pvalstr[key].strip() + '  # ' + self.pdesc[key].strip()))
 # --------------------------------------------------------------------------------------------------
     def writeParfile(self, fname=''):
         """Writes a parameter file.
@@ -6492,7 +6486,7 @@ class radmc3dPar(object):
         if fname=='':
             fname = 'problem_params.inp'
 
-        print 'Writing '+fname
+        print('Writing '+fname)
     
         #
         # First get the uniq block names 
@@ -6508,8 +6502,8 @@ class radmc3dPar(object):
         try :
             wfile = open(fname, 'w')
         except:
-            print ' ERROR '
-            print ' Cannot create '+fname 
+            print(' ERROR ')
+            print(' Cannot create '+fname )
             return
         #
         # Write header
@@ -6644,10 +6638,10 @@ def readData(ddens=False, dtemp=False, gdens=False, gtemp=False, gvel=False, isp
     if vturb: res.readVTurb(binary=binary, octree=octree)
     if gdens:
         if not ispec:
-            print 'ERROR'
-            print 'No gas species is specified!'
-            print 'The ispec input keyword should be set to the name of the gas species as it appears in '
-            print ' numberdens_gasspecname.inp'
+            print('ERROR')
+            print('No gas species is specified!')
+            print('The ispec input keyword should be set to the name of the gas species as it appears in ')
+            print(' numberdens_gasspecname.inp')
             return 0
         else:
             res.readGasDens(ispec=ispec,binary=binary, octree=octree)
@@ -6683,9 +6677,9 @@ def readGrid(sgrid=True, wgrid=True):
     elif hdr[1] == 1:
         grid = radmc3dOctree()
     else:
-        print 'ERROR'
-        print 'Unsupported amr_style', hdr[1]
-        print 'Only regular (0) or octree-like (1) AMR styles are supported'
+        print('ERROR')
+        print('Unsupported amr_style', hdr[1])
+        print('Only regular (0) or octree-like (1) AMR styles are supported')
         return 
    
     if wgrid:
@@ -6724,8 +6718,8 @@ def writeDefaultParfile(model='', fname=''):
     """
     
     if model=='':
-        print ' ERROR '
-        print ' No model name is given '
+        print(' ERROR ')
+        print(' No model name is given ')
         return
 
     dum  = radmc3dPar()
@@ -6780,8 +6774,8 @@ def readSpectrum(fname='', old=False):
         try :
             rfile = open(fname, 'r')
         except:
-            print 'Error!' 
-            print fname+' could not be read!'
+            print('Error!' )
+            print(fname+' could not be read!')
             return 
 
         # Read the number of wavelengths 
@@ -6839,13 +6833,13 @@ def getDensVstruct(data=None, vmean_temp=False, ispec_tgas=0, gsize=None, idust=
     costi = np.cos(data.grid.yi)
 
     if not mstar:
-        print 'ERROR'
-        print ' You should specify the stellar mass (mstar = ??)'
+        print('ERROR')
+        print(' You should specify the stellar mass (mstar = ??)')
         return
 
     if idust==None:
-        print ' No dust index was given for which the vertical structure should be calculated'
-        print ' So we do for all dust species'
+        print(' No dust index was given for which the vertical structure should be calculated')
+        print(' So we do for all dust species')
         idust = range(data.rhodust.shape[3])
     else:
         if (type(idust).__name__=='int')| (type(idust).__name__=='float'):
@@ -6855,15 +6849,15 @@ def getDensVstruct(data=None, vmean_temp=False, ispec_tgas=0, gsize=None, idust=
     if vmean_temp:
 
         if abs(data.grid.yi[data.grid.nyi-1]-np.pi/2.)<1e-8:
-            print 'ERROR'
-            print "Cannot average temperature in the vertical direction if theta mirroring is active"
+            print('ERROR')
+            print("Cannot average temperature in the vertical direction if theta mirroring is active")
             return None
         else:
-            print ' Smoothing the vertical temperature structure by averaging the temperature of the '
-            print " two half planes above and below the disk midplane"
+            print(' Smoothing the vertical temperature structure by averaging the temperature of the ')
+            print(" two half planes above and below the disk midplane")
             dusttemp = np.zeros(data.dusttemp.shape, dtype=np.float64)
             for iy in range(data.grid.ny/2):
-                print iy
+                print(iy)
                 dusttemp[:,iy,:,:] = 0.5 * (data.dusttemp[:,iy,:,:] + data.dusttemp[:,data.grid.ny-1-iy,:,:])
                 dusttemp[:,data.grid.ny-1-iy,:,:] = dusttemp[:,iy,:,:]
     # Calculate the vertical hydrostatic equilibrium for the two half space (z<0, z>0) separately
@@ -6889,7 +6883,7 @@ def getDensVstruct(data=None, vmean_temp=False, ispec_tgas=0, gsize=None, idust=
     for ispec in idust:
         rho_new[:,:,:,ispec] = 0.
         for ir in range(data.grid.nx):
-            print ir, data.grid.nx-1
+            print(ir, data.grid.nx-1)
             r     = data.grid.x[ir]
             z     = r * cost
             zi    = r * costi
@@ -6955,7 +6949,7 @@ def getDensVstruct(data=None, vmean_temp=False, ispec_tgas=0, gsize=None, idust=
 
                     rho_new[ir,:,ip,ispec] = rho_new[ir,:,ip,ispec] * sigma / sigma_new
             
-            print rho_new[ir,data.grid.ny/2-1,ip,ispec]
+            print(rho_new[ir,data.grid.ny/2-1,ip,ispec])
 
     return rho_new
 
@@ -7047,7 +7041,7 @@ class radmc3dMolecule(object):
            try:
                f = open(fname, 'r')
            except Exception as e:
-               print e
+               print(e)
                return False
 
        else:
@@ -7055,11 +7049,11 @@ class radmc3dMolecule(object):
            try:
                f = open(fname, 'r')
            except Exception as e:
-               print e
+               print(e)
                return False
         
        
-       print 'Reading '+fname+'...'
+       print('Reading '+fname+'...')
        #with open(fname,'r') as f:
        dum             = f.readline()
        dum             = f.readline().split()
@@ -7247,7 +7241,7 @@ def plotSpectrum(a,ev=False,kev=False,hz=False,micron=False,jy=False,lsun=False,
    #
    if ilin is not None:
        if mol is None:
-           print "Error in plotSpectrum(): if you specify ilin, you must give a molecule with mol=..."
+           print("Error in plotSpectrum(): if you specify ilin, you must give a molecule with mol=...")
            return
        else:
            freq0  = mol.freq[ilin-1]
@@ -8084,9 +8078,9 @@ def interpolateOctree(data=None, x=None, y=None, z=None, var=['ddens'], nproc=1)
     """
 
     if nproc == 1:
-        print "Nearest neighbour interpolation using "+("%d"%nproc)+' process'
+        print("Nearest neighbour interpolation using "+("%d"%nproc)+' process')
     else:
-        print "Nearest neighbour interpolation using "+("%d"%nproc)+' processes'
+        print("Nearest neighbour interpolation using "+("%d"%nproc)+' processes')
     nx = x.shape[0]
     ny = y.shape[0]
     nz = z.shape[0]
@@ -8376,13 +8370,13 @@ def plotSlice2D(data=None, var='ddens', plane='xy', crd3=0.0, icrd3=None, ispec=
     # Check the input consistency
     #
     if data == None:
-        print 'ERROR'
-        print ' No data to be plotted'
+        print('ERROR')
+        print(' No data to be plotted')
         return 
 
     if data.grid is None: 
-        print 'ERROR'
-        print 'data structure does not contain spatial grid. Plots cannot be made without a grid'
+        print('ERROR')
+        print('data structure does not contain spatial grid. Plots cannot be made without a grid')
         return
     else:
         if isinstance(data.grid, radmc3dOctree):
@@ -8391,7 +8385,7 @@ def plotSlice2D(data=None, var='ddens', plane='xy', crd3=0.0, icrd3=None, ispec=
     if not octree:
         if icrd3 is None:
             if crd3 is None:
-                print 'Unknown coordinate for the third dimension (icrd3/crd3)'
+                print('Unknown coordinate for the third dimension (icrd3/crd3)')
                 return
 
     var = var.strip().lower() 
@@ -8417,18 +8411,18 @@ def plotSlice2D(data=None, var='ddens', plane='xy', crd3=0.0, icrd3=None, ispec=
     if var == 'taux':
         varFound = True
         if octree:
-            print 'Optical depth calculation has not yet been implemented for octrees'
+            print('Optical depth calculation has not yet been implemented for octrees')
             return
     if var == 'tauy':
         varFound = True
         if octree:
-            print 'Optical depth calculation has not yet been implemented for octrees'
+            print('Optical depth calculation has not yet been implemented for octrees')
             return
    
     if not varFound:
-        print 'ERROR'
-        print 'Unknown variable to be plotted : ', var
-        print 'Allower variable names are : ddens, dtemp, gdens, ndens, dtemp, vx, vy, vz, vturb, taux, tauy'
+        print('ERROR')
+        print('Unknown variable to be plotted : ', var)
+        print('Allower variable names are : ddens, dtemp, gdens, ndens, dtemp, vx, vy, vz, vturb, taux, tauy')
         return
 
     #
@@ -8447,9 +8441,9 @@ def plotSlice2D(data=None, var='ddens', plane='xy', crd3=0.0, icrd3=None, ispec=
         linunit_label = r'[R$_\odot$]'
         linunit_norm = 1./rs
     else:
-        print 'ERROR'
-        print 'Unknown linear unit length ', linunit
-        print 'Supported units are : cm, au, pc, rs'
+        print('ERROR')
+        print('Unknown linear unit length ', linunit)
+        print('Supported units are : cm, au, pc, rs')
         return
 
 
@@ -8460,9 +8454,9 @@ def plotSlice2D(data=None, var='ddens', plane='xy', crd3=0.0, icrd3=None, ispec=
         angunit_label = '[deg]'
         angunit_norm  = np.pi/180.
     else:
-        print 'ERROR'
-        print 'Unknown angular unit length ', linunit
-        print 'Supported units are : rad, deg'
+        print('ERROR')
+        print('Unknown angular unit length ', linunit)
+        print('Supported units are : rad, deg')
         return
     
     #
@@ -8598,8 +8592,8 @@ def plotSlice2D(data=None, var='ddens', plane='xy', crd3=0.0, icrd3=None, ispec=
     #
     if var=='ddens':
         if type(data.rhodust)==int:  
-            print 'ERROR'
-            print 'Dust density is not present in the passed radmc3dData instance'
+            print('ERROR')
+            print('Dust density is not present in the passed radmc3dData instance')
             return
         else:
             if octree:
@@ -8629,16 +8623,16 @@ def plotSlice2D(data=None, var='ddens', plane='xy', crd3=0.0, icrd3=None, ispec=
 
     elif var=='dtemp':
         if type(data.dusttemp)==int:  
-            print 'ERROR'
-            print 'Dust temperature is not present in the passed radmc3dData instance'
+            print('ERROR')
+            print('Dust temperature is not present in the passed radmc3dData instance')
             return
         else:
             if octree:
                 if (ispec >= 0):
                     pdata = np.squeeze(idata['dusttemp'][:,:,:,ispec])
                 else:
-                    print 'ERROR'
-                    print 'dust species index should not be smaller than 0 for dust temperature'
+                    print('ERROR')
+                    print('dust species index should not be smaller than 0 for dust temperature')
                     return
 
             else:
@@ -8646,29 +8640,29 @@ def plotSlice2D(data=None, var='ddens', plane='xy', crd3=0.0, icrd3=None, ispec=
                     if ispec > 0:
                         pdata = data.dusttemp[icrd3,:,:,ispec]
                     else:
-                        print 'ERROR'
-                        print 'dust species index should not be smaller than 0 for dust temperature'
+                        print('ERROR')
+                        print('dust species index should not be smaller than 0 for dust temperature')
                         return
                 elif iplane == 1:
                     if ispec > 0:
                         pdata = data.dusttemp[:,icrd3,:,ispec]
                     else:
-                        print 'ERROR'
-                        print 'dust species index should not be smaller than 0 for dust temperature'
+                        print('ERROR')
+                        print('dust species index should not be smaller than 0 for dust temperature')
                         return
                 elif iplane == 2:
                     if ispec > 0:
                         pdata = data.dusttemp[:,:,icrd3,ispec]
                     else:
-                        print 'ERROR'
-                        print 'dust species index should not be smaller than 0 for dust temperature'
+                        print('ERROR')
+                        print('dust species index should not be smaller than 0 for dust temperature')
                         return
             cblabel = r'$T_{\rm dust}$ [K]'
     
     elif var=='gdens':
         if type(data.rhogas)==int:  
-            print 'ERROR'
-            print 'Gas density is not present in the passed radmc3dData instance'
+            print('ERROR')
+            print('Gas density is not present in the passed radmc3dData instance')
             return
         else:
             if octree:
@@ -8684,8 +8678,8 @@ def plotSlice2D(data=None, var='ddens', plane='xy', crd3=0.0, icrd3=None, ispec=
     
     elif var=='ndens':
         if type(data.ndens_mol)==int:  
-            print 'ERROR'
-            print 'Gas number density is not present in the passed radmc3dData instance'
+            print('ERROR')
+            print('Gas number density is not present in the passed radmc3dData instance')
             return
         else:
             if octree:
@@ -8701,8 +8695,8 @@ def plotSlice2D(data=None, var='ddens', plane='xy', crd3=0.0, icrd3=None, ispec=
     
     elif var=='gtemp':
         if type(data.gastemp)==int:  
-            print 'ERROR'
-            print 'Gas temperture is not present in the passed radmc3dData instance'
+            print('ERROR')
+            print('Gas temperture is not present in the passed radmc3dData instance')
             return
         else:
             if octree:
@@ -8718,8 +8712,8 @@ def plotSlice2D(data=None, var='ddens', plane='xy', crd3=0.0, icrd3=None, ispec=
     
     elif var=='vx':
         if type(data.gvel)==int:  
-            print 'ERROR'
-            print 'Gas velocity is not present in the passed radmc3dData instance'
+            print('ERROR')
+            print('Gas velocity is not present in the passed radmc3dData instance')
             return
         else:
             if octree:
@@ -8735,8 +8729,8 @@ def plotSlice2D(data=None, var='ddens', plane='xy', crd3=0.0, icrd3=None, ispec=
     
     elif var=='vy':
         if type(data.gvel)==int:  
-            print 'ERROR'
-            print 'Gas velocity is not present in the passed radmc3dData instance'
+            print('ERROR')
+            print('Gas velocity is not present in the passed radmc3dData instance')
             return
         else:
             if octree:
@@ -8751,8 +8745,8 @@ def plotSlice2D(data=None, var='ddens', plane='xy', crd3=0.0, icrd3=None, ispec=
             cblabel = r'$v_{\rm y}$ [cm/s]'
     elif var=='vz':
         if type(data.gvel)==int:  
-            print 'ERROR'
-            print 'Gas velocity is not present in the passed radmc3dData instance'
+            print('ERROR')
+            print('Gas velocity is not present in the passed radmc3dData instance')
             return
         else:
             if octree:
@@ -8768,8 +8762,8 @@ def plotSlice2D(data=None, var='ddens', plane='xy', crd3=0.0, icrd3=None, ispec=
         
     elif var=='vturb':
         if type(data.vturb)==int:  
-            print 'ERROR'
-            print 'Microturbulent velocity is not present in the passed radmc3dData instance'
+            print('ERROR')
+            print('Microturbulent velocity is not present in the passed radmc3dData instance')
             return
         else:
             if octree:
@@ -8785,12 +8779,12 @@ def plotSlice2D(data=None, var='ddens', plane='xy', crd3=0.0, icrd3=None, ispec=
     
     if var=='taux':
         if type(data.taux)==int:  
-            print 'ERROR'
-            print 'Optical depth is not present in the passed radmc3dData instance'
+            print('ERROR')
+            print('Optical depth is not present in the passed radmc3dData instance')
             return
         else:
             if octree:
-                print 'Optical depth calculation has not yet been implemented for octrees'
+                print('Optical depth calculation has not yet been implemented for octrees')
                 return
             else:
                 if iplane == 0:
@@ -8803,12 +8797,12 @@ def plotSlice2D(data=None, var='ddens', plane='xy', crd3=0.0, icrd3=None, ispec=
     
     if var=='tauy':
         if type(data.tauy)==int:  
-            print 'ERROR'
-            print 'Optical depth is not present in the passed radmc3dData instance'
+            print('ERROR')
+            print('Optical depth is not present in the passed radmc3dData instance')
             return
         else:
             if octree:
-                print 'Optical depth calculation has not yet been implemented for octrees'
+                print('Optical depth calculation has not yet been implemented for octrees')
                 return
             else:
                 if iplane == 0:
@@ -8832,9 +8826,9 @@ def plotSlice2D(data=None, var='ddens', plane='xy', crd3=0.0, icrd3=None, ispec=
         if pdata.shape[2] == 1:
             pdata = pdata[:,:,0]
         else:
-            print 'ERROR'
-            print 'The plotted data has four dimension (3 spatial + 1 species) but the species index is not set'
-            print 'specify ispec keyword which of the dimensinos should be plotted'
+            print('ERROR')
+            print('The plotted data has four dimension (3 spatial + 1 species) but the species index is not set')
+            print('specify ispec keyword which of the dimensinos should be plotted')
             return
 
 

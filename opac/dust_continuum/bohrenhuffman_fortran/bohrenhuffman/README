@@ -2,6 +2,8 @@ This is in many respects the same as the jena/ setup. The main difference
 is that here the Bohren & Huffman code, as modified by Draine, is used:
 
   http://en.wikipedia.org/wiki/Codes_for_electromagnetic_scattering_by_spheres
+  http://scatterlib.wikidot.com/mie
+  http://www.astro.princeton.edu/~draine/scattering.html
 
 That code is not provided here (please get it yourself from the web). Only
 the "shell around it" is provided here. What you must do is:

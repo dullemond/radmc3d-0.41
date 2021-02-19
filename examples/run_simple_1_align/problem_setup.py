@@ -127,7 +127,8 @@ alvec[:,:,:,2]  = np.squeeze(alvec[:,:,:,2]) * epsal
 #
 with open('wavelength_micron.inp','w+') as f:
     f.write('%d\n'%(nlam))
-    np.savetxt(f,lam.T,fmt=['%13.6e'])
+    for value in lam:
+        f.write('%13.6e\n'%(value))
 #
 #
 # Write the stars.inp file
@@ -136,7 +137,8 @@ with open('stars.inp','w+') as f:
     f.write('2\n')
     f.write('1 %d\n\n'%(nlam))
     f.write('%13.6e %13.6e %13.6e %13.6e %13.6e\n\n'%(rstar,mstar,pstar[0],pstar[1],pstar[2]))
-    np.savetxt(f,lam.T,fmt=['%13.6e'])
+    for value in lam:
+        f.write('%13.6e\n'%(value))
     f.write('\n%13.6e\n'%(-tstar))
 #
 # Write the grid file
@@ -148,9 +150,12 @@ with open('amr_grid.inp','w+') as f:
     f.write('0\n')                       # gridinfo
     f.write('1 1 1\n')                   # Include x,y,z coordinate
     f.write('%d %d %d\n'%(nx,ny,nz))     # Size of grid
-    np.savetxt(f,xi.T,fmt=['%13.6e'])    # X coordinates (cell walls)
-    np.savetxt(f,yi.T,fmt=['%13.6e'])    # Y coordinates (cell walls)
-    np.savetxt(f,zi.T,fmt=['%13.6e'])    # Z coordinates (cell walls)
+    for value in xi:
+        f.write('%13.6e\n'%(value))      # X coordinates (cell walls)
+    for value in yi:
+        f.write('%13.6e\n'%(value))      # Y coordinates (cell walls)
+    for value in zi:
+        f.write('%13.6e\n'%(value))      # Z coordinates (cell walls)
 #
 # Write the density file
 #
@@ -159,7 +164,8 @@ with open('dust_density.inp','w+') as f:
     f.write('%d\n'%(nx*ny*nz))           # Nr of cells
     f.write('1\n')                       # Nr of dust species
     data = rhod.ravel(order='F')         # Create a 1-D view, fortran-style indexing
-    np.savetxt(f,data.T,fmt=['%13.6e'])  # The data
+    data.tofile(f, sep='\n', format="%13.6e")
+    f.write('\n')
 #
 # Dust opacity control file
 #
@@ -178,9 +184,11 @@ with open('dustkapalignfact_pyrmg70.inp','w+') as f:
     f.write('1\n')
     f.write('%d\n'%(dustnf))
     f.write('%d\n\n'%(nrang))
-    np.savetxt(f,dustfreq.T,fmt=['%13.6e'])
+    for value in dustfreq:
+        f.write('%13.6e\n'%(value))
     f.write('\n')
-    np.savetxt(f,eta.T,fmt=['%13.6e'])
+    for value in eta:
+        f.write('%13.6e\n'%(value))
     f.write('\n')
     for inu in range(dustnf):
         for imu in range(nrang):

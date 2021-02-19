@@ -7,18 +7,18 @@ module rtglobal_module
   ! single-frequency Monte Carlo. 
   !
   type mc_params
-     integer :: nphot_therm                 ! Number of photons emitted in 
+     integer*8 :: nphot_therm               ! Number of photons emitted in 
   !                                         ! total for the thermal Monte Carlo. 
-     integer :: nphot_scat                  ! Number of photons emitted in 
+     integer*8 :: nphot_scat                ! Number of photons emitted in 
   !                                         ! a single-wavelength scattering
   !                                         ! Monte Carlo simulation.
-     integer :: nphot_spec                  ! Like nphot_scat, but now for
+     integer*8 :: nphot_spec                ! Like nphot_scat, but now for
   !                                         ! spectra: typically you will
   !                                         ! have nphot_spec << nphot_scat
   !                                         ! to speed up the spectrum calc,
   !                                         ! and that is OK, because we will
   !                                         ! anyway integrate over the images.
-     integer :: nphot_mono                  ! Number of photons emitted in 
+     integer*8 :: nphot_mono                ! Number of photons emitted in 
   !                                         ! a monochromatic 
   !                                         ! Monte Carlo simulation.
      integer :: ifast                       ! ifast.ne.0 speeds up code, but 
@@ -74,7 +74,7 @@ module rtglobal_module
      integer :: debug_write_path            ! =1 Write the path of the photon
   !   integer :: debug_write_eventcounts     ! =1 Write for each photon nr of events
      integer :: countwrite                  ! Each countwrite, write to standard output
-     integer :: incl_scatsrc_mctherm        ! Do we make scattering src while doing therm MC?
+  !   integer :: incl_scatsrc_mctherm        ! Do we make scattering src while doing therm MC?
      logical :: optimized_motion            ! For high optical deth cells
      double precision :: optim_dtau         ! For high optical deth cells
      logical :: mod_random_walk             ! Using MRW?

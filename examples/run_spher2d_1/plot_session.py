@@ -67,6 +67,9 @@ os.system('radmc3d image lambda 10 incl 60')
 # to get the image
 #
 im   = readImage()
+dum  = im.image.shape
+nx   = dum[0]
+nx2  = nx/2
 plt.figure(3)
 plotImage(im,log=True,maxlog=6,au=True,bunit='inu')
 plt.show()
@@ -104,7 +107,7 @@ plt.xscale('log')
 plt.yscale('log')
 plt.xlabel('r [cm]')
 plt.ylabel(r'$I_\nu [\mathrm{erg}\,\mathrm{cm}^{-2}\,\mathrm{s}^{-1}\,\mathrm{Hz}^{-1}]$')
-plt.plot(im.x[50:],im.image[50:,50,0],'o',label='rectangular image')
+plt.plot(im.x[nx2:],im.image[nx2:,nx2,0],'o',label='rectangular image')
 plt.legend()
 plt.show()
 

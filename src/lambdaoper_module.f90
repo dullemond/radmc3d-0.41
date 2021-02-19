@@ -14,7 +14,7 @@
 ! more accurate answer. Also, depending on which method of Lambda
 ! operator you use, you get less noise. Finally, one can use the
 ! Accelerated Lambda Iteration scheme to speed up convergence of the
-! Lamber Iteration.
+! Lambda Iteration.
 !========================================================================
 module lambdaoper_module
 use mathroutines_module
@@ -25,13 +25,13 @@ use amrray_module
 use constants_module
 
 double precision :: lambdaoper_shift = 1.d90
-integer :: lambdaoper_nfreq,lambdaoper_istar,lambdaoper_inu
+integer :: lambdaoper_nfreq,lambdaoper_istar
 double precision, allocatable :: lambdaoper_intensity(:),lambdaoper_bgint(:)
+double precision, allocatable :: lambdaoper_local_lamdiag(:)
 integer :: lambdaoper_order=1
 logical :: lambdaoper_addtocell_meanint=.false.
 logical :: lambdaoper_vertexbased=.false.
 integer :: lambdaoper_random_ray_method=0
-double precision :: lambdaoper_local_lamdiag
 
 doubleprecision :: lambdaoper_snu_prev,lambdaoper_anu_prev,lambdaoper_jnu_prev
 doubleprecision :: lambdaoper_snu_curr,lambdaoper_anu_curr,lambdaoper_jnu_curr
@@ -67,8 +67,9 @@ subroutine lambdaoper_init(nf,freq,vertexbased,bgint)
   !
   ! Allocate and init some arrays
   !
-  allocate(lambdaoper_intensity(1:nf),lambdaoper_bgint(1:nf))
+  allocate(lambdaoper_intensity(1:nf),lambdaoper_bgint(1:nf),lambdaoper_local_lamdiag(1:nf))
   lambdaoper_intensity(:) = 0.d0
+  lambdaoper_local_lamdiag(:) = 0.d0
   if(present(bgint)) then
      lambdaoper_bgint(:) = bgint(:)
   else
@@ -96,6 +97,7 @@ subroutine lambdaoper_cleanup()
   implicit none
   if(allocated(lambdaoper_intensity)) deallocate(lambdaoper_intensity)
   if(allocated(lambdaoper_bgint)) deallocate(lambdaoper_bgint)
+  if(allocated(lambdaoper_local_lamdiag)) deallocate(lambdaoper_local_lamdiag)
   if(allocated(lambdaoper_meanint_cell)) deallocate(lambdaoper_meanint_cell)
   if(allocated(lambdaoper_meanint_vertex)) deallocate(lambdaoper_meanint_vertex)
   if(allocated(lambdaoper_dstot_cell)) deallocate(lambdaoper_dstot_cell)
@@ -103,19 +105,21 @@ subroutine lambdaoper_cleanup()
   if(allocated(lambdaoper_lambda_diag_cell)) deallocate(lambdaoper_lambda_diag_cell)
   if(allocated(lambdaoper_lambda_diag_vertex)) deallocate(lambdaoper_lambda_diag_vertex)
   lambdaoper_nfreq = 0
-  lambdaoper_local_lamdiag = -1d99
 end subroutine lambdaoper_cleanup
 
 
 !------------------------------------------------------------------------
 !              HELPER ROUTINE FOR RT INTEGRATION STEP
+! Make sure that ray_index is properly set before calling this routine.
 !------------------------------------------------------------------------
-subroutine lambdaoper_integrate_element()
+subroutine lambdaoper_integrate_element(inu0,inu1,nf)
   implicit none
   integer :: inu
-  double precision :: dtau1,theomax,e0,e1,ax,bx,xp,qdr
-  double precision :: src(1),alp(1)
+  double precision :: dtau1(1:nf),theomax(1:nf),e0(1:nf),e1(1:nf)
+  double precision :: ax(1:nf),bx(1:nf),xp(1:nf),qdr(1:nf)
+  double precision :: src(1:nf),alp(1:nf)
   double precision :: r,theta,phi
+  integer :: inu0,inu1,nf
   !
   ! Check if we are/were in a star
   !
@@ -133,11 +137,12 @@ subroutine lambdaoper_integrate_element()
         !
         ! Get the src and alp values
         !
-        call sources_get_src_alp(lambdaoper_inu,lambdaoper_inu,1,src,alp,##########)
+        call sources_get_src_alp(inu0,inu1,nf,src,alp,.false.)
         !
         ! Now do the RT, including everything
         !
-        lambdaoper_intensity(lambdaoper_inu) = lambdaoper_intensity(lambdaoper_inu) + alp(1) * ray_ds
+        lambdaoper_intensity(inu0:inu1) = lambdaoper_intensity(inu0:inu1) + &
+             alp(inu0:inu1) * ray_ds
         !
      case(1)
         !
@@ -145,29 +150,37 @@ subroutine lambdaoper_integrate_element()
         !
         ! Get the src and alp values
         !
-        call sources_get_src_alp(lambdaoper_inu,lambdaoper_inu,1,src,alp,########)
+        call sources_get_src_alp(inu0,inu1,nf,src,alp,.false.)
         !
-        ! Compute the exp(-tau)
+        ! Compute tau, exp(-tau), 1-exp(-tau) and the diagonal of 
+        ! (this contribution to) the local approximate lambda operator.
         !
-        xp = alp(1) * ray_ds
-        if(xp.lt.0.d0) stop 7329
-        if(xp.gt.1d-4) then
-           xp  = exp(-xp)
-           lambdaoper_local_lamdiag = 1.d0 - xp
-        else
-           lambdaoper_local_lamdiag = xp
-           xp  = exp(-xp)
-        endif
+        dtau1(inu0:inu1) = alp(inu0:inu1) * ray_ds
+        xp(inu0:inu1)    = exp(-dtau1(inu0:inu1))
+        do inu=inu0,inu1
+           if(dtau1(inu).lt.0.d0) stop 7329
+           if(dtau1(inu).gt.1d-4) then
+              bx(inu)  = 1.d0 - xp(inu)
+              lambdaoper_local_lamdiag(inu) = ( dtau1(inu) - 1.d0 + xp(inu) ) / dtau1(inu)
+           else
+              bx(inu)  = dtau1(inu)
+              lambdaoper_local_lamdiag(inu) = 0.5d0 * dtau1(inu)
+           endif
+        enddo
         !
         ! Now do the RT, including everything
         !
-        lambdaoper_intensity(lambdaoper_inu) = xp * lambdaoper_intensity(lambdaoper_inu) + lambdaoper_local_lamdiag * src(1)
+        lambdaoper_intensity(inu0:inu1) = xp(inu0:inu1) * lambdaoper_intensity(inu0:inu1) + &
+             bx(inu0:inu1) * src(inu0:inu1)
         !
      case(2)
         !
         ! Second order integration. Corner-based (=vertex-based) scheme.
         ! Here all sources have all been pre-calculated on
-        ! the cell corners. 
+        ! the cell corners.
+
+################### HERE I STILL HAVE TO ADD THE (INU0:INU1) AND THE CORRECT APPROX LAMBDA OPERATUR ###############
+        
         !
         ! Backup snu and anu at previous crossing
         !
@@ -262,7 +275,7 @@ end subroutine lambdaoper_integrate_element
 !------------------------------------------------------------------------
 subroutine lambdaoper_integrate_ray()
   implicit none
-  double precision :: s,ds
+  double precision :: s
   doubleprecision :: snu_prev,anu_prev,jnu_prev,snu_curr,anu_curr,jnu_curr
   !
   ! Check
@@ -417,7 +430,7 @@ subroutine lambdaoper_integrate_ray()
      !
      ! Path length
      !
-     ds    = sqrt( (ray_cart_x-ray_prev_x)**2 + (ray_cart_y-ray_prev_y)**2 + (ray_cart_z-ray_prev_z)**2 )
+     ray_ds    = sqrt( (ray_cart_x-ray_prev_x)**2 + (ray_cart_y-ray_prev_y)**2 + (ray_cart_z-ray_prev_z)**2 )
      !
      ! Now do the integration along this path element
      !
@@ -431,15 +444,15 @@ subroutine lambdaoper_integrate_ray()
      !
      if(lambdaoper_addtocell_meanint) then
         lambdaoper_meanint_cell(ray_index) = lambdaoper_meanint_cell(ray_index) + &
-             ds * lambdaoper_intensity(lambdaoper_inu)
+             ray_ds * lambdaoper_intensity(lambdaoper_inu)
         lambdaoper_lambda_diag_cell(ray_index) = lambdaoper_lambda_diag_cell(ray_index) + &
-             ds * lambdaoper_local_lamdiag
-        lambdaoper_dstot_cell(ray_index) = lambdaoper_dstot_cell(ray_index) + ds 
+             ray_ds * lambdaoper_local_lamdiag
+        lambdaoper_dstot_cell(ray_index) = lambdaoper_dstot_cell(ray_index) + ray_ds 
      endif
      !
      ! Increase s
      !
-     s = s + ds
+     s = s + ray_ds
      !
      ! Now make next cell the current cell
      !

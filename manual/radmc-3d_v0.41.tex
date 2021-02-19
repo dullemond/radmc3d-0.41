@@ -93,7 +93,7 @@
 
 \vspace{0.3em}
 
-\centerline{\Large \bf M.~Min, A.~Juhasz, A.~Pohl, R.~Shetty, F.~Sereshti, T.~Peters, B.~Commercon}
+\centerline{\Large \bf M.~Min, A.~Juhasz, A.~Pohl, R.~Shetty, F.~Sereshti, T.~Peters, B.~Commercon, A.~Ziampras}
 
 \vspace{2em}
 
@@ -248,7 +248,7 @@ in the testing phase are marked with [t].
   \begin{itemize}
     \item[][+] Stars can be treated as point-sources or as spheres
     \item[][+] Option to calculate the mean intensity $J_\nu(\vec x)$ in the model
-    \item[][+] OpenMP parallellization of the thermal Monte Carlo
+    \item[][+] OpenMP parallellization of the Monte Carlo
   \end{itemize}
 \end{itemize}
 
@@ -2431,6 +2431,32 @@ contribution is compared to single scattering. But of course, it is always
 safer to simply increase {\small\tt nphot\_scat} and patiently wait until
 the Monte Carlo run is finished.
 
+\subsection{Simplified single-scattering mode (spherical coordinates)}
+\label{sec-simple-single-scattering}
+%
+If you are sure that multiple scattering is rare (low albedo and/or low optical
+depth), then you may be interested in using a simpler (non-Monte-Carlo) mode for
+including scattering in your images.  But please first read Section
+\ref{sec-single-multiple-scattering} and test if multiple scattering is indeed
+unimportant. If so, and if you are using spherical coordinates, a single star at
+the center which is point-like, and if you are confident that at the wavelength
+you are interested in the thermal dust emission is not strong enough to be a
+considerable source of light that can be scattered into the line-of-sight
+(i.e.~all scattered light is scattered {\em star}light), then you can use the
+simplified single-scattering mode.
+
+This mode does not use the Monte Carlo method to compute the scattering source
+function, but instead uses direct integration of the starlight through the
+grid. It is much faster than Monte Carlo, and it does not contain noise.
+
+By adding {\small\tt simplescat} to the command line when making an image or
+spectrum, you switch this mode on. Please compare first to the single-scattering
+Monte Carlo method (see Section \ref{sec-single-multiple-scattering}; it should
+yield very similar result, but without noise) and then to the full multiple
+scattering Monte Carlo. The full multiple scattering case will likely produce
+more flux. If the difference is large, then you should not use the simple
+single scattering mode. However, if the difference is minor, then the single
+scattering approximation is reasonable.
 
 \subsection{Warning when using an-isotropic scattering}
 An important issue with anisotropic scattering is that if the phase function
@@ -5040,6 +5066,15 @@ the line center. You can also shift the passband center:
 radmc3d spectrum iline 1 widthkms 10 linenlam 100 vkms -10
 \end{verbatim}}
 which would make the wavelength grid 10 kms shifted in short direction.
+
+Note that you can use the {\small\tt widthkms} and {\small\tt linenlam}
+keywords also for images:
+{\small\begin{verbatim}
+radmc3d image iline 1 widthkms 10 linenlam 100
+\end{verbatim}}
+This will make a multi-color image, i.e.~it will make images at
+100 wavelenths points evenly spaced around the line center. In this way
+you can make channel maps.
 
 For more details on how to specify the spectral sampling, please read
 Section \ref{sec-set-camera-frequencies}. Note that keywords such as
@@ -13165,6 +13200,8 @@ modus of polarization is implemented.
       for RADMC-3D. See the {\small\tt python/} directory. This is version
       0.29 of his package. This package now also supports reading and
       writing AMR grids.
+    \item Bugfix in VTK for 3-D spherical coordinates (thanks Attila Juhasz!).
+      Now it should work.
   \end{itemize}
 \end{itemize}
 

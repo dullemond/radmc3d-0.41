@@ -18,7 +18,7 @@ def getTemplateModel():
     try:
         os.system(command)
     except Exception as ex:
-        print ex
+        print(ex)
 
         return False
     return True
@@ -59,7 +59,7 @@ def updateModelList():
             try:
                 mdl = __import__(modname)
             except:
-                print modname + ' cannot be imported. Skipping ...'
+                print(modname + ' cannot be imported. Skipping ...')
                 mod_names.remove(modname)
     
 
@@ -68,9 +68,9 @@ def updateModelList():
     try:
         wfile = open(mod_path+'/models/_modellist.py', 'w')
     except:
-        print 'ERROR'
-        print mod_path+'/models/model_list.py cannot be opened'
-        print 'Problem with write permissions?'
+        print('ERROR')
+        print(mod_path+'/models/model_list.py cannot be opened')
+        print('Problem with write permissions?')
         return 
    
     for imod in range(len(mod_names)):
@@ -88,7 +88,7 @@ def updateModelList():
     wfile.close()
 
 
-    print ' Modellist has been updated successfully.'
+    print(' Modellist has been updated successfully.')
     return 
 
 
@@ -137,8 +137,8 @@ def getModelDesc(model=''):
     """
 
     if model.strip()=='':
-        print 'ERROR'
-        print 'No model name is given'
+        print('ERROR')
+        print('No model name is given')
         return
 
     try:
@@ -147,18 +147,18 @@ def getModelDesc(model=''):
         try:
             mdl  = __import__('radmc3dPy.models.'+model, fromlist=['']) 
         except:
-            print 'ERROR'
-            print ' '+model+'.py could not be imported'
-            print ' The model files should either be in the current working directory or'
-            print ' in the radmc3d python module directory'
+            print('ERROR')
+            print(' '+model+'.py could not be imported')
+            print(' The model files should either be in the current working directory or')
+            print(' in the radmc3d python module directory')
             return -1
 
     
     if callable(getattr(mdl, 'getModelDesc')):
         return mdl.getModelDesc()
     else:
-        print 'ERROR'
-        print ' '+model+'.py does not contain a getModelDesc() function.'
+        print('ERROR')
+        print(' '+model+'.py does not contain a getModelDesc() function.')
         return
 
 

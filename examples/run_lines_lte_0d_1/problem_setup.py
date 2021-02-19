@@ -70,7 +70,8 @@ vturb   = np.zeros([nx,ny,nz]) + vturb0
 #
 with open('wavelength_micron.inp','w+') as f:
     f.write('%d\n'%(nlam))
-    np.savetxt(f,lam.T,fmt=['%13.6e'])
+    for value in lam:
+        f.write('%13.6e\n'%(value))
 #
 # Write the grid file
 #
@@ -81,9 +82,12 @@ with open('amr_grid.inp','w+') as f:
     f.write('0\n')                       # gridinfo
     f.write('1 1 1\n')                   # Include x,y,z coordinate
     f.write('%d %d %d\n'%(nx,ny,nz))     # Size of grid
-    np.savetxt(f,xi.T,fmt=['%13.6e'])    # X coordinates (cell walls)
-    np.savetxt(f,yi.T,fmt=['%13.6e'])    # Y coordinates (cell walls)
-    np.savetxt(f,zi.T,fmt=['%13.6e'])    # Z coordinates (cell walls)
+    for value in xi:
+        f.write('%13.6e\n'%(value))      # X coordinates (cell walls)
+    for value in yi:
+        f.write('%13.6e\n'%(value))      # Y coordinates (cell walls)
+    for value in zi:
+        f.write('%13.6e\n'%(value))      # Z coordinates (cell walls)
 #
 # Write the density file
 #
@@ -92,7 +96,8 @@ with open('dust_density.inp','w+') as f:
     f.write('%d\n'%(nx*ny*nz))           # Nr of cells
     f.write('1\n')                       # Nr of dust species
     data = rhod.ravel(order='F')         # Create a 1-D view, fortran-style indexing
-    np.savetxt(f,data.T,fmt=['%13.6e'])  # The data
+    data.tofile(f, sep='\n', format="%13.6e")
+    f.write('\n')
 #
 # Write the CO number density file
 #
@@ -100,7 +105,8 @@ with open('numberdens_co.inp','w+') as f:
     f.write('1\n')                       # Format number
     f.write('%d\n'%(nx*ny*nz))           # Nr of cells
     data = nco.ravel(order='F')          # Create a 1-D view, fortran-style indexing
-    np.savetxt(f,data.T,fmt=['%13.6e'])  # The data
+    data.tofile(f, sep='\n', format="%13.6e")
+    f.write('\n')
 #
 # Write the gas velocity file
 #
@@ -117,7 +123,8 @@ with open('microturbulence.inp','w+') as f:
     f.write('1\n')                       # Format number
     f.write('%d\n'%(nx*ny*nz))           # Nr of cells
     data = vturb.ravel(order='F')        # Create a 1-D view, fortran-style indexing
-    np.savetxt(f,data.T,fmt=['%13.6e'])  # The data
+    data.tofile(f, sep='\n', format="%13.6e")
+    f.write('\n')
 #
 # Write the gas temperature file
 #
@@ -125,7 +132,8 @@ with open('gas_temperature.inp','w+') as f:
     f.write('1\n')                       # Format number
     f.write('%d\n'%(nx*ny*nz))           # Nr of cells
     data = tgas.ravel(order='F')         # Create a 1-D view, fortran-style indexing
-    np.savetxt(f,data.T,fmt=['%13.6e'])  # The data
+    data.tofile(f, sep='\n', format="%13.6e")
+    f.write('\n')
 #
 # Write the dust temperature file (dummy)
 #
@@ -134,7 +142,8 @@ with open('dust_temperature.dat','w+') as f:
     f.write('%d\n'%(nx*ny*nz))           # Nr of cells
     f.write('1\n')                       # Nr of species
     data = tgas.ravel(order='F')         # Create a 1-D view, fortran-style indexing
-    np.savetxt(f,data.T,fmt=['%13.6e'])  # The data
+    data.tofile(f, sep='\n', format="%13.6e")
+    f.write('\n')
 #
 # Dust opacity control file
 #

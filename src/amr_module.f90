@@ -3109,7 +3109,7 @@ if(chsp.and.((amr_coordsystem.ge.100).and.(amr_coordsystem.lt.200))) then
          write(stdo,*) '   Adjusting theta(ny+1) to exactly pi...'
          yi(ny+1) = pi
       endif
-      do iy=2,ny-1 
+      do iy=2,ny
          if((abs(yi(iy)-pihalf).lt.0.5d-4*abs(yi(iy+1)-yi(iy-1))).and.(yi(iy).ne.pihalf)) then
             write(string,*) iy
             write(stdo,*) '   Adjusting theta('//trim(adjustl(string))//') to exactly pi/2...'
@@ -3117,19 +3117,41 @@ if(chsp.and.((amr_coordsystem.ge.100).and.(amr_coordsystem.lt.200))) then
          endif
       enddo
       !
+      ! For very fine theta grids near the equator with insufficient precision, sometimes
+      ! the adjustment to pi/2 is accidently skipped (see 1e-4 factors above). Check for
+      ! this, and stop if necessary.
+      !
+      if(abs(yi(ny+1)-pihalf)<1e-2*abs(yi(ny+1)-yi(1))) then
+         !
+         ! Should be mirror symmetry case
+         !
+         if(yi(ny+1).ne.pihalf) then
+            write(stdo,*) 'SAFETY STOP: It seems that you want to use mirror symmetry in the'
+            write(stdo,*) '   equatorial plane by putting the highest theta_i to pi/2. But'
+            write(stdo,*) '   presumably you did not use high enough precision in the '
+            write(stdo,*) '   theta_i list in the amr_grid.inp file. The mirror symmetry'
+            write(stdo,*) '   is not set. Stopping for safety. If you are absolutely sure'
+            write(stdo,*) '   you know what you are doing, you can comment out this stop.'
+            stop
+         endif
+      endif
+      !
       ! If theta goes beyond pi/2 then at least ONE theta interface must
       ! be exactly pihalf
       !
       if(yi(ny+1).gt.pihalf) then
          midplane=.false.
          do iy=2,ny
-            if(abs(yi(iy)-pihalf).lt.1d-10) then
+            !if(abs(yi(iy)-pihalf).lt.1d-10) then
+            if(yi(iy).eq.pihalf) then
                midplane=.true.
             endif
          enddo
          if(.not.midplane) then
             write(stdo,*) 'ERROR: Theta grid crosses midplane, but there is no'
-            write(stdo,*) '       interface at pi/2.'
+            write(stdo,*) '       interface at pi/2. Maybe check the precision '
+            write(stdo,*) '       of the theta-grid: the equator interface must'
+            write(stdo,*) '       be really exactly pi/2 to 12 digits or more.'
             stop
          endif
       endif
@@ -4623,7 +4645,9 @@ do iz=1,1+amr_zdim
                            !
                            if(x.ne.amr_finegrid_xi(a%ixyzf(1)+1+amr_xdim-ix,1,a%level)) then
                               if(amr_cyclic_xyz(1)) then
-                                 if((ix.ne.1).and.(ix.ne.amr_grid_nx)) then
+                                 if(abs(abs(x-amr_finegrid_xi(a%ixyzf(1)+1+amr_xdim-ix,1,a%level))/          &
+                                      abs(amr_grid_xi(amr_grid_nx+1,1)-amr_grid_xi(1,1))-1.d0).gt. &
+                                      1.0d-6) then
                                     write(stdo,*) 'ERROR: Corner coordinate mismatch found:'
                                     write(stdo,*) x,y,z
                                     write(stdo,*) amr_finegrid_xi(a%ixyzf(1)+1+amr_xdim-ix,1,a%level), &
@@ -4642,7 +4666,9 @@ do iz=1,1+amr_zdim
                            endif
                            if(y.ne.amr_finegrid_xi(a%ixyzf(2)+1+amr_ydim-iy,2,a%level)) then
                               if(amr_cyclic_xyz(2)) then
-                                 if((iy.ne.1).and.(iy.ne.amr_grid_ny)) then
+                                 if(abs(abs(y-amr_finegrid_xi(a%ixyzf(2)+1+amr_ydim-iy,2,a%level))/          &
+                                      abs(amr_grid_xi(amr_grid_ny+1,2)-amr_grid_xi(1,2))-1.d0).gt. &
+                                      1.0d-6) then
                                     write(stdo,*) 'ERROR: Corner coordinate mismatch found:'
                                     write(stdo,*) x,y,z
                                     write(stdo,*) amr_finegrid_xi(a%ixyzf(1)+1+amr_xdim-ix,1,a%level), &
@@ -4661,7 +4687,9 @@ do iz=1,1+amr_zdim
                            endif
                            if(z.ne.amr_finegrid_xi(a%ixyzf(3)+1+amr_zdim-iz,3,a%level)) then
                               if(amr_cyclic_xyz(3)) then
-                                 if((iz.ne.1).and.(iz.ne.amr_grid_nz)) then
+                                 if(abs(abs(z-amr_finegrid_xi(a%ixyzf(3)+1+amr_zdim-iz,3,a%level))/          &
+                                      abs(amr_grid_xi(amr_grid_nz+1,3)-amr_grid_xi(1,3))-1.d0).gt. &
+                                      1.0d-6) then
                                     write(stdo,*) 'ERROR: Corner coordinate mismatch found:'
                                     write(stdo,*) x,y,z
                                     write(stdo,*) amr_finegrid_xi(a%ixyzf(1)+1+amr_xdim-ix,1,a%level), &

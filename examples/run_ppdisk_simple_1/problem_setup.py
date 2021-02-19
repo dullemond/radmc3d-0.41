@@ -87,7 +87,8 @@ nlam     = lam.size
 #
 with open('wavelength_micron.inp','w+') as f:
     f.write('%d\n'%(nlam))
-    np.savetxt(f,lam.T,fmt=['%13.6e'])
+    for value in lam:
+        f.write('%13.6e\n'%(value))
 #
 #
 # Write the stars.inp file
@@ -96,7 +97,8 @@ with open('stars.inp','w+') as f:
     f.write('2\n')
     f.write('1 %d\n\n'%(nlam))
     f.write('%13.6e %13.6e %13.6e %13.6e %13.6e\n\n'%(rstar,mstar,pstar[0],pstar[1],pstar[2]))
-    np.savetxt(f,lam.T,fmt=['%13.6e'])
+    for value in lam:
+        f.write('%13.6e\n'%(value))
     f.write('\n%13.6e\n'%(-tstar))
 #
 # Write the grid file
@@ -108,9 +110,12 @@ with open('amr_grid.inp','w+') as f:
     f.write('0\n')                       # gridinfo
     f.write('1 1 0\n')                   # Include r,theta coordinates
     f.write('%d %d %d\n'%(nr,ntheta,1))  # Size of grid
-    np.savetxt(f,ri.T,fmt=['%21.14e'])    # R coordinates (cell walls)
-    np.savetxt(f,thetai.T,fmt=['%21.14e'])# Theta coordinates (cell walls)
-    np.savetxt(f,phii.T,fmt=['%21.14e'])  # Phi coordinates (cell walls)
+    for value in ri:
+        f.write('%13.6e\n'%(value))      # X coordinates (cell walls)
+    for value in thetai:
+        f.write('%13.6e\n'%(value))      # Y coordinates (cell walls)
+    for value in phii:
+        f.write('%13.6e\n'%(value))      # Z coordinates (cell walls)
 #
 # Write the density file
 #
@@ -119,7 +124,8 @@ with open('dust_density.inp','w+') as f:
     f.write('%d\n'%(nr*ntheta*nphi))     # Nr of cells
     f.write('1\n')                       # Nr of dust species
     data = rhod.ravel(order='F')         # Create a 1-D view, fortran-style indexing
-    np.savetxt(f,data.T,fmt=['%13.6e'])  # The data
+    data.tofile(f, sep='\n', format="%13.6e")
+    f.write('\n')
 #
 # Dust opacity control file
 #

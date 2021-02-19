@@ -13,14 +13,15 @@ program radmc3d
   implicit none
   !
   ! Local variables for main program
-  ! 
-  integer :: inu,nphot,iformat,irestart,ir,it,idiff,ifill
+  !
+  integer*8 :: nphot,nphot_scat_original
+  integer :: inu,iformat,irestart,ir,it,idiff,ifill
   integer :: ispec,cntdump,ifile,iredo,i,l
   integer :: ntemp,nvstr,ivstrt,iterstr,iwarn,ierror_diff,ierr
   integer :: ierror
   doubleprecision :: temp0,temp1,error,incrraycost
   logical :: fex1,fex2,iqy,gotit,quit,selfcheck,inclines_bk
-  integer :: maxtasks,itask,nv,nphot_scat_original
+  integer :: maxtasks,itask,nv
   character*160 :: subboxfilename,samplefilename,species
   character*160 :: vtkfilename,vtktitle
   integer :: npt,imx,imy,iinu,nvm,bc_idir,bc_ilr
@@ -229,8 +230,8 @@ program radmc3d
   rt_mcparams%niter_vstruct    = 0
   rt_mcparams%errtoldiff       = 1d-10
   rt_mcparams%nphotdiff        = 0
-  rt_mcparams%incl_scatsrc_mctherm= 0    ! The default is not to compute the 
-  !                                      ! scat source in Bjork&Wood
+  !rt_mcparams%incl_scatsrc_mctherm= 0    ! The default is not to compute the 
+  !!                                      ! scat source in Bjork&Wood
   rt_mcparams%optimized_motion = .false. ! By default switch optimized photon
   !                                      ! motion off. This is perhaps slower
   !                                      ! but safer.
@@ -2293,11 +2294,11 @@ subroutine read_radmcinp_file()
      close(1)
   !$ call parse_input_integer('setthreads@                   ',setthreads)
      call parse_input_integer('mc_safetymode@                ',mc_safetymode)
-     call parse_input_integer('nphot@                        ',rt_mcparams%nphot_therm)
-     call parse_input_integer('nphot_therm@                  ',rt_mcparams%nphot_therm)
-     call parse_input_integer('nphot_scat@                   ',rt_mcparams%nphot_scat)
-     call parse_input_integer('nphot_spec@                   ',rt_mcparams%nphot_spec)
-     call parse_input_integer('nphot_mono@                   ',rt_mcparams%nphot_mono)
+     call parse_input_integer8('nphot@                        ',rt_mcparams%nphot_therm)
+     call parse_input_integer8('nphot_therm@                  ',rt_mcparams%nphot_therm)
+     call parse_input_integer8('nphot_scat@                   ',rt_mcparams%nphot_scat)
+     call parse_input_integer8('nphot_spec@                   ',rt_mcparams%nphot_spec)
+     call parse_input_integer8('nphot_mono@                   ',rt_mcparams%nphot_mono)
      call parse_input_integer('iseed@                        ',iseed)
      call parse_input_integer('imethod@                      ',imethod)
      call parse_input_integer('ifast@                        ',rt_mcparams%ifast)
@@ -3025,6 +3026,19 @@ subroutine interpet_command_line_options(gotit,fromstdi,quit)
      !$   iarg = iarg+1
      !$   read(buffer,*) setthreads
      !$   gotit = .true.
+     elseif(buffer(1:11).eq.'nphot_therm') then
+        !
+        ! Set the nr of photons for the therm monte carlo
+        !
+        if(iarg.gt.numarg) then
+           write(stdo,*) 'ERROR while reading command line options: cannot read nphot_therm.'
+           write(stdo,*) ' Expecting 1 integer after nphot_therm.'
+           stop
+        endif
+        call ggetarg(iarg,buffer,fromstdi)
+        iarg = iarg+1
+        read(buffer,*) rt_mcparams%nphot_therm
+        gotit = .true.
      elseif(buffer(1:10).eq.'nphot_scat') then
         !
         ! Set the nr of photons for the scattering monte carlo
@@ -3623,6 +3637,20 @@ subroutine interpet_command_line_options(gotit,fromstdi,quit)
         !
         camera_lambda_starlight_single_scat_mode = 1
         write(stdo,*) 'Warning: using lambda starlight single scattering mode now!'
+     elseif(buffer(1:10).eq.'simplescat') then
+        !
+        ! Use do_lambda_starlight_single_scattering_simple() routine instead of
+        ! do_monte_carlo_scattering(). This mode works only under very special
+        ! conditions: spherical coordinates, a single pointlike star at the center,
+        ! single scattering. The scattering source function for the images is computed
+        ! only for the direct (extincted) stellar light. No multiple scattering is
+        ! computed. Only point source starlight is allowed as source. No thermal emission
+        ! from dust or other diffuse sources can be used. 
+        !
+        ! Note: This mode is not Monte-Carlo style: it is deterministic.
+        !
+        camera_lambda_starlight_single_scat_mode = 2
+        write(stdo,*) 'Warning: using simple starlight single scattering mode now!'
      elseif(buffer(1:9).eq.'maxnrscat') then
         !
         ! Set the max number of scattering events included in the 
@@ -3986,10 +4014,11 @@ subroutine write_banner()
   write(stdo,*) '      Please feel free to ask questions. Also please report     '
   write(stdo,*) '       bugs and/or suspicious behavior without hestitation.     '
   write(stdo,*) '     The reliability of this code depends on your vigilance!    '
+  write(stdo,*) '                   dullemond@uni-heidelberg.de                  '
   write(stdo,*) '                                                                '
   write(stdo,*) '  To keep up-to-date with bug-alarms and bugfixes, register to  '
-  write(stdo,*) '     the RADMC-3D mailing list by sending an email to me:       '
-  write(stdo,*) '                   dullemond@uni-heidelberg.de                  '
+  write(stdo,*) '                    the RADMC-3D forum:                         '
+  write(stdo,*) '           http://radmc3d.ita.uni-heidelberg.de/phpbb/          '
   write(stdo,*) '                                                                '
   write(stdo,*) '             Please visit the RADMC-3D home page at             '
   write(stdo,*) ' http://www.ita.uni-heidelberg.de/~dullemond/software/radmc-3d/ '

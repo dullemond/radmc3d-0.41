@@ -5,9 +5,9 @@ Original IDL model by Kees Dullemond, Python translation by Attila Juhasz
 try:
     import numpy as np
 except:
-    print 'ERROR'
-    print ' Numpy cannot be imported '
-    print ' To use the python module of RADMC-3D you need to install Numpy'
+    print('ERROR')
+    print(' Numpy cannot be imported ')
+    print(' To use the python module of RADMC-3D you need to install Numpy')
 
 from radmc3dPy.natconst import *
 
@@ -156,8 +156,8 @@ def getGasAbundance(grid=None, ppar=None, ispec=''):
         ind = ppar['gasspec_colpart_name'].index(ispec)
         gasabun[:,:,:] = ppar['gasspec_colpart_abun'][ind]#/mgas
     else:
-        print 'ERROR'
-        print ' The abundance of "'+ispec+'" is not specified in the parameter file'
+        print('ERROR')
+        print(' The abundance of "'+ispec+'" is not specified in the parameter file')
    
     return gasabun
 

@@ -1,0 +1,30 @@
+To see the effect of forward-peaked scattering, we make here an optically thin
+ring. Please note that the density of the ring is chosen simply to make the
+optical depth ultra-thin, not because of any physical reason.  The optical
+thinness means that we can safely assume single scattering. We use the simple
+single scattering mode, which is much (!) faster than the scattering Monte
+Carlo. It was checked (similar to validate_dust_spher_2d_fullscat/) that the
+simple scattering mode gives the same results as single scattering Monte Carlo.
+
+We view the ring from an inclination of 55 degrees from face-on. 
+
+Manual:
+
+  python problem_setup.py
+  radmc3d mctherm
+  python plot_compare_isoaniso.py
+
+You can see from the two images that the isotropic scattering case yields
+a ring that is symmetric top-bottom. But it has two ansae left-right because
+of the path-length effect (limb brightening). For the anisotropic case you
+see that the near side (bottom) is clearly brighter than the far side (top).
+This is the scattering phase function effect: the fact that the scattering
+is forward-peaked. 
+
+By doing
+
+  python plot_opacity.py
+
+you can see this phase function (we are at 0.5 micron, so the green curve).
+
+2018.06.14

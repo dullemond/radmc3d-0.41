@@ -1,7 +1,0 @@
-2     Format number
-1     Number of dust species
-----------------------------
-1     Way in which dust species is read
-0     Means thermal grain
-1     Extension of dustkappa file
-----------------------------
